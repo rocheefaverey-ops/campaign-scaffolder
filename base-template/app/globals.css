@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+
+/*
+ * CSS custom properties (design tokens).
+ * Static defaults live here; CAPE runtime values override them via DesignTokenInjector.
+ */
+:root {
+  --color-primary: #000000;
+  --color-secondary: #ffffff;
+  --color-accent: #ff0000;
+
+  --font-brand: 'Arial', sans-serif;
+  --font-brand-condensed: 'Arial Narrow', sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Campaign canvases own scrolling; individual pages opt back in */
+}
+
+#__next,
+main {
+  height: 100%;
+}
