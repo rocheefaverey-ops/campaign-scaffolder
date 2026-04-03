@@ -1,0 +1,45 @@
+{
+  "id": "unity",
+  "name": "Unity WebGL",
+  "description": "Embeds a Unity WebGL build. Handles the full boot sequence (init → preload → load → start), the SetData translation injection, and all Unity↔JS events (end, navigation, tracking, apiRequest).",
+  "files": [
+    {
+      "src": "lib/unity-adapter.ts",
+      "dest": "lib/game-bridge/unity-adapter.ts"
+    },
+    {
+      "src": "components/UnityCanvas/UnityCanvas.tsx",
+      "dest": "components/_modules/UnityCanvas/UnityCanvas.tsx"
+    },
+    {
+      "src": "components/UnityCanvas/UnityLoader.tsx",
+      "dest": "components/_modules/UnityCanvas/UnityLoader.tsx"
+    },
+    {
+      "src": "app/(campaign)/gameplay/page.tsx",
+      "dest": "app/(campaign)/gameplay/page.tsx",
+      "strategy": "replace"
+    }
+  ],
+  "envVars": [
+    "NEXT_PUBLIC_UNITY_BASE_URL",
+    "NEXT_PUBLIC_UNITY_GAME_NAME",
+    "NEXT_PUBLIC_UNITY_VERSION",
+    "NEXT_PUBLIC_UNITY_COMPRESSION",
+    "NEXT_PUBLIC_UNITY_DESKTOP_DPR",
+    "NEXT_PUBLIC_UNITY_MOBILE_DPR"
+  ],
+  "packages": [],
+  "cspPatch": {
+    "script-src": ["${NEXT_PUBLIC_UNITY_BASE_URL}"],
+    "worker-src": ["blob:"],
+    "connect-src": ["${NEXT_PUBLIC_UNITY_BASE_URL}"],
+    "extras": ["'wasm-unsafe-eval'"]
+  },
+  "notes": [
+    "Add UnityCanvas to gameplay/page.tsx — it manages its own boot sequence.",
+    "setData() is called automatically inside UnityCanvas before loadScene().",
+    "Extend IUnityInput in lib/game-bridge/game-bridge.types.ts for campaign-specific fields (team data, etc.).",
+    "Handle 'navigation', 'tracking', 'apiRequest' events in gameplay/page.tsx."
+  ]
+}

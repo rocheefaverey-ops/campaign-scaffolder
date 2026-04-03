@@ -1,0 +1,17 @@
+{
+  "id": "design-tokens",
+  "name": "Design Token Injector",
+  "description": "Injects CAPE branding (colours, fonts) as CSS custom properties at runtime — no rebuild needed when CAPE config changes.",
+  "files": [
+    {
+      "src": "components/DesignTokenInjector/DesignTokenInjector.tsx",
+      "dest": "components/_modules/DesignTokenInjector/DesignTokenInjector.tsx"
+    }
+  ],
+  "envVars": [],
+  "packages": [],
+  "injectInto": {
+    "file": "app/providers.tsx",
+    "instruction": "Mount <DesignTokenInjector capeData={capeData} /> inside Providers, before children."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "id": "audio",
+  "name": "Audio Player",
+  "description": "Background audio with mute toggle. Powered by Howler.js, synced to GameContext.isMuted.",
+  "files": [
+    {
+      "src": "components/AudioPlayer/AudioPlayer.tsx",
+      "dest": "components/_modules/AudioPlayer/AudioPlayer.tsx"
+    }
+  ],
+  "envVars": [],
+  "packages": ["howler"],
+  "devPackages": ["@types/howler"]
+}

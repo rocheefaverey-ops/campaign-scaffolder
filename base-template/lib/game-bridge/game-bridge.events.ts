@@ -1,23 +1,36 @@
 /**
- * Canonical event names shared between the game engine and React.
- * Use these constants everywhere — never hardcode string literals.
+ * Canonical event name constants — use these everywhere.
+ * Unity dispatches these into window.unityEventMap; React subscribes to them.
  */
 export const BRIDGE_EVENTS = {
-  /** WASM / engine started loading */
+  // ── Lifecycle ────────────────────────────────────────────────────────────
+  /** WASM + framework started loading */
   LOADING: 'loading',
-  /** Engine is initialised and ready to receive SetData */
-  READY: 'ready',
-  /** Addressables / asset bundle download complete */
-  ADDRESSABLE_LOADED: 'addressableLoaded',
-  /** A named scene has finished loading */
+  /** Engine initialised — safe to call SetScene */
   SCENE_LOADED: 'sceneLoaded',
-  /** Game loop has started */
-  GAME_STARTED: 'gameStarted',
-  /** Game loop has ended; payload contains IGameResult */
-  GAME_ENDED: 'gameEnded',
-  /** Tutorial sequence completed */
+  /** Addressable asset bundle downloaded — preload complete */
+  ADDRESSABLE_LOADED: 'addressableLoaded',
+  /** Scene fully instantiated — safe to call StartGame */
+  READY: 'ready',
+
+  // ── Game flow ─────────────────────────────────────────────────────────────
+  /** Game loop started */
+  START: 'start',
+  /** Game loop ended; payload is IGameResult (JSON string) */
+  END: 'end',
+  /** Tutorial animation finished */
   TUTORIAL_PLAYED: 'tutorialPlayed',
-  /** Audio mute state changed; payload is boolean */
+
+  // ── Cross-boundary requests ───────────────────────────────────────────────
+  /** Unity requests a navigation action; payload is IUnityNavigation */
+  NAVIGATION: 'navigation',
+  /** Unity fires an analytics event; payload is IUnityTracking */
+  TRACKING: 'tracking',
+  /** Unity proxies an HTTP request through the frontend; payload is IUnityApiRequest */
+  API_REQUEST: 'apiRequest',
+
+  // ── Audio ─────────────────────────────────────────────────────────────────
+  /** Mute state changed inside Unity; payload is boolean */
   MUTED: 'muted',
 } as const;
 

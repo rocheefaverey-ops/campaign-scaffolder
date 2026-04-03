@@ -1,0 +1,17 @@
+{
+  "id": "scoring",
+  "name": "Scoring",
+  "description": "Server actions for creating and ending game sessions. Required by leaderboard and registration modules.",
+  "files": [
+    {
+      "src": "actions/create-session/action.ts",
+      "dest": "app/actions/create-session/action.ts"
+    },
+    {
+      "src": "actions/end-session/action.ts",
+      "dest": "app/actions/end-session/action.ts"
+    }
+  ],
+  "envVars": [],
+  "packages": []
+}

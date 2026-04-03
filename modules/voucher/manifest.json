@@ -1,0 +1,25 @@
+{
+  "id": "voucher",
+  "name": "Voucher / Reward",
+  "description": "Reward screen with a unique code and QR code for point-of-sale redemption.",
+  "files": [
+    {
+      "src": "components/Voucher/Voucher.tsx",
+      "dest": "components/_modules/Voucher/Voucher.tsx"
+    },
+    {
+      "src": "components/Voucher/QRCode.tsx",
+      "dest": "components/_modules/Voucher/QRCode.tsx"
+    },
+    {
+      "src": "app/(campaign)/voucher/page.tsx",
+      "dest": "app/(campaign)/voucher/page.tsx"
+    }
+  ],
+  "envVars": [],
+  "packages": ["next-qrcode"],
+  "notes": [
+    "Voucher code is generated server-side or received from the end-session response.",
+    "QRCode requires next-qrcode: npm install next-qrcode"
+  ]
+}

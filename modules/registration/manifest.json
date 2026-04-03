@@ -1,0 +1,33 @@
+{
+  "id": "registration",
+  "name": "Registration Form",
+  "description": "Player registration with first name, last name, email, and configurable opt-in checkboxes. Opt-ins support inline link replacement from CAPE copy.",
+  "files": [
+    {
+      "src": "components/RegistrationForm/RegistrationForm.tsx",
+      "dest": "components/_modules/RegistrationForm/RegistrationForm.tsx"
+    },
+    {
+      "src": "components/RegistrationForm/FormInput.tsx",
+      "dest": "components/_modules/RegistrationForm/FormInput.tsx"
+    },
+    {
+      "src": "components/RegistrationForm/Optin.tsx",
+      "dest": "components/_modules/RegistrationForm/Optin.tsx"
+    },
+    {
+      "src": "actions/register/action.ts",
+      "dest": "app/actions/register/action.ts"
+    },
+    {
+      "src": "app/(campaign)/register/page.tsx",
+      "dest": "app/(campaign)/register/page.tsx"
+    }
+  ],
+  "envVars": [],
+  "packages": [],
+  "notes": [
+    "Add or remove optin checkboxes in RegistrationForm.tsx — each one needs a label and link from CAPE.",
+    "The register action sends PUT /api/users/register — adjust the path/method to match your backend."
+  ]
+}
