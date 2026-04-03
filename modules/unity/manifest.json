@@ -31,9 +31,6 @@
   ],
   "packages": [],
   "cspPatch": {
-    "script-src": ["${NEXT_PUBLIC_UNITY_BASE_URL}"],
-    "worker-src": ["blob:"],
-    "connect-src": ["${NEXT_PUBLIC_UNITY_BASE_URL}"],
     "extras": ["'wasm-unsafe-eval'"]
   },
   "notes": [

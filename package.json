@@ -1,0 +1,16 @@
+{
+  "name": "lw-scaffold",
+  "version": "1.0.0",
+  "description": "Livewall Campaign Scaffolder CLI",
+  "type": "module",
+  "bin": {
+    "lw-scaffold": "./cli/scaffold.js"
+  },
+  "scripts": {
+    "scaffold": "node cli/scaffold.js",
+    "preview-message": "node cli/post-scaffold-message.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

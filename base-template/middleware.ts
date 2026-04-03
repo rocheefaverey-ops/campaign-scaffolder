@@ -24,11 +24,12 @@ export function middleware(request: NextRequest) {
     `worker-src 'self' blob:`,
     `child-src 'self' blob:`,
     `media-src 'self' blob: ${capeUrl}`,
-    `connect-src 'self' ${apiUrl} ${capeUrl} https://www.google-analytics.com`,
+    `connect-src 'self' ${apiUrl} ${capeUrl} https://www.google-analytics.com${unityUrl ? ` ${unityUrl}` : ''}`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
     `upgrade-insecure-requests`,
+    // lw-scaffold:csp — module CSP injections are appended above this line by the scaffolder CLI
   ]
     .filter(Boolean)
     .join('; ');

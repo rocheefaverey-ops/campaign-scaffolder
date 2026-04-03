@@ -30,25 +30,53 @@ Every module directory contains:
 └── lib/                   # Infrastructure → copied to base-template/lib/
 ```
 
-## CLI Usage (Step 3 — not yet implemented)
+## CLI Usage
 
+### Interactive wizard (recommended)
 ```bash
-npx lw-scaffold my-campaign \
+node cli/scaffold.js
+```
+Prompts for: project name, CAPE ID, market, game engine, optional modules, output directory.
+
+### Non-interactive (CI / known config)
+```bash
+node cli/scaffold.js \
+  --name=hema-handdoek-2025 \
+  --cape-id=54031 \
+  --market=NL \
   --game=unity \
   --module=leaderboard \
   --module=registration \
   --module=voucher \
-  --cape-id=12345 \
-  --market=NL
+  --output=/c/Dev/Livewall/hema-handdoek-2025 \
+  --yes
 ```
 
-The CLI reads each selected module's `manifest.json` and:
+### Available flags
+| Flag | Description |
+|------|-------------|
+| `--name` | Project slug (used as folder name + token replacement) |
+| `--cape-id` | Numeric CAPE campaign ID |
+| `--market` | Market code: NL / BE / FR / DE … |
+| `--game` | Game engine: `unity` or `r3f` (optional) |
+| `--module` | Optional module to include (repeatable) |
+| `--output` | Absolute output path (default: sibling dir of scaffolder) |
+| `--yes` / `--y` | Skip confirmation prompt |
+
+### What the CLI does
 1. Copies `base-template/` to the output directory
-2. For each module: copies module files to the matching `dest` paths
-3. Installs packages listed in `manifest.packages`
-4. Appends env vars to `.env.example`
-5. Patches `middleware.ts` CSP with `manifest.cspPatch` entries
-6. Token-replaces `{{CAPE_ID}}`, `{{MARKET}}`, `{{PROJECT_NAME}}` in all files
+2. For each selected module: reads `manifest.json`, copies files to their `dest` paths
+3. Resolves `implies` chains (e.g. `leaderboard` → adds `scoring` automatically)
+4. Token-replaces `{{PROJECT_NAME}}`, `{{CAPE_ID}}`, `{{MARKET}}` in all text files
+5. Appends module-specific env vars to `.env.example`
+6. Patches `middleware.ts` CSP with `manifest.cspPatch` entries
+7. Runs `npm install` for any packages declared in manifests
+8. Prints a colour-coded post-scaffold checklist for the developer
+
+### Preview the post-scaffold message
+```bash
+node cli/post-scaffold-message.js
+```
 
 ## Development
 
