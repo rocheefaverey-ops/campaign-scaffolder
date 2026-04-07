@@ -11,8 +11,8 @@ export default function LeaderboardPage() {
     <main className="flex h-full flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <h1 className="font-brand text-2xl font-bold">Leaderboard</h1>
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          ← Back
+        <Button variant="ghost" size="sm" onClick={() => router.push('{{NEXT_AFTER_LEADERBOARD}}')}>
+          Done
         </Button>
       </div>
 

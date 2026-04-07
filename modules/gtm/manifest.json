@@ -1,0 +1,29 @@
+{
+  "id": "gtm",
+  "name": "Google Tag Manager",
+  "description": "Adds the GTM script tags to the layout and a typed gtmPush() helper for dataLayer events.",
+  "files": [
+    {
+      "src": "lib/gtm.ts",
+      "dest": "lib/gtm.ts"
+    },
+    {
+      "src": "components/GTMScript/GTMScript.tsx",
+      "dest": "components/_modules/GTMScript/GTMScript.tsx"
+    }
+  ],
+  "envVars": ["NEXT_PUBLIC_GTM_ID"],
+  "packages": [],
+  "cspPatch": {
+    "script-src": ["https://www.googletagmanager.com"],
+    "connect-src": ["https://www.google-analytics.com", "https://stats.g.doubleclick.net"]
+  },
+  "injectInto": {
+    "file": "app/layout.tsx",
+    "instruction": "Mount <GTMScript gtmId={process.env.NEXT_PUBLIC_GTM_ID} nonce={nonce} /> inside <head>."
+  },
+  "notes": [
+    "Call gtmPush({ event: 'game_start' }) anywhere on the client to push dataLayer events.",
+    "GTM_ID is set via {{GTM_ID}} token replacement during scaffolding."
+  ]
+}

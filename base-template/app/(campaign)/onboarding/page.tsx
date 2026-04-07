@@ -11,7 +11,7 @@ export default function OnboardingPage() {
   const handleStart = async () => {
     setLoading(true);
     // TODO: call complete-onboarding action, then navigate
-    router.push('/gameplay');
+    router.push('{{NEXT_AFTER_ONBOARDING}}');
   };
 
   return (

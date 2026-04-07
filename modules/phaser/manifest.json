@@ -1,0 +1,31 @@
+{
+  "id": "phaser",
+  "name": "Phaser 3",
+  "description": "Phaser 3 game canvas with an EventEmitter-based bridge. The Phaser scene emits 'end' with a result object to trigger navigation.",
+  "files": [
+    {
+      "src": "lib/phaser-adapter.ts",
+      "dest": "lib/game-bridge/phaser-adapter.ts"
+    },
+    {
+      "src": "components/PhaserCanvas/PhaserCanvas.tsx",
+      "dest": "components/_modules/PhaserCanvas/PhaserCanvas.tsx"
+    },
+    {
+      "src": "app/(campaign)/gameplay/page.tsx",
+      "dest": "app/(campaign)/gameplay/page.tsx",
+      "strategy": "replace"
+    }
+  ],
+  "envVars": [],
+  "packages": ["phaser"],
+  "devPackages": [],
+  "cspPatch": {
+    "extras": ["'wasm-unsafe-eval'"]
+  },
+  "notes": [
+    "Install Phaser: npm install phaser",
+    "Emit the game end event from inside your Phaser scene: this.game.events.emit('end', { score: 100 })",
+    "Add your Phaser scenes to PhaserCanvas.tsx in the scene array."
+  ]
+}

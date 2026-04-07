@@ -20,7 +20,7 @@ export default function GameplayPage() {
 
   const handleGameEnd = (score: number) => {
     setScore(score);
-    router.push('/result');
+    router.push('{{NEXT_AFTER_GAME}}');
   };
 
   return (

@@ -55,7 +55,11 @@ function validate(values: FormValues): FormErrors {
 
 // ─── Component ────────────────────────────────────────────────────────────
 
-export default function RegistrationForm() {
+interface Props {
+  onSuccess?: () => void;
+}
+
+export default function RegistrationForm({ onSuccess }: Props) {
   const router = useRouter();
   const { token, setUserName, setAlreadyRegistered } = useGameContext();
 
@@ -100,7 +104,8 @@ export default function RegistrationForm() {
 
     setUserName(`${values.firstName} ${values.lastName}`.trim());
     setAlreadyRegistered(true);
-    router.push('/result');
+    if (onSuccess) onSuccess();
+    else router.push('{{NEXT_AFTER_REGISTER}}');
   };
 
   return (

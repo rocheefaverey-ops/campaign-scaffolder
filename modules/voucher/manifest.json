@@ -1,7 +1,7 @@
 {
   "id": "voucher",
   "name": "Voucher / Reward",
-  "description": "Reward screen with a unique code and QR code for point-of-sale redemption.",
+  "description": "Reward screen with a unique code. Optional QR code for point-of-sale redemption (requires next-qrcode).",
   "files": [
     {
       "src": "components/Voucher/Voucher.tsx",
@@ -17,9 +17,9 @@
     }
   ],
   "envVars": [],
-  "packages": ["next-qrcode"],
+  "packages": [],
   "notes": [
-    "Voucher code is generated server-side or received from the end-session response.",
-    "QRCode requires next-qrcode: npm install next-qrcode"
+    "Voucher code comes from GameContext.voucherCode — set it in the end-session action response.",
+    "To enable QR: npm install next-qrcode, then uncomment the import in QRCode.tsx."
   ]
 }

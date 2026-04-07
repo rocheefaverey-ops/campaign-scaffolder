@@ -41,7 +41,7 @@ export default function GameplayPage() {
   const handleEnd = (result: IGameResult) => {
     setScore(result.score ?? 0);
     // TODO: call end-session action with result before navigating
-    router.push('/result');
+    router.push('{{NEXT_AFTER_GAME}}');
   };
 
   return (

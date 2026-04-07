@@ -10,5 +10,5 @@ import { redirect } from 'next/navigation';
  */
 export default function Home() {
   // TODO: Replace with real entry logic once auth action is wired up.
-  redirect('/onboarding');
+  redirect('{{FLOW_ENTRY}}');
 }

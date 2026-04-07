@@ -1,8 +1,11 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import RegistrationForm from '@components/_modules/RegistrationForm/RegistrationForm';
 
 export default function RegisterPage() {
+  const router = useRouter();
+
   return (
     <main className="flex h-full flex-col items-center justify-center gap-6 overflow-y-auto p-8">
       <div className="text-center">
@@ -12,7 +15,7 @@ export default function RegisterPage() {
         </p>
       </div>
 
-      <RegistrationForm />
+      <RegistrationForm onSuccess={() => router.push('{{NEXT_AFTER_REGISTER}}')} />
     </main>
   );
 }

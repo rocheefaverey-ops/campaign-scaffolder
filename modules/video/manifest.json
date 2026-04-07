@@ -1,0 +1,21 @@
+{
+  "id": "video",
+  "name": "Video Interlude",
+  "description": "Full-screen video playback page. Navigates to the next route when the video ends or when the user taps skip.",
+  "files": [
+    {
+      "src": "components/VideoIntro/VideoIntro.tsx",
+      "dest": "components/_modules/VideoIntro/VideoIntro.tsx"
+    },
+    {
+      "src": "app/(campaign)/video/page.tsx",
+      "dest": "app/(campaign)/video/page.tsx"
+    }
+  ],
+  "envVars": [],
+  "packages": [],
+  "notes": [
+    "Set the video src from CAPE data: capeData?.intro?.video?.src",
+    "The page auto-navigates to {{NEXT_AFTER_VIDEO}} when the video ends."
+  ]
+}
