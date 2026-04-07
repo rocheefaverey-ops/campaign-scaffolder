@@ -30,9 +30,10 @@ import { printPostScaffoldMessage } from './post-scaffold-message.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
-const SCAFFOLDER_ROOT = resolve(__dirname, '..');
-const BASE_TEMPLATE   = join(SCAFFOLDER_ROOT, 'base-template');
-const MODULES_DIR     = join(SCAFFOLDER_ROOT, 'modules');
+const SCAFFOLDER_ROOT    = resolve(__dirname, '..');
+const NEXT_TEMPLATE      = join(SCAFFOLDER_ROOT, 'base-templates', 'next');
+const TANSTACK_BOILERPLATE = resolve(SCAFFOLDER_ROOT, '..', 'unity-tanstack-boilerplate', 'frontend');
+const MODULES_DIR        = join(SCAFFOLDER_ROOT, 'modules');
 
 // ─── Colour helpers ──────────────────────────────────────────────────────────
 const c = {
@@ -122,7 +123,8 @@ function parseArgs(argv) {
     else if (key === 'cape-id')  args.capeId   = val;
     else if (key === 'market')   args.market   = val;
     else if (key === 'game')     args.game     = val;
-    else if (key === 'reg-mode') args.regMode  = val;  // gate | after | none
+    else if (key === 'stack')    args.stack    = val;  // next | tanstack
+    else if (key === 'reg-mode') args.regMode  = val;
     else if (key === 'gtm-id')   args.gtmId    = val;
     else if (key === 'output')   args.output   = val;
     else if (key === 'iframe')   args.iframe   = true;
@@ -187,6 +189,16 @@ async function runWizard(pre) {
   console.log(c.bold('  └──────────────────────────────────────────────┘'));
   console.log('');
 
+  // 0. Stack
+  let stack = pre.stack ?? null;
+  if (stack === null) {
+    console.log(`  ${c.bold('Stack:')}`);
+    console.log(`    ${c.dim('0)')} Next.js 15 App Router   ${c.dim('← CAPE-heavy, registration flows, SSR')}`);
+    console.log(`    ${c.dim('1)')} TanStack Start + Vite   ${c.dim('← Unity games (NHL-Crush pattern)')}`);
+    const v = (await ask(`  ${c.cyan('Select')} ${c.dim('[0-1, default: 0]')}: `)).trim();
+    stack = v === '1' ? 'tanstack' : 'next';
+  }
+
   // 1. Project name
   let name = pre.name;
   if (!name) name = (await ask(`  ${c.cyan('Project name')} ${c.dim('(e.g. hema-handdoek-2025)')}: `)).trim();
@@ -202,6 +214,27 @@ async function runWizard(pre) {
   if (!pre.market) {
     const v = (await ask(`  ${c.cyan('Market')} ${c.dim(`(default: ${market})`)}: `)).trim();
     if (v) market = v.toUpperCase();
+  }
+
+  // TanStack is Unity-only — skip engine + pages questions
+  if (stack === 'tanstack') {
+    rl.close();
+    const outputDir = pre.output ? resolve(pre.output) : resolve(SCAFFOLDER_ROOT, '..', name);
+    console.log('');
+    console.log(c.bold('  ──────────────────────────────────────────────'));
+    console.log(`  ${c.bold('Stack:')}    ${c.cyan('TanStack Start + Vite')}`);
+    console.log(`  ${c.bold('Project:')} ${c.cyan(name)}`);
+    console.log(`  ${c.bold('CAPE ID:')} ${c.cyan(capeId)}  ${c.dim(`(market: ${market})`)}`);
+    console.log(`  ${c.bold('Output:')}  ${c.dim(outputDir)}`);
+    console.log(c.bold('  ──────────────────────────────────────────────'));
+    if (!pre.yes) {
+      const confirm = await new Promise((res) => {
+        const rl2 = createInterface({ input: process.stdin, output: process.stdout });
+        rl2.question(`\n  Proceed? ${c.dim('[Y/n]')}: `, (a) => { rl2.close(); res(a); });
+      });
+      if (confirm.trim().toLowerCase() === 'n') { console.log('\n  Aborted.\n'); process.exit(0); }
+    }
+    return { stack, name, capeId, market, game: 'unity', pages: [], regMode: 'none', modules: [], gtmId: '', iframe: false, outputDir };
   }
 
   // 4. Experience / engine
@@ -333,7 +366,7 @@ async function runWizard(pre) {
     if (confirm.trim().toLowerCase() === 'n') { console.log('\n  Aborted.\n'); process.exit(0); }
   }
 
-  return { name, capeId, market, game, pages, regMode, modules: allModules, gtmId, iframe, outputDir };
+  return { stack: 'next', name, capeId, market, game, pages, regMode, modules: allModules, gtmId, iframe, outputDir };
 }
 
 function buildDefaultPages(game) {
@@ -369,7 +402,81 @@ function resolveModules(game, pages, extraModules) {
 }
 
 // ─── Core scaffolding engine ──────────────────────────────────────────────────
-async function scaffold({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir }) {
+async function scaffold(options) {
+  if (options.stack === 'tanstack') return scaffoldTanstack(options);
+  return scaffoldNext(options);
+}
+
+async function scaffoldTanstack({ name, capeId, market, outputDir }) {
+  const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
+  const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
+  const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
+
+  // Validate boilerplate exists
+  if (!existsSync(TANSTACK_BOILERPLATE)) {
+    throw new Error(
+      `TanStack boilerplate not found at:\n  ${TANSTACK_BOILERPLATE}\n\n` +
+      `Make sure unity-tanstack-boilerplate is cloned as a sibling of this repo.`
+    );
+  }
+
+  // 1. Copy boilerplate
+  step(1, 'Copying TanStack boilerplate…');
+  if (existsSync(outputDir)) throw new Error(`Output directory already exists: ${outputDir}`);
+  mkdirSync(outputDir, { recursive: true });
+  cpSync(TANSTACK_BOILERPLATE, outputDir, {
+    recursive: true,
+    filter: (src) => {
+      const rel = relative(TANSTACK_BOILERPLATE, src);
+      return !rel.startsWith('node_modules') && !rel.startsWith('.output') && !rel.startsWith('dist');
+    },
+  });
+  ok(`Boilerplate → ${c.dim(outputDir)}`);
+
+  // 2. Token replacement
+  step(2, 'Replacing tokens…');
+  const tokens = {
+    '{{PROJECT_NAME}}':              name,
+    'engagement-frontend-tanstack':  name,
+    '{{CAPE_ID}}':                   capeId,
+    '{{MARKET}}':                    market,
+  };
+  const replaced = tokenReplaceDir(outputDir, tokens);
+  ok(`${replaced} file(s) updated`);
+
+  // 3. Pre-fill .env
+  step(3, 'Pre-filling .env…');
+  const envSrc  = join(outputDir, '.env.example') || join(outputDir, '.env.dist');
+  const envDest = join(outputDir, '.env');
+  if (existsSync(envSrc) && !existsSync(envDest)) {
+    let envContent = readFileSync(envSrc, 'utf8');
+    envContent = envContent
+      .replace(/^CAPE_CAMPAIGN_ID=.*/m,     `CAPE_CAMPAIGN_ID=${capeId}`)
+      .replace(/^CAPE_CAMPAIGN_MARKET=.*/m, `CAPE_CAMPAIGN_MARKET=${market}`);
+    writeFileSync(envDest, envContent, 'utf8');
+    ok('.env created from .env.example');
+  } else {
+    warn('.env.example not found — create .env manually');
+  }
+
+  // 4. Git init
+  step(4, 'Initialising git repository…');
+  gitInit(outputDir, name);
+  ok('git init + initial commit');
+
+  // Done
+  console.log('');
+  printPostScaffoldMessage({
+    projectName: name,
+    capeId,
+    market,
+    modules: [],
+    outputDir,
+    stack: 'tanstack',
+  });
+}
+
+async function scaffoldNext({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -380,10 +487,10 @@ async function scaffold({ name, capeId, market, game, pages, regMode, modules, g
     throw new Error(`Output directory already exists: ${outputDir}\nDelete it or choose a different name.`);
   }
   mkdirSync(outputDir, { recursive: true });
-  cpSync(BASE_TEMPLATE, outputDir, {
+  cpSync(NEXT_TEMPLATE, outputDir, {
     recursive: true,
     filter: (src) => {
-      const rel = relative(BASE_TEMPLATE, src);
+      const rel = relative(NEXT_TEMPLATE, src);
       return !rel.startsWith('node_modules') && !rel.startsWith('.next');
     },
   });
@@ -479,10 +586,15 @@ async function scaffold({ name, capeId, market, game, pages, regMode, modules, g
     step(7, 'No extra packages to install.');
   }
 
+  // 8. Git init
+  step(8, 'Initialising git repository…');
+  gitInit(outputDir, name);
+  ok('git init + initial commit');
+
   // Done
   const selectedOptional = modules.filter(id => !GAME_ENGINES.includes(id));
   console.log('');
-  printPostScaffoldMessage({ projectName: name, capeId, market, modules: selectedOptional, outputDir });
+  printPostScaffoldMessage({ projectName: name, capeId, market, modules: selectedOptional, outputDir, stack: 'next' });
 }
 
 // ─── Token replacement ────────────────────────────────────────────────────────
@@ -600,6 +712,17 @@ function collectPackages(moduleIds) {
   return { prod: [...prod], dev: [...dev] };
 }
 
+// ─── Git init ────────────────────────────────────────────────────────────────
+function gitInit(outputDir, projectName) {
+  try {
+    execSync('git init', { cwd: outputDir, stdio: 'pipe' });
+    execSync('git add .', { cwd: outputDir, stdio: 'pipe' });
+    execSync(`git commit -m "chore: scaffold ${projectName}"`, { cwd: outputDir, stdio: 'pipe' });
+  } catch {
+    // Git might not be available or there may be hook issues — non-fatal
+  }
+}
+
 // ─── Entry point ──────────────────────────────────────────────────────────────
 async function main() {
   const args = parseArgs(process.argv);
@@ -607,12 +730,14 @@ async function main() {
 
   let options;
   if (isNonInteractive) {
-    const allModules = resolveModules(args.game || '', args.pages, args.modules);
+    const stack = args.stack || 'next';
+    const allModules = stack === 'tanstack' ? [] : resolveModules(args.game || '', args.pages, args.modules);
     options = {
+      stack,
       name:      args.name,
       capeId:    args.capeId,
       market:    args.market,
-      game:      args.game || '',
+      game:      args.game || 'unity',
       pages:     args.pages.length > 0 ? args.pages : buildDefaultPages(args.game || ''),
       regMode:   args.regMode || 'none',
       modules:   allModules,

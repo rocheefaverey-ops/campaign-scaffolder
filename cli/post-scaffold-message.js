@@ -39,7 +39,9 @@ const BULLET = c.dim('•');
  * @param {string[]} opts.modules       - e.g. ['unity', 'leaderboard', 'registration']
  * @param {string}   opts.outputDir     - absolute path to generated project
  */
-export function printPostScaffoldMessage({ projectName, capeId, market, modules, outputDir }) {
+export function printPostScaffoldMessage({ projectName, capeId, market, modules, outputDir, stack = 'next' }) {
+  if (stack === 'tanstack') return printPostScaffoldMessageTanstack({ projectName, capeId, market, outputDir });
+
   const divider = c.dim('─'.repeat(60));
 
   console.log('');
@@ -188,6 +190,81 @@ function buildModuleTodos(modules, capeId) {
   );
 
   return todos;
+}
+
+// ─── TanStack post-scaffold message ──────────────────────────────────────────
+function printPostScaffoldMessageTanstack({ projectName, capeId, market, outputDir }) {
+  const divider = c.dim('─'.repeat(60));
+
+  console.log('');
+  console.log(divider);
+  console.log('');
+  console.log(c.bgGreen(` ${CHECK} Project scaffolded successfully! `));
+  console.log('');
+  console.log(`  ${c.bold('Stack:')}    ${c.cyan('TanStack Start + Vite')}`);
+  console.log(`  ${c.bold('Project:')} ${c.cyan(projectName)}`);
+  console.log(`  ${c.bold('CAPE ID:')} ${c.cyan(capeId)}  ${c.dim(`(market: ${market})`)}`);
+  console.log(`  ${c.bold('Output:')}  ${c.dim(outputDir)}`);
+  console.log('');
+  console.log(divider);
+
+  // Step 1: .env
+  console.log('');
+  console.log(c.bold(`  ${ARROW} STEP 1 — Fill in your .env`));
+  console.log('');
+  console.log(c.yellow(`  ${WARN}  .env was pre-created from .env.example — review and complete it.`));
+  console.log(`     ${BULLET} Set ${c.cyan('API_URL')} to your backend`);
+  console.log(`     ${BULLET} Set ${c.cyan('API_SESSION_SECRET')} to a random secret`);
+  console.log(`     ${BULLET} Set ${c.cyan('UNITY_BASE_URL')} and ${c.cyan('UNITY_GAME_NAME')} for your Unity build`);
+  console.log(`     ${BULLET} Set ${c.cyan('CAPE_BASE_URL')} to your CAPE CDN URL`);
+  console.log(`     ${BULLET} CAPE_CAMPAIGN_ID is pre-set to ${c.bold(capeId)}`);
+
+  // Step 2: CAPE
+  console.log('');
+  console.log(divider);
+  console.log('');
+  console.log(c.bold(`  ${ARROW} STEP 2 — Pull your CAPE campaign data  ${c.dim('(manual — DO NOT automate)')}`));
+  console.log('');
+  console.log(c.yellow(`  ${WARN}  The scaffolder intentionally did NOT run this for you.`));
+  console.log(`     ${c.dim('lwg-cli-cape has write access to ALL live campaigns.')}`);
+  console.log('');
+  console.log(c.cyan(`       cd /path/to/lwg-cli-cape`));
+  console.log(c.cyan(`       node cli.js login`));
+  console.log(c.cyan(`       node cli.js fetch ${capeId}`));
+  console.log('');
+  console.log(c.red(`  ${CROSS}  NEVER run:  node cli.js push / patch / publish`));
+
+  // Step 3: Unity build
+  console.log('');
+  console.log(divider);
+  console.log('');
+  console.log(c.bold(`  ${ARROW} STEP 3 — Add your Unity WebGL build`));
+  console.log('');
+  console.log(`     ${BULLET} Upload Unity build to GCS and set ${c.cyan('UNITY_BASE_URL')} in .env`);
+  console.log(`     ${BULLET} The loader script path is ${c.cyan('${UNITY_BASE_URL}/Build/Build.loader.js')}`);
+  console.log(`     ${BULLET} Update ${c.cyan('UNITY_GAME_NAME')} to match your Unity output folder`);
+  console.log('');
+  console.log(c.yellow(`  ${WARN}  Review boilerplate-specific files and remove what is not needed:`));
+  console.log(`     ${BULLET} ${c.cyan('src/hooks/stores/useTeamStore.ts')}  ${c.dim('← sport-specific, remove if not needed')}`);
+  console.log(`     ${BULLET} ${c.cyan('src/utils/TeamMapper.ts')}           ${c.dim('← sport-specific, remove if not needed')}`);
+  console.log(`     ${BULLET} ${c.cyan('src/routes/tutorial.tsx')}           ${c.dim('← keep or remove based on campaign')}`);
+
+  // Step 4: Install & run
+  console.log('');
+  console.log(divider);
+  console.log('');
+  console.log(c.bold(`  ${ARROW} STEP 4 — Install and start the dev server`));
+  console.log('');
+  console.log(c.cyan(`       cd ${outputDir}`));
+  console.log(c.cyan(`       npm install`));
+  console.log(c.cyan(`       npm run dev`));
+  console.log('');
+  console.log(divider);
+  console.log('');
+  console.log(c.green(`  Happy building — ${c.bold(projectName)}! 🚀`));
+  console.log('');
+  console.log(divider);
+  console.log('');
 }
 
 // ─── CLI entry point for manual testing ────────────────────────────────────
