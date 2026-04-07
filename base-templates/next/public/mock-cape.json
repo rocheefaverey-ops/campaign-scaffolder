@@ -1,0 +1,53 @@
+{
+  "settings": {
+    "branding": {
+      "themeColor": "#1a1a2e",
+      "primaryColor": "#e94560",
+      "secondaryColor": "#16213e",
+      "accentColor": "#0f3460",
+      "fontFamily": "Inter, sans-serif"
+    }
+  },
+  "header": {
+    "enabled": true,
+    "variant": "default"
+  },
+  "general": {
+    "meta": {
+      "siteTitle": { "value": "Campaign (mock)" },
+      "siteDescription": { "value": "Local dev — mock CAPE data" }
+    }
+  },
+  "copy": {
+    "landing": {
+      "headline": "Welcome",
+      "subline": "Mock copy — replace with real CAPE data",
+      "cta": "Play now"
+    },
+    "onboarding": {
+      "headline": "How to play",
+      "body": "Mock instructions",
+      "cta": "Start"
+    },
+    "game": {
+      "headline": "Play",
+      "cta": "Submit"
+    },
+    "result": {
+      "headline": "Your score",
+      "ctaContinue": "Continue",
+      "ctaPlayAgain": "Play again"
+    },
+    "register": {
+      "headline": "Register",
+      "cta": "Submit",
+      "optIn1": "I agree to the terms",
+      "optIn2": "I'd like to receive updates"
+    },
+    "leaderboard": {
+      "headline": "Leaderboard",
+      "ctaDone": "Done"
+    }
+  },
+  "files": {}
+}

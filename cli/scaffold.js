@@ -27,6 +27,8 @@ import { join, resolve, dirname, relative } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import { printPostScaffoldMessage } from './post-scaffold-message.js';
+import { PAGE_ELEMENTS, PAGE_DEFAULTS, ELEMENT_CATALOGUE, buildPage } from './page-builder.js';
+import { getGamesByEngine, getGame, gameEnvLines, gameLabel } from './game-registry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -52,7 +54,7 @@ const GAME_ENGINES = ['unity', 'r3f', 'phaser', 'video', 'pure-react'];
 const ALL_PAGES = ['landing', 'video', 'onboarding', 'register', 'game', 'result', 'leaderboard', 'voucher'];
 
 const PAGE_ROUTES = {
-  landing:     '/',
+  landing:     '/landing',
   video:       '/video',
   onboarding:  '/onboarding',
   register:    '/register',
@@ -253,6 +255,26 @@ async function runWizard(pre) {
     game = MAP[v] ?? '';
   }
 
+  // 4b. Game picker — shown when a game engine is selected
+  let selectedGame = null;
+  if (game === 'unity') {
+    const unityGames = getGamesByEngine('unity');
+    if (unityGames.length > 0) {
+      console.log('');
+      console.log(`  ${c.bold('Which Unity game?')}`);
+      unityGames.forEach((g, i) => {
+        console.log(`    ${c.dim(`${i + 1})`)} ${c.cyan(g.name)}  ${c.dim(`— ${g.description}`)}`);
+      });
+      console.log(`    ${c.dim(`${unityGames.length + 1})`)} New game ${c.dim('(blank template — fill in CDN details manually)')}`);
+      const v = (await ask(`  ${c.cyan('Select')} ${c.dim('[1-' + (unityGames.length + 1) + ']')}: `)).trim();
+      const n = parseInt(v, 10);
+      if (n >= 1 && n <= unityGames.length) {
+        selectedGame = unityGames[n - 1];
+        console.log(`      ${c.green('✔')} Selected: ${selectedGame.name}`);
+      }
+    }
+  }
+
   // 5. Campaign pages / flow
   let pages = pre.pages.length > 0 ? pre.pages : null;
   if (!pages) {
@@ -276,6 +298,53 @@ async function runWizard(pre) {
 
   // Ensure engine-required pages are present
   if (game && game !== 'pure-react' && !pages.includes('game')) pages.push('game');
+
+  // 5b. Page builder — ask what elements each page should have
+  const BUILDABLE = ['landing', 'onboarding', 'result', 'menu'];
+  const pageElementSelections = {};
+
+  // Always build menu (header button always points to /menu)
+  const builderPages = [...new Set([...pages.filter(p => BUILDABLE.includes(p)), 'menu'])];
+
+  for (const page of builderPages) {
+    const available = PAGE_ELEMENTS[page] ?? [];
+    if (available.length === 0) continue;
+
+    const defaults = PAGE_DEFAULTS[page] ?? available;
+
+    console.log('');
+    console.log(`  ${c.bold(`Page builder — `)}${c.cyan(page)} ${c.dim(`(${PAGE_ROUTES[page] ?? '/menu'})`)}`);
+    console.log(`  ${c.dim('Toggle elements on/off (comma-separated numbers):')}`);
+
+    available.forEach((id, i) => {
+      const info = ELEMENT_CATALOGUE[id] ?? {};
+      const on   = defaults.includes(id) ? c.green('●') : c.dim('○');
+      const desc = info.description ? c.dim(` — ${info.description}`) : '';
+      console.log(`    ${on} ${c.dim(`${i + 1})`)} ${id}${desc}`);
+    });
+
+    const defaultNums = defaults
+      .filter(id => available.includes(id))
+      .map(id => available.indexOf(id) + 1)
+      .join(',');
+
+    const v = (await ask(`  ${c.cyan('Select')} ${c.dim(`[default: ${defaultNums}]`)}: `)).trim();
+
+    if (v) {
+      pageElementSelections[page] = v.split(',')
+        .map(s => { const n = parseInt(s.trim(), 10); return (n >= 1 && n <= available.length) ? available[n - 1] : null; })
+        .filter(Boolean);
+    } else {
+      pageElementSelections[page] = defaults.filter(id => available.includes(id));
+    }
+
+    // Step-list: ask how many steps
+    if (pageElementSelections[page].includes('step-list') && page === 'onboarding') {
+      const sv = (await ask(`  ${c.cyan('How many how-to-play steps?')} ${c.dim('[default: 3]')}: `)).trim();
+      const n  = parseInt(sv, 10);
+      pageElementSelections[`${page}__stepCount`] = (!isNaN(n) && n > 0) ? n : 3;
+    }
+  }
 
   // 6. Registration mode (only if register page selected)
   let regMode = pre.regMode ?? null;
@@ -348,7 +417,7 @@ async function runWizard(pre) {
   console.log(c.bold('  ──────────────────────────────────────────────'));
   console.log(`  ${c.bold('Project:')}  ${c.cyan(name)}`);
   console.log(`  ${c.bold('CAPE ID:')}  ${c.cyan(capeId)}  ${c.dim(`(market: ${market})`)}`);
-  console.log(`  ${c.bold('Engine:')}   ${game ? c.cyan(game) : c.dim('none')}`);
+  console.log(`  ${c.bold('Engine:')}   ${game ? c.cyan(game) : c.dim('none')}${selectedGame ? c.dim(` (${selectedGame.name})`) : ''}`);
   console.log(`  ${c.bold('Pages:')}    ${pages.map(p => c.cyan(p)).join(' → ')}`);
   if (pages.includes('register')) console.log(`  ${c.bold('Reg mode:')} ${c.cyan(regMode)}`);
   console.log(`  ${c.bold('Modules:')} ${allModules.filter(id => !GAME_ENGINES.includes(id)).join(', ') || c.dim('none')}`);
@@ -366,7 +435,7 @@ async function runWizard(pre) {
     if (confirm.trim().toLowerCase() === 'n') { console.log('\n  Aborted.\n'); process.exit(0); }
   }
 
-  return { stack: 'next', name, capeId, market, game, pages, regMode, modules: allModules, gtmId, iframe, outputDir };
+  return { stack: 'next', name, capeId, market, game, pages, regMode, modules: allModules, gtmId, iframe, outputDir, pageElementSelections, selectedGame };
 }
 
 function buildDefaultPages(game) {
@@ -451,8 +520,10 @@ async function scaffoldTanstack({ name, capeId, market, outputDir }) {
   if (existsSync(envSrc) && !existsSync(envDest)) {
     let envContent = readFileSync(envSrc, 'utf8');
     envContent = envContent
-      .replace(/^CAPE_CAMPAIGN_ID=.*/m,     `CAPE_CAMPAIGN_ID=${capeId}`)
-      .replace(/^CAPE_CAMPAIGN_MARKET=.*/m, `CAPE_CAMPAIGN_MARKET=${market}`);
+      .replace(/^CAPE_CAMPAIGN_ID=.*/m,         `CAPE_CAMPAIGN_ID=${capeId}`)
+      .replace(/^CAPE_CAMPAIGN_MARKET=.*/m,      `CAPE_CAMPAIGN_MARKET=${market}`)
+      .replace(/^NEXT_PUBLIC_CAPE_DEFAULT_ID=.*/m,     `NEXT_PUBLIC_CAPE_DEFAULT_ID=${capeId}`)
+      .replace(/^NEXT_PUBLIC_CAPE_DEFAULT_MARKET=.*/m, `NEXT_PUBLIC_CAPE_DEFAULT_MARKET=${market}`);
     writeFileSync(envDest, envContent, 'utf8');
     ok('.env created from .env.example');
   } else {
@@ -476,7 +547,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir }) {
   });
 }
 
-async function scaffoldNext({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir }) {
+async function scaffoldNext({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -538,7 +609,62 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
   const flowSequence = pages.map(p => PAGE_ROUTES[p] ?? p);
   ok(`Flow: ${flowSequence.join(' → ')}`);
 
-  // 4. Append env vars
+  // 3b. Generate pages from page builder (overwrites static template pages)
+  if (Object.keys(pageElementSelections).length > 0) {
+    step('3b', 'Generating pages from page builder…');
+    const flowTokens = computeFlowTokens(pages, regMode);
+
+    // Helpers to get computed next-route from flow tokens
+    const nextRoute  = (page) => flowTokens[`{{NEXT_AFTER_${page.toUpperCase()}}}`] ?? '/';
+    const retryRoute = flowTokens['{{PLAY_AGAIN_ROUTE}}'] ?? '/gameplay';
+
+    const PAGE_DIR = join(outputDir, 'app', '(campaign)');
+    const BUILDABLE_TO_DIR = {
+      landing:    'landing',
+      onboarding: 'onboarding',
+      gameplay:   'gameplay',
+      result:     'result',
+      menu:       'menu',
+    };
+
+    let generated = 0;
+    for (const [page, elements] of Object.entries(pageElementSelections)) {
+      if (page.includes('__')) continue; // skip meta keys like onboarding__stepCount
+      const dirName = BUILDABLE_TO_DIR[page];
+      if (!dirName) continue;
+
+      const opts = {
+        nextRoute:  nextRoute(page),
+        retryRoute,
+        stepCount:  pageElementSelections[`${page}__stepCount`] ?? 3,
+      };
+
+      try {
+        const code    = buildPage(page, elements, opts);
+        const pageDir = join(PAGE_DIR, dirName);
+        mkdirSync(pageDir, { recursive: true });
+        writeFileSync(join(pageDir, 'page.tsx'), code, 'utf8');
+        generated++;
+      } catch (e) {
+        warn(`[page-builder] ${page}: ${e.message}`);
+      }
+    }
+
+    // Always generate gameplay from page builder (no element choices, just route tokens)
+    if (pages.includes('game') && !pageElementSelections['gameplay']) {
+      try {
+        const code = buildPage('gameplay', [], { nextRoute: nextRoute('game') });
+        const dir  = join(PAGE_DIR, 'gameplay');
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(join(dir, 'page.tsx'), code, 'utf8');
+        generated++;
+      } catch { /* non-fatal */ }
+    }
+
+    ok(`${generated} page(s) generated`);
+  }
+
+  // 4. Append env vars + create .env with CAPE_MOCK=true
   const allEnvVars = collectEnvVars(modules);
   if (allEnvVars.length > 0) {
     step(4, 'Appending env vars to .env.example…');
@@ -546,6 +672,23 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
     ok(`${allEnvVars.length} var(s) appended`);
   } else {
     step(4, 'No extra env vars.');
+  }
+  createDevEnv(outputDir);
+
+  // Inject game-specific env vars from registry
+  if (selectedGame) {
+    const lines = gameEnvLines(selectedGame);
+    if (lines.length > 0) {
+      const envPath = join(outputDir, '.env');
+      const existing = existsSync(envPath) ? readFileSync(envPath, 'utf8') : '';
+      const block = [
+        '',
+        `# ── Game: ${selectedGame.name} ──────────────────────────────────`,
+        ...lines,
+      ].join('\n');
+      writeFileSync(envPath, existing + block + '\n', 'utf8');
+      ok(`Game env vars written (${selectedGame.name})`);
+    }
   }
 
   // 5. Patch CSP
@@ -710,6 +853,21 @@ function collectPackages(moduleIds) {
     for (const p of m?.devPackages ?? []) dev.add(p);
   }
   return { prod: [...prod], dev: [...dev] };
+}
+
+// ─── Dev .env creation ───────────────────────────────────────────────────────
+/**
+ * Copy .env.example → .env and flip CAPE_MOCK=true so the project runs
+ * immediately with mock data without any manual setup.
+ */
+function createDevEnv(outputDir) {
+  const examplePath = join(outputDir, '.env.example');
+  const envPath     = join(outputDir, '.env');
+  if (!existsSync(examplePath) || existsSync(envPath)) return;
+  let content = readFileSync(examplePath, 'utf8');
+  // Enable mock mode by default for local dev
+  content = content.replace(/^CAPE_MOCK=.*/m, 'CAPE_MOCK=true');
+  writeFileSync(envPath, content, 'utf8');
 }
 
 // ─── Git init ────────────────────────────────────────────────────────────────

@@ -2,18 +2,35 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@utils/helpers';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-full px-8 py-3 font-brand font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  // ── Base ──────────────────────────────────────────────────────────────────
+  [
+    'relative inline-flex items-center justify-center',
+    'min-h-[48px] rounded-full px-8 font-default font-bold',
+    'text-sm uppercase tracking-wider',
+    'transition-all duration-200 ease-out',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+    'disabled:pointer-events-none disabled:opacity-40',
+    'active:scale-[0.96]',
+  ],
   {
     variants: {
       variant: {
-        primary: 'bg-[var(--color-primary)] text-[var(--color-secondary)] hover:brightness-110',
-        secondary: 'bg-transparent border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-[var(--color-secondary)]',
-        ghost: 'bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10',
+        // Filled — primary brand colour
+        primary:   'btn-primary',
+        // Outlined — primary colour border & text, fills on hover
+        secondary: 'btn-secondary',
+        // Minimal — text only
+        ghost:     'btn-ghost',
+        // Destructive actions
+        danger:    'btn-danger',
       },
       size: {
-        sm: 'px-5 py-2 text-sm',
-        md: 'px-8 py-3 text-base',
-        lg: 'px-10 py-4 text-lg',
+        sm: 'min-h-[40px] px-5 text-xs',
+        md: 'min-h-[48px] px-8 text-sm',
+        lg: 'min-h-[56px] px-10 text-base',
+      },
+      fullWidth: {
+        true: 'w-full',
       },
     },
     defaultVariants: {
@@ -31,11 +48,15 @@ export default function Button({
   className,
   variant,
   size,
+  fullWidth,
   children,
   ...props
 }: ButtonProps) {
   return (
-    <button className={cn(buttonVariants({ variant, size }), className)} {...props}>
+    <button
+      className={cn(buttonVariants({ variant, size, fullWidth }), className)}
+      {...props}
+    >
       {children}
     </button>
   );

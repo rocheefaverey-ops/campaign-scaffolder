@@ -1,33 +1,345 @@
 @import 'tailwindcss';
 
 /*
- * CSS custom properties (design tokens).
- * Static defaults live here; CAPE runtime values override them via DesignTokenInjector.
+ * ─── Design Tokens ───────────────────────────────────────────────────────────
+ * Placeholder defaults — overridden at runtime by CapeDataProvider.injectFonts()
+ * and the CAPE design-tokens module. Variable names must stay stable.
  */
 :root {
-  --color-primary: #000000;
-  --color-secondary: #ffffff;
-  --color-accent: #ff0000;
+  --color-primary:   #6c63ff;
+  --color-secondary: #a09cff;
+  --color-tertiary:  #c8c5ff;
+  --color-statusRed: #e82727;
 
-  --font-brand: 'Arial', sans-serif;
-  --font-brand-condensed: 'Arial Narrow', sans-serif;
+  /* Set by CapeDataProvider at runtime from CAPE branding */
+  --default-font-family: 'Inter', system-ui, sans-serif;
+
+  /* Derived gradient stops — used by Button, hero sections, etc. */
+  --gradient-primary-glow: radial-gradient(ellipse 120% 80% at 50% -10%, color-mix(in srgb, var(--color-primary) 60%, transparent) 0%, transparent 70%);
 }
 
+/* ─── Reset ──────────────────────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html,
 body {
+  width: 100%;
   height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden; /* Campaign canvases own scrolling; individual pages opt back in */
+  overflow: hidden; /* Pages own their own scrolling */
+  background: #000;
+  color: #fff;
+  font-family: var(--default-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
-#__next,
-main {
+#__next {
+  width: 100%;
   height: 100%;
+}
+
+button,
+a,
+[role='button'] {
+  touch-action: manipulation; /* Eliminates 300ms tap delay on mobile */
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  font: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* ─── Utilities ──────────────────────────────────────────────────────────── */
+@utility no-scrollbar {
+  &::-webkit-scrollbar { display: none; }
+  -ms-overflow-style:   none;
+  scrollbar-width:      none;
+}
+
+/* Safe-area padding helpers for notched / home-indicator phones */
+@utility safe-top    { padding-top:    env(safe-area-inset-top); }
+@utility safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+@utility safe-x      { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+
+/* Full dynamic viewport height — avoids browser chrome on mobile */
+@utility dvh { height: 100dvh; }
+
+/* ─── Desktop Wrapper ────────────────────────────────────────────────────── */
+.desktop-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4rem;
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+}
+
+.desktop-wrapper__bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.desktop-wrapper__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.desktop-wrapper__info {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  max-width: 320px;
+  text-align: center;
+}
+
+.desktop-wrapper__logo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+}
+
+.desktop-wrapper__description {
+  color: #fff;
+  font-size: 1.125rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.desktop-wrapper__qr-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.desktop-wrapper__qr-box {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.desktop-wrapper__qr-img {
+  width: 160px;
+  height: 160px;
+  display: block;
+}
+
+.desktop-wrapper__qr-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+}
+
+.desktop-wrapper__phone {
+  position: relative;
+  z-index: 1;
+}
+
+.desktop-wrapper__phone-frame {
+  width: 375px;
+  height: 667px;
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+  .desktop-wrapper__phone-frame {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+  }
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(10px); }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInLeft {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+/* Tailwind animation utilities */
+@utility animate-fadeIn      { animation: fadeIn      0.45s ease both; }
+@utility animate-fadeInDown  { animation: fadeInDown  0.45s ease both; }
+@utility animate-fadeInUp    { animation: fadeInUp    0.45s ease both; }
+@utility animate-fadeInLeft  { animation: fadeInLeft  0.45s ease both; }
+@utility animate-fadeInRight { animation: fadeInRight 0.45s ease both; }
+@utility animate-scaleIn     { animation: scaleIn     0.35s ease both; }
+@utility animate-spin        { animation: spin        1s linear infinite; }
+@utility animate-pulse       { animation: pulse       2s ease-in-out infinite; }
+@utility animate-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0) 100%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+/* ─── Button variants ────────────────────────────────────────────────────── */
+/*
+ * Complex gradients & shadows live here rather than in Tailwind arbitrary
+ * values, which can break when they contain commas or nested parens.
+ */
+
+.btn-primary {
+  background: var(--color-primary);
+  background-image: radial-gradient(ellipse 120% 60% at 50% -5%, rgba(255,255,255,0.25) 0%, transparent 70%);
+  color: #000;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.btn-primary:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.btn-secondary:hover {
+  background: var(--color-primary);
+  color: #000;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: rgba(255,255,255,0.65);
+  min-height: 40px;
+}
+.btn-ghost:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+}
+
+.btn-danger {
+  background: var(--color-statusRed);
+  color: #fff;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.45);
+}
+.btn-danger:hover {
+  filter: brightness(1.1);
+}
+
+/* ─── Skeleton loader ────────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.1)  50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 8px;
+}
+
+/* ─── Rich text (terms, FAQ, privacy) ────────────────────────────────────── */
+.rich-text {
+  h1, h2, h3 {
+    font-weight: 700;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    color: #fff;
+  }
+  p { margin-bottom: 1em; line-height: 1.7; opacity: 0.85; }
+  ul { list-style: disc;     padding-left: 1.5em; margin-bottom: 1em; }
+  ol { list-style: decimal;  padding-left: 1.5em; margin-bottom: 1em; }
+  li { margin-bottom: 0.4em; line-height: 1.6; opacity: 0.85; }
+  a  { color: var(--color-primary); text-decoration: underline; }
+  strong { font-weight: 700; }
+  blockquote {
+    border-left: 3px solid rgba(255, 255, 255, 0.3);
+    padding-left: 1em;
+    opacity: 0.7;
+    margin: 1em 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1em;
+    font-size: 0.875rem;
+  }
+  td, th {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 0.5em;
+    text-align: left;
+  }
 }

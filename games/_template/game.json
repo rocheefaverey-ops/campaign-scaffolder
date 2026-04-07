@@ -1,0 +1,68 @@
+{
+  "_instructions": [
+    "Copy this file to games/{your-game-id}/game.json and fill in all fields.",
+    "Remove this _instructions field when done.",
+    "Add games/{your-game-id}/game.json to the scaffolder — that's all you need."
+  ],
+
+  "id": "your-game-id",
+  "name": "Your Game Name",
+  "description": "One sentence describing the game.",
+  "engine": "unity",
+
+  "cdn": {
+    "baseUrl": "https://your-cdn-url.lwdev.nl",
+    "gameName": "Game",
+    "platforms": ["desktop", "mobile"],
+    "compression": "br",
+    "versionFile": "version.json",
+    "noCache": false
+  },
+
+  "dpr": {
+    "min": 1,
+    "max": 2
+  },
+
+  "boot": {
+    "gameObjects": {
+      "setup":  "WebService",
+      "game":   "GameService",
+      "pause":  "PauseService"
+    },
+    "setupMethod": "SetData",
+    "sceneMethod": "SetScene",
+    "loadMethod":  "LoadScene",
+    "startMethod": "StartGame",
+    "defaultScene": "Game"
+  },
+
+  "data": {
+    "environment": true,
+    "muted":       true,
+    "translations": true,
+    "custom": {}
+  },
+
+  "events": {
+    "listens": ["ready", "start", "end", "navigation", "tracking"],
+    "end": {
+      "score":    "number",
+      "playTime": "number"
+    }
+  },
+
+  "translations": {
+    "Note": "Map unity translation keys → CAPE dot-notation paths",
+    "gameplay.title": "general.gameplay.title"
+  },
+
+  "env": {
+    "NEXT_PUBLIC_UNITY_BASE_URL": "",
+    "NEXT_PUBLIC_UNITY_GAME_NAME": "Game",
+    "NEXT_PUBLIC_UNITY_MIN_DPR": "1",
+    "NEXT_PUBLIC_UNITY_MAX_DPR": "2"
+  },
+
+  "notes": []
+}

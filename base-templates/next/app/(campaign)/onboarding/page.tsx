@@ -1,26 +1,94 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useGameContext } from '@hooks/useGameContext';
+import { useCapeData } from '@hooks/useCapeData';
+import { getCapeText } from '@utils/getCapeData';
 import Button from '@components/_core/Button/Button';
 
-export default function OnboardingPage() {
-  const router = useRouter();
-  const { setLoading } = useGameContext();
+const STEP_PATHS = [
+  { title: 'general.onboarding.step1Title', body: 'general.onboarding.step1Body' },
+  { title: 'general.onboarding.step2Title', body: 'general.onboarding.step2Body' },
+  { title: 'general.onboarding.step3Title', body: 'general.onboarding.step3Body' },
+];
 
-  const handleStart = async () => {
-    setLoading(true);
-    // TODO: call complete-onboarding action, then navigate
-    router.push('{{NEXT_AFTER_ONBOARDING}}');
-  };
+const DEFAULT_STEPS = [
+  { title: 'Step one',   body: 'Replace with instruction step one from CAPE.' },
+  { title: 'Step two',   body: 'Replace with instruction step two from CAPE.' },
+  { title: 'Step three', body: 'Replace with instruction step three from CAPE.' },
+];
+
+export default function OnboardingPage() {
+  const router       = useRouter();
+  const { capeData } = useCapeData();
+
+  const title    = getCapeText(capeData, 'general.onboarding.title',    'How to play');
+  const subtitle = getCapeText(capeData, 'general.onboarding.subtitle', '');
+  const ctaLabel = getCapeText(capeData, 'general.onboarding.ctaLabel', "Let's go");
+
+  const steps = STEP_PATHS.map((paths, i) => ({
+    title: getCapeText(capeData, paths.title, DEFAULT_STEPS[i].title),
+    body:  getCapeText(capeData, paths.body,  DEFAULT_STEPS[i].body),
+  }));
 
   return (
-    <main className="flex h-full flex-col items-center justify-center gap-8 p-8">
-      <h1 className="text-3xl font-bold font-brand">Welcome</h1>
-      <p className="max-w-sm text-center opacity-70">
-        Introduce the campaign here. Replace this with CAPE-driven copy.
-      </p>
-      <Button onClick={handleStart}>Start</Button>
-    </main>
+    <div className="flex h-full flex-col">
+
+      {/* Scrollable content area */}
+      <div className="no-scrollbar flex-1 overflow-y-auto px-6 pb-4 pt-8">
+
+        {/* Page heading */}
+        <div
+          className="mb-8 flex flex-col items-center gap-2 text-center"
+          style={{ animation: 'fadeIn 0.4s ease both' }}
+        >
+          <h1 className="text-3xl font-black text-white">{title}</h1>
+          {subtitle && (
+            <p className="max-w-[260px] text-sm leading-relaxed opacity-60">{subtitle}</p>
+          )}
+        </div>
+
+        {/* Instruction steps */}
+        <div className="flex flex-col gap-3">
+          {steps.map((step, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-4 rounded-2xl p-4"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                animation: `fadeIn 0.4s ${0.1 + i * 0.08}s ease both`,
+              }}
+            >
+              {/* Step number bubble */}
+              <span
+                className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                {i + 1}
+              </span>
+
+              {/* Step copy */}
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-bold text-white">{step.title}</p>
+                <p className="text-sm leading-relaxed opacity-60">{step.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Sticky CTA pinned to bottom */}
+      <div
+        className="px-6 pb-8 pt-4"
+        style={{ animation: 'fadeIn 0.4s 0.4s ease both' }}
+      >
+        <Button
+          className="w-full"
+          size="lg"
+          onClick={() => router.push('{{NEXT_AFTER_ONBOARDING}}')}
+        >
+          {ctaLabel}
+        </Button>
+      </div>
+    </div>
   );
 }

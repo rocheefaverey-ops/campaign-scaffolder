@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:mock": "cross-env CAPE_MOCK=true next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -12,7 +13,8 @@
     "analyze": "cross-env ANALYZE=true next build",
     "prepare": "husky",
     "cape:pull": "node -e \"console.error('\\n[cape:pull] Run this manually — see README.\\n  1. Fill CAPE_EMAIL, CAPE_PASSWORD, CAPE_DEFAULT_CAMPAIGN_ID in .env\\n  2. cd /path/to/lwg-cli-cape\\n  3. node cli.js login\\n  4. node cli.js fetch $CAPE_DEFAULT_CAMPAIGN_ID\\n'); process.exit(1)\"",
-    "check-env": "node -e \"const fs=require('fs');const e=fs.existsSync('.env')?Object.fromEntries(fs.readFileSync('.env','utf8').split('\\n').filter(l=>l&&!l.startsWith('#')).map(l=>l.split('='))):{}; const required=['NEXT_PUBLIC_CAPE_URL','NEXT_PUBLIC_CAPE_CAMPAIGN_ID','API_URL','SERVER_SECRET']; const missing=required.filter(k=>!e[k]||e[k].trim()===''); if(missing.length){console.error('\\n[check-env] Missing required vars:\\n'+missing.map(k=>'  ✘ '+k).join('\\n')+'\\n');process.exit(1)}else{console.log('[check-env] All required vars present ✔')}\""
+    "cape:fetch-mock": "node scripts/fetch-mock-cape.js",
+    "check-env": "node -e \"const fs=require('fs');const e=fs.existsSync('.env')?Object.fromEntries(fs.readFileSync('.env','utf8').split('\\n').filter(l=>l&&!l.startsWith('#')).map(l=>l.split('='))):{}; const required=['NEXT_PUBLIC_CAPE_URL','NEXT_PUBLIC_CAPE_DEFAULT_ID','API_URL','SERVER_SECRET']; const missing=required.filter(k=>!e[k]||e[k].trim()===''); if(missing.length){console.error('\\n[check-env] Missing required vars:\\n'+missing.map(k=>'  ✘ '+k).join('\\n')+'\\n');process.exit(1)}else{console.log('[check-env] All required vars present ✔')}\""
   },
   "dependencies": {
     "next": "^15.3.0",
@@ -29,7 +31,8 @@
     "lodash": "^4.17.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "next-nprogress-bar": "^2.4.7"
+    "next-nprogress-bar": "^2.4.7",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "typescript": "^5.8.3",

@@ -62,10 +62,16 @@ export function printPostScaffoldMessage({ projectName, capeId, market, modules,
   console.log('');
   console.log(c.yellow(`  ${WARN}  Do NOT commit .env — it contains credentials.`));
   console.log(`     ${BULLET} Copy ${c.cyan('.env.example')} to ${c.cyan('.env')}`);
-  console.log(`     ${BULLET} Set ${c.cyan('NEXT_PUBLIC_CAPE_CAMPAIGN_ID')} = ${c.bold(capeId)}`);
-  console.log(`     ${BULLET} Set ${c.cyan('NEXT_PUBLIC_CAPE_MARKET')}       = ${c.bold(market)}`);
+  console.log(`     ${BULLET} Set ${c.cyan('NEXT_PUBLIC_CAPE_DEFAULT_ID')}     = ${c.bold(capeId)}`);
+  console.log(`     ${BULLET} Set ${c.cyan('NEXT_PUBLIC_CAPE_DEFAULT_MARKET')} = ${c.bold(market)}`);
   console.log(`     ${BULLET} Set ${c.cyan('API_URL')} to your backend`);
   console.log(`     ${BULLET} Set ${c.cyan('SERVER_SECRET')} to a random secret`);
+  console.log('');
+  console.log('');
+  console.log(c.dim(`  ${BULLET} Reuse an existing dev campaign instead of creating a new one:`));
+  console.log(c.dim(`       1. Point NEXT_PUBLIC_CAPE_DEFAULT_ID at your shared dev campaign`));
+  console.log(c.dim(`       2. npm run cape:fetch-mock  ← saves it to public/mock-cape.json`));
+  console.log(c.dim(`       3. Set CAPE_MOCK=true in .env  →  npm run dev:mock`));
 
   // ── Step 2: CAPE pull ─────────────────────────────────────────────────────
   console.log('');

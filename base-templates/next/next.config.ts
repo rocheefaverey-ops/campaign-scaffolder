@@ -1,57 +1,24 @@
 import type { NextConfig } from 'next';
 
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-});
+const isDev = process.env.APP_ENV === 'local' || process.env.APP_ENV === 'development';
+
+const securityHeaders = [
+  { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
+  { key: 'X-XSS-Protection',          value: '1; mode=block' },
+  { key: 'X-Content-Type-Options',    value: 'nosniff' },
+  { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=()' },
+];
 
 const nextConfig: NextConfig = {
-  // SVG as React components via SVGR
-  webpack(config) {
-    const fileLoaderRule = config.module.rules.find((rule: { test?: RegExp }) =>
-      rule.test?.test?.('.svg'),
-    );
-    if (fileLoaderRule) fileLoaderRule.exclude = /\.svg$/i;
-
-    config.module.rules.push({
-      test: /\.svg$/i,
-      issuer: /\.[jt]sx?$/,
-      use: ['@svgr/webpack'],
-    });
-
-    return config;
-  },
-
   async headers() {
+    if (isDev) return [];
     return [
-      {
-        // No-cache on entry point — always re-validate session/campaign status
-        source: '/',
-        headers: [
-          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
-          { key: 'Pragma', value: 'no-cache' },
-        ],
-      },
-      {
-        // Long-cache on static assets — they're content-hashed by Next.js
-        source: '/_next/static/(.*)',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
-      },
-      {
-        source: '/(.*)',
-        headers: [
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=31536000; includeSubDomains; preload',
-          },
-        ],
-      },
+      { source: '/',                    headers: [...securityHeaders, { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' }] },
+      { source: '/_next/static/:path*', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] },
+      { source: '/:path*',              headers: securityHeaders },
     ];
   },
 };
 
-module.exports = withBundleAnalyzer(nextConfig);
+export default nextConfig;

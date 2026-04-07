@@ -52,7 +52,7 @@ export async function fetchData<T>(
       return { success: false, data: null, error: errorMessage };
     }
 
-    return { success: true, data, error: null };
+    return { success: true, data: data as T, error: null };
   } catch (error) {
     ErrorReporter.report(error);
     const message = error instanceof Error ? error.message : 'Unknown error';

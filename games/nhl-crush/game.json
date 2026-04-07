@@ -1,0 +1,94 @@
+{
+  "id": "nhl-crush",
+  "name": "NHL Crush",
+  "description": "Hockey shooting game — score goals, track stages, lives and time left.",
+  "engine": "unity",
+
+  "cdn": {
+    "baseUrl": "https://lw-someone-something-unity-test.lwcf4.nl",
+    "gameName": "Game",
+    "platforms": ["desktop", "mobile"],
+    "compression": null,
+    "versionFile": "version.json",
+    "noCache": false
+  },
+
+  "dpr": {
+    "min": 1.5,
+    "max": 3
+  },
+
+  "boot": {
+    "gameObjects": {
+      "setup": "WebService",
+      "game":  "GameService",
+      "pause": "PauseService"
+    },
+    "setupMethod": "SetData",
+    "sceneMethod": "SetScene",
+    "loadMethod":  "LoadScene",
+    "startMethod": "StartGame",
+    "defaultScene": "example"
+  },
+
+  "data": {
+    "environment":  true,
+    "muted":        true,
+    "translations": true,
+    "custom": {
+      "playTutorial": "boolean",
+      "useMockAPI":   "boolean",
+      "homeTeam": {
+        "teamKey":   "string",
+        "teamName":  "string",
+        "logoUrl":   "string",
+        "kitDesign": "number",
+        "color1":    "string",
+        "color2":    "string",
+        "color3":    "string",
+        "color4":    "string"
+      },
+      "awayTeam": {
+        "teamKey":   "string",
+        "teamName":  "string",
+        "logoUrl":   "string",
+        "kitDesign": "number",
+        "color1":    "string",
+        "color2":    "string",
+        "color3":    "string",
+        "color4":    "string"
+      }
+    }
+  },
+
+  "events": {
+    "listens": ["ready", "start", "end", "navigation", "tracking", "tutorialPlayed", "apiRequest"],
+    "end": {
+      "playerScore":      "number",
+      "goalsScored":      "number",
+      "playTime":         "number",
+      "totalStagesPlayed":"number",
+      "usedLives":        "number",
+      "offThePost":       "number",
+      "timeLeft":         "number"
+    }
+  },
+
+  "translations": {
+    "Note": "NHL Crush uses sharedCopy.game object — map keys match Unity translation keys"
+  },
+
+  "env": {
+    "UNITY_BASE_URL":      "https://lw-someone-something-unity-test.lwcf4.nl",
+    "UNITY_GAME_NAME":     "Game",
+    "VITE_UNITY_MIN_DPR":  "1.5",
+    "VITE_UNITY_MAX_DPR":  "3"
+  },
+
+  "notes": [
+    "Uses TanStack Start (Vite) — not Next.js. Env vars are VITE_ prefixed, not NEXT_PUBLIC_.",
+    "Team data (homeTeam/awayTeam) is fetched from backend, not CAPE.",
+    "apiRequest event is handled by Unity — requires CORS proxy server action.",
+    "score field is playerScore in the end payload (not score)."
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "id": "la-roche-posay",
+  "name": "La Roche-Posay Fanzone",
+  "description": "Shooting/aiming game — score goals, track shots and streaks. Dual mode: mobile and kiosk/stand.",
+  "engine": "unity",
+
+  "cdn": {
+    "baseUrl": "https://lw-larochep-fanzone-unity-acc.lwcf.nl",
+    "gameName": "Game",
+    "platforms": ["desktop", "mobile"],
+    "compression": "br",
+    "versionFile": "version.json",
+    "noCache": true
+  },
+
+  "dpr": {
+    "min": 1,
+    "max": 1
+  },
+
+  "boot": {
+    "gameObjects": {
+      "setup": "Manager",
+      "game":  "Manager",
+      "pause": null
+    },
+    "setupMethod":  "LoadScene",
+    "sceneMethod":  null,
+    "loadMethod":   null,
+    "startMethod":  null,
+    "defaultScene": null,
+    "note": "La Roche-Posay uses a single Manager GameObject — SetData + LoadScene in one call. No separate preload/load/start steps."
+  },
+
+  "data": {
+    "environment":  true,
+    "muted":        false,
+    "translations": false,
+    "custom": {}
+  },
+
+  "events": {
+    "listens": ["ready", "start", "end", "sendEvent"],
+    "end": {
+      "score":          "number",
+      "shotsScored":    "number",
+      "highestStreak":  "number",
+      "playTime":       "number",
+      "payload":        "string"
+    }
+  },
+
+  "translations": {},
+
+  "env": {
+    "NEXT_PUBLIC_UNITY_BASE_URL":      "https://lw-larochep-fanzone-unity-acc.lwcf.nl",
+    "NEXT_PUBLIC_UNITY_GAME_NAME":     "Game",
+    "NEXT_PUBLIC_UNITY_VERSION":       "V2",
+    "NEXT_PUBLIC_UNITY_COMPRESSION":   "br",
+    "NEXT_PUBLIC_UNITY_DEVICE_FILTER": "true",
+    "NEXT_PUBLIC_UNITY_NO_CACHE":      "true",
+    "NEXT_PUBLIC_UNITY_MIN_DPR":       "1",
+    "NEXT_PUBLIC_UNITY_MAX_DPR":       "1"
+  },
+
+  "notes": [
+    "Boot is simplified — one SendMessage to Manager.LoadScene with {environment, muted}.",
+    "No scene preloading or addressable steps. Does NOT use the standard WebService/GameService pattern.",
+    "Has dual display mode: mobile (/mobile/*) and stand/kiosk (/stand/*) — separate route groups.",
+    "sendEvent is a generic catch-all event — check Unity .jslib for what it emits.",
+    "NEXT_PUBLIC_UNITY_VERSION is hardcoded — no version.json auto-resolution in this project."
+  ]
+}

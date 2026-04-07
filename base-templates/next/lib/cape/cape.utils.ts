@@ -102,7 +102,8 @@ export function getCapeFont(
   data: ICapeData | null,
   key: keyof NonNullable<ICapeData['settings']>['branding'] = 'fontBrand',
 ): ICapeFile[] {
-  const files = data?.settings?.branding?.[key as string];
+  const branding = data?.settings?.branding as Record<string, unknown> | undefined;
+  const files = branding?.[key as string];
   if (Array.isArray(files)) return files as ICapeFile[];
   return [];
 }

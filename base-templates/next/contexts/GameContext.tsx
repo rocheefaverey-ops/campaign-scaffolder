@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from 'react';
 import type { GameContextValue, GameState, CampaignStatus, Platform } from '@/types/game';
-import type { ICapeData } from '@lib/cape/cape.types';
 import { getStorage, setStorage } from '@utils/storage';
 
 const STORAGE_KEY = 'campaign-state';
@@ -35,8 +34,8 @@ const GameContext = createContext<GameContextValue | null>(null);
 
 interface GameProviderProps {
   children: ReactNode;
-  capeData: ICapeData | null;
   platform: Platform;
+  nonce?: string;
 }
 
 export function GameProvider({ children, platform }: GameProviderProps) {
