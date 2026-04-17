@@ -1,0 +1,1311 @@
+{
+  "publishProfiles": {
+    "export": {
+      "title": "Publish",
+      "tasks": [
+        {
+          "customerFunction": "publishGame",
+          "async": true
+        }
+      ]
+    }
+  },
+  "interfaceSetup": {
+    "pages": [
+      {
+        "path": "settings",
+        "title": "Settings",
+        "key": "settings-page",
+        "showLanguageSelector": false,
+        "tabs": [
+          {
+            "key": "settings-general-tab",
+            "title": "General",
+            "path": "general",
+            "type": "page",
+            "multiLanguage": false,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Languages",
+                "opened": true,
+                "type": "general",
+                "key": "settings-languages-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "languageSelector",
+                    "model": "settings.languages",
+                    "label": "Languages",
+                    "key": "settings-languages",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "NL": "NL - Dutch",
+                      "EN": "EN - English"
+                    }
+                  }
+                ]
+              },
+              {
+                "title": "Branding",
+                "opened": true,
+                "type": "general",
+                "key": "settings-branding-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "settings.branding.favicon",
+                    "label": "Favicon",
+                    "key": "settings-branding-favicon",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "color",
+                    "model": "settings.branding.themeColor",
+                    "label": "Theme Color",
+                    "key": "settings-branding-themecolor",
+                    "itemType": "input",
+                    "picker": "picker",
+                    "defaultValue": "#1a1a2e"
+                  },
+                  {
+                    "type": "color",
+                    "model": "settings.branding.primaryColor",
+                    "label": "Primary Color",
+                    "key": "settings-branding-primarycolor",
+                    "itemType": "input",
+                    "picker": "picker",
+                    "defaultValue": "#e94560"
+                  },
+                  {
+                    "type": "color",
+                    "model": "settings.branding.secondaryColor",
+                    "label": "Secondary Color",
+                    "key": "settings-branding-secondarycolor",
+                    "itemType": "input",
+                    "picker": "picker",
+                    "defaultValue": "#16213e"
+                  },
+                  {
+                    "type": "color",
+                    "model": "settings.branding.accentColor",
+                    "label": "Accent Color",
+                    "key": "settings-branding-accentcolor",
+                    "itemType": "input",
+                    "picker": "picker",
+                    "defaultValue": "#4a9eff"
+                  }
+                ]
+              },
+              {
+                "title": "Integrations",
+                "opened": true,
+                "type": "general",
+                "key": "settings-integrations-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "text",
+                    "model": "settings.capeKey",
+                    "label": "Cape Key",
+                    "key": "settings-capekey",
+                    "itemType": "input",
+                    "defaultValue": "scaffolder-test"
+                  },
+                  {
+                    "type": "text",
+                    "model": "settings.tagmanager",
+                    "label": "GTM ID",
+                    "key": "settings-tagmanager",
+                    "itemType": "input"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "path": "general",
+        "title": "General",
+        "key": "general-page",
+        "showLanguageSelector": false,
+        "tabs": [
+          {
+            "key": "general-header-tab",
+            "title": "Header",
+            "path": "header",
+            "type": "page",
+            "multiLanguage": false,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Header Assets",
+                "opened": true,
+                "type": "general",
+                "key": "general-header-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "general.header.logo",
+                    "label": "Logo",
+                    "key": "general-header-logo",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "general.header.menuBtnBg",
+                    "label": "Menu Button Background",
+                    "key": "general-header-menubtnbg",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "general.header.menuIcon",
+                    "label": "Menu Icon",
+                    "key": "general-header-menuicon",
+                    "itemType": "input"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "general-shared-tab",
+            "title": "Shared Files",
+            "path": "shared-files",
+            "type": "page",
+            "multiLanguage": false,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Legal",
+                "opened": true,
+                "type": "general",
+                "key": "general-legal-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "files.pdfs.terms",
+                    "label": "Terms & Conditions PDF",
+                    "key": "general-legal-terms",
+                    "itemType": "input"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "path": "pages",
+        "title": "Pages",
+        "key": "pages-page",
+        "showLanguageSelector": true,
+        "tabs": [
+          {
+            "key": "next-landing-tab",
+            "title": "Landing",
+            "path": "landing",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Assets",
+                "opened": true,
+                "type": "general",
+                "key": "next-landing-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "general.landing.logo",
+                    "label": "Logo (override)",
+                    "key": "next-landing-logo",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "general.landing.background",
+                    "label": "Background Image",
+                    "key": "next-landing-background",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-landing-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.landing.title",
+                    "label": "Title",
+                    "key": "next-landing-title",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Welcome"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.landing.subtitle",
+                    "label": "Subtitle",
+                    "key": "next-landing-subtitle",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Are you ready to play?"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.landing.ctaLabel",
+                    "label": "CTA Label",
+                    "key": "next-landing-ctalabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Play now"
+                    }
+                  }
+                ]
+              },
+              {
+                "title": "Assets (TanStack)",
+                "opened": true,
+                "type": "general",
+                "key": "ts-launch-assets-block-ts-assets",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "files.landing.heroImage",
+                    "label": "Hero Image",
+                    "key": "ts-launch-heroimage-ts",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "files.landing.heroVideo",
+                    "label": "Hero Video",
+                    "key": "ts-launch-herovideo-ts",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "files.landing.backgroundImage",
+                    "label": "Background Image",
+                    "key": "ts-launch-background-ts",
+                    "itemType": "input"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-onboarding-tab",
+            "title": "Onboarding",
+            "path": "onboarding",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Assets",
+                "opened": true,
+                "type": "general",
+                "key": "next-onboarding-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "general.onboarding.heroImage",
+                    "label": "Hero Image",
+                    "key": "next-onboarding-heroimage",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "general.onboarding.background",
+                    "label": "Background Image",
+                    "key": "next-onboarding-background",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-onboarding-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.title",
+                    "label": "Title",
+                    "key": "next-onboarding-title",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "How it works"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.subtitle",
+                    "label": "Subtitle",
+                    "key": "next-onboarding-subtitle",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Follow the steps below."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.ctaLabel",
+                    "label": "CTA Label",
+                    "key": "next-onboarding-ctalabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Start"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.step1Title",
+                    "label": "Step 1 Title",
+                    "key": "next-onboarding-step1title",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Step 1"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.step1Body",
+                    "label": "Step 1 Body",
+                    "key": "next-onboarding-step1body",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Instructions for step one."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.step2Title",
+                    "label": "Step 2 Title",
+                    "key": "next-onboarding-step2title",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Step 2"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.step2Body",
+                    "label": "Step 2 Body",
+                    "key": "next-onboarding-step2body",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Instructions for step two."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.step3Title",
+                    "label": "Step 3 Title",
+                    "key": "next-onboarding-step3title",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Step 3"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.step3Body",
+                    "label": "Step 3 Body",
+                    "key": "next-onboarding-step3body",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Instructions for step three."
+                    }
+                  }
+                ]
+              },
+              {
+                "title": "Assets (TanStack)",
+                "opened": true,
+                "type": "general",
+                "key": "ts-tutorial-assets-block-ts-assets",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "files.onboarding.step1Image",
+                    "label": "Step 1 Image",
+                    "key": "ts-tutorial-step1image-ts",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "files.onboarding.step2Image",
+                    "label": "Step 2 Image",
+                    "key": "ts-tutorial-step2image-ts",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "files.onboarding.step3Image",
+                    "label": "Step 3 Image",
+                    "key": "ts-tutorial-step3image-ts",
+                    "itemType": "input"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-game-tab",
+            "title": "Game",
+            "path": "game",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-game-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.game.headline",
+                    "label": "Headline",
+                    "key": "next-game-headline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Play!"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.game.loadingLabel",
+                    "label": "Loading Label",
+                    "key": "next-game-loadinglabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Loading…"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.game.cta",
+                    "label": "CTA",
+                    "key": "next-game-cta",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Submit score"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-result-tab",
+            "title": "Result",
+            "path": "result",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Assets",
+                "opened": true,
+                "type": "general",
+                "key": "next-result-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "general.result.background",
+                    "label": "Background Image",
+                    "key": "next-result-background",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "files.result.winImage",
+                    "label": "Win Image",
+                    "key": "next-result-winimage",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "files.result.loseImage",
+                    "label": "Lose Image",
+                    "key": "next-result-loseimage",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-result-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.title",
+                    "label": "Title",
+                    "key": "next-result-title",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Your score"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.scoreLabel",
+                    "label": "Score Label",
+                    "key": "next-result-scorelabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Score"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.rankLabel",
+                    "label": "Rank Label",
+                    "key": "next-result-ranklabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Rank"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.ctaLabel",
+                    "label": "CTA Label",
+                    "key": "next-result-ctalabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Continue"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.retryLabel",
+                    "label": "Retry Label",
+                    "key": "next-result-retrylabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Play again"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.ctaLeaderboard",
+                    "label": "CTA Leaderboard",
+                    "key": "next-result-ctaleaderboard",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "View leaderboard"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.ctaRegister",
+                    "label": "CTA Register",
+                    "key": "next-result-ctaregister",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Register for the prize"
+                    }
+                  }
+                ]
+              },
+              {
+                "title": "Assets (TanStack)",
+                "opened": true,
+                "type": "general",
+                "key": "ts-result-assets-block-ts-assets",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "files.result.background",
+                    "label": "Background Image",
+                    "key": "ts-result-background-ts",
+                    "itemType": "input"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-menu-tab",
+            "title": "Menu",
+            "path": "menu",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-menu-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.menu.home",
+                    "label": "Home",
+                    "key": "next-menu-home",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Home"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.menu.resume",
+                    "label": "Resume Game",
+                    "key": "next-menu-resume",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Resume game"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.menu.howToPlay",
+                    "label": "How To Play",
+                    "key": "next-menu-howtoplay",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "How to play"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.menu.terms",
+                    "label": "Terms",
+                    "key": "next-menu-terms",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Terms & Conditions"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-leaderboard-tab",
+            "title": "Leaderboard",
+            "path": "leaderboard",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-leaderboard-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.leaderboard.headline",
+                    "label": "Headline",
+                    "key": "next-leaderboard-headline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Leaderboard"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.leaderboard.subline",
+                    "label": "Subline",
+                    "key": "next-leaderboard-subline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Top 10 players"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.leaderboard.tabTotal",
+                    "label": "Tab Total",
+                    "key": "next-leaderboard-tabtotal",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Total"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.leaderboard.tabDaily",
+                    "label": "Tab Daily",
+                    "key": "next-leaderboard-tabdaily",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Today"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.leaderboard.tabWeekly",
+                    "label": "Tab Weekly",
+                    "key": "next-leaderboard-tabweekly",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "This week"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.leaderboard.tabMonthly",
+                    "label": "Tab Monthly",
+                    "key": "next-leaderboard-tabmonthly",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "This month"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.leaderboard.rankLabel",
+                    "label": "Rank Label",
+                    "key": "next-leaderboard-ranklabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "#"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.leaderboard.nameLabel",
+                    "label": "Name Label",
+                    "key": "next-leaderboard-namelabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Name"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.leaderboard.scoreLabel",
+                    "label": "Score Label",
+                    "key": "next-leaderboard-scorelabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Score"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.leaderboard.youLabel",
+                    "label": "You Label",
+                    "key": "next-leaderboard-youlabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "You"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.leaderboard.emptyState",
+                    "label": "Empty State",
+                    "key": "next-leaderboard-emptystate",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "No scores yet."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.leaderboard.ctaDone",
+                    "label": "CTA Done",
+                    "key": "next-leaderboard-ctadone",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Done"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-register-tab",
+            "title": "Register",
+            "path": "register",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-register-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.register.headline",
+                    "label": "Headline",
+                    "key": "next-register-headline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Register"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.register.subline",
+                    "label": "Subline",
+                    "key": "next-register-subline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Fill in your details to enter."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.register.cta",
+                    "label": "CTA",
+                    "key": "next-register-cta",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Submit"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.register.labelFirstName",
+                    "label": "First Name Label",
+                    "key": "next-register-labelfirstname",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "First name"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.register.labelInfix",
+                    "label": "Infix Label",
+                    "key": "next-register-labelinfix",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Infix"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.register.labelLastName",
+                    "label": "Last Name Label",
+                    "key": "next-register-labellastname",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Last name"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.register.labelEmail",
+                    "label": "Email Label",
+                    "key": "next-register-labelemail",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Email address"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.register.optIn1",
+                    "label": "Opt-in 1",
+                    "key": "next-register-optin1",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "I agree to the <a href='/terms'>terms and conditions</a>."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.register.optIn2",
+                    "label": "Opt-in 2",
+                    "key": "next-register-optin2",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Yes, I would like to receive news and offers."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.register.successHeadline",
+                    "label": "Success Headline",
+                    "key": "next-register-successheadline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Thank you for registering!"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.register.successBody",
+                    "label": "Success Body",
+                    "key": "next-register-successbody",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "We will contact you if you have won."
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-voucher-tab",
+            "title": "Voucher",
+            "path": "voucher",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Assets",
+                "opened": true,
+                "type": "general",
+                "key": "next-voucher-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "files.voucher.voucherImage",
+                    "label": "Voucher Image",
+                    "key": "next-voucher-image",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-voucher-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.voucher.headline",
+                    "label": "Headline",
+                    "key": "next-voucher-headline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Your voucher"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.voucher.subline",
+                    "label": "Subline",
+                    "key": "next-voucher-subline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Scan the QR code at the register."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.voucher.codeLabel",
+                    "label": "Code Label",
+                    "key": "next-voucher-codelabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Code"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.voucher.expiryLabel",
+                    "label": "Expiry Label",
+                    "key": "next-voucher-expirylabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Valid until"
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "model": "copy.voucher.expiryDate",
+                    "label": "Expiry Date",
+                    "key": "next-voucher-expirydate",
+                    "itemType": "input",
+                    "defaultValue": "31-12-2025"
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.voucher.cta",
+                    "label": "CTA",
+                    "key": "next-voucher-cta",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Done"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.voucher.ctaShare",
+                    "label": "CTA Share",
+                    "key": "next-voucher-ctashare",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Share"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-video-tab",
+            "title": "Video",
+            "path": "video",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Assets",
+                "opened": true,
+                "type": "general",
+                "key": "next-video-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "text",
+                    "model": "intro.video.src",
+                    "label": "Video URL",
+                    "key": "next-video-src",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-video-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.video.headline",
+                    "label": "Headline",
+                    "key": "next-video-headline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Watch this"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.video.subline",
+                    "label": "Subline",
+                    "key": "next-video-subline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Watch the video to continue."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.video.cta",
+                    "label": "CTA",
+                    "key": "next-video-cta",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Next"
+                    }
+                  }
+                ]
+              },
+              {
+                "title": "Assets (TanStack)",
+                "opened": true,
+                "type": "general",
+                "key": "ts-video-assets-block-ts-assets",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "text",
+                    "model": "video.src",
+                    "label": "Video URL",
+                    "key": "ts-video-src-ts",
+                    "itemType": "input"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "desktop-tab",
+            "title": "Desktop & Loading",
+            "path": "desktop",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Assets",
+                "opened": true,
+                "type": "general",
+                "key": "desktop-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "desktop.logo",
+                    "label": "Desktop Logo",
+                    "key": "desktop-logo",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "desktop.backgroundIllustration",
+                    "label": "Background Illustration",
+                    "key": "desktop-bgillustration",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Desktop",
+                "opened": true,
+                "type": "general",
+                "key": "desktop-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "desktop.description",
+                    "label": "Description",
+                    "key": "desktop-description",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "This experience is optimised for mobile. Scan the QR code with your phone."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "desktop.qrText",
+                    "label": "QR Text",
+                    "key": "desktop-qrtext",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Scan to play on mobile"
+                    }
+                  }
+                ]
+              },
+              {
+                "title": "Loading",
+                "opened": true,
+                "type": "general",
+                "key": "loading-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "loading.title",
+                    "label": "Title",
+                    "key": "loading-title",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Loading…"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "loading.description1",
+                    "label": "Description 1",
+                    "key": "loading-desc1",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Preparing the game…"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "loading.description2",
+                    "label": "Description 2",
+                    "key": "loading-desc2",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Almost there…"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "loading.description3",
+                    "label": "Description 3",
+                    "key": "loading-desc3",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Ready to play!"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "path": "publish",
+        "title": "Publish",
+        "key": "publish-page",
+        "showLanguageSelector": false,
+        "condition": "editor.type!='concept'",
+        "tabs": [
+          {
+            "key": "publish-general-tab",
+            "title": "General",
+            "path": "general",
+            "type": "page",
+            "multiLanguage": false,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Publish",
+                "opened": true,
+                "type": "publish",
+                "key": "publish-block",
+                "itemType": "block",
+                "model": "publish.results",
+                "items": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

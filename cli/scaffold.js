@@ -30,6 +30,7 @@ import { printPostScaffoldMessage } from './post-scaffold-message.js';
 import { PAGE_ELEMENTS, PAGE_DEFAULTS, ELEMENT_CATALOGUE, buildPage } from './page-builder.js';
 import { TS_PAGE_ELEMENTS, TS_PAGE_DEFAULTS, TS_ELEMENT_CATALOGUE, TS_ALL_PAGES, TS_PAGE_ROUTES, buildTsPage } from './tanstack-page-builder.js';
 import { getGamesByEngine, getGame, gameEnvLines, gameLabel } from './game-registry.js';
+import { checkAuth, login, createCampaign, pushFormat, populateDefaults, publishCampaign, SCAFFOLDER_FORMAT_FILE } from './cape-client.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -38,7 +39,78 @@ const NEXT_TEMPLATE      = join(SCAFFOLDER_ROOT, 'base-templates', 'next');
 const TANSTACK_BOILERPLATE = resolve(SCAFFOLDER_ROOT, '..', 'unity-tanstack-boilerplate', 'frontend');
 const MODULES_DIR        = join(SCAFFOLDER_ROOT, 'modules');
 
-// ─── Cleanup registry (SIGINT / SIGTERM / rollback) ──────────────────────────
+// ─── CAPE campaign creation helper ───────────────────────────────────────────
+
+/**
+ * Interactive CAPE campaign creation flow.
+ * Checks/prompts for auth, creates a campaign, pushes the scaffolder format,
+ * populates defaults, and publishes to acceptance.
+ * Returns the new numeric campaign ID string.
+ */
+async function runCapeCreateFlow(ask, projectName, market) {
+  // 1. Auth
+  let tokens = await checkAuth();
+  if (!tokens) {
+    console.log(`\n  ${c.yellow('⚠')}  Not logged in to CAPE. Enter your credentials:`);
+    const email    = (await ask(`  ${c.cyan('CAPE email')}: `)).trim();
+    const password = (await ask(`  ${c.cyan('CAPE password')}: `)).trim();
+    try {
+      tokens = await login(email, password);
+      console.log(`  ${c.green('✓')}  Logged in.`);
+    } catch (err) {
+      throw new Error(`CAPE login failed: ${err.message}`);
+    }
+  }
+
+  // 2. Campaign title
+  const defaultTitle = projectName
+    .split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const rawTitle = (await ask(`  ${c.cyan('Campaign title')} ${c.dim(`(default: ${defaultTitle})`)}: `)).trim();
+  const title    = rawTitle || defaultTitle;
+
+  // 3. Create campaign
+  process.stdout.write(`  ${c.dim('Creating campaign...')} `);
+  let campaignId;
+  try {
+    campaignId = await createCampaign(tokens, { title, market });
+    console.log(`${c.green('✓')}  ID: ${c.cyan(campaignId)}`);
+  } catch (err) {
+    throw new Error(`Campaign creation failed: ${err.message}`);
+  }
+
+  // 4. Push format
+  process.stdout.write(`  ${c.dim('Pushing format...')} `);
+  try {
+    const formatFile = JSON.parse(readFileSync(SCAFFOLDER_FORMAT_FILE, 'utf8'));
+    await pushFormat(tokens, campaignId, formatFile);
+    console.log(`${c.green('✓')}`);
+  } catch (err) {
+    console.log(`${c.yellow('⚠')}  ${err.message} (continuing)`);
+  }
+
+  // 5. Populate defaults
+  process.stdout.write(`  ${c.dim('Populating defaults...')} `);
+  try {
+    const formatFile = JSON.parse(readFileSync(SCAFFOLDER_FORMAT_FILE, 'utf8'));
+    const count = await populateDefaults(tokens, campaignId, formatFile.interfaceSetup);
+    console.log(`${c.green('✓')}  ${count} fields`);
+  } catch (err) {
+    console.log(`${c.yellow('⚠')}  ${err.message} (continuing)`);
+  }
+
+  // 6. Publish
+  process.stdout.write(`  ${c.dim('Publishing to acceptance...')} `);
+  try {
+    await publishCampaign(tokens, campaignId);
+    console.log(`${c.green('✓')}`);
+  } catch (err) {
+    console.log(`${c.yellow('⚠')}  ${err.message} (you can publish manually in CAPE)`);
+  }
+
+  return campaignId;
+}
+
+// ─── Cleanup registry (SIGINT / SIGTERM / rollback) ───────────────────────────
 // Any code that creates temp dirs or lock files registers a cleanup fn here.
 // Signal handlers and catch blocks both call runCleanup() so nothing is left
 // behind whether the process exits normally, crashes, or the user hits Ctrl+C.
@@ -306,11 +378,29 @@ async function runWizard(pre) {
     throw new Error(`Invalid project name "${name}". Use lowercase letters, numbers, and hyphens only (e.g. hema-handdoek-2025).`);
   }
 
-  // 2. CAPE ID
+  // 2. CAPE campaign — create new or use existing
   let capeId = pre.capeId;
-  while (!capeId || !/^\d+$/.test(capeId)) {
-    if (capeId) console.log(`  ${c.red('✘')} CAPE ID must be a numeric string (e.g. 54031) — got "${capeId}"`);
-    capeId = (await ask(`  ${c.cyan('CAPE campaign ID')} ${c.dim('(numeric, e.g. 54031)')}: `)).trim();
+  if (!capeId) {
+    const choice = (await ask(`  ${c.cyan('CAPE campaign')}  ${c.dim('[n=create new / e=use existing ID]')} ${c.dim('(default: n)')}: `)).trim().toLowerCase();
+    if (choice === '' || choice === 'n' || choice === 'new') {
+      // Market may not be set yet for Next.js — ask here so createCampaign has it
+      let mktForCape = pre.market || 'NL';
+      if (!pre.market && stack !== 'tanstack') {
+        const mv = (await ask(`  ${c.cyan('Market')} ${c.dim(`(default: ${mktForCape})`)} : `)).trim().toUpperCase();
+        if (VALID_MARKETS.has(mv)) mktForCape = mv;
+      }
+      console.log('');
+      capeId = await runCapeCreateFlow(ask, name, mktForCape);
+      console.log('');
+      // Pre-fill market so the later market step is skipped
+      if (!pre.market) pre = { ...pre, market: mktForCape };
+    } else {
+      // Use existing
+      while (!capeId || !/^\d+$/.test(capeId)) {
+        if (capeId) console.log(`  ${c.red('✘')} CAPE ID must be a numeric string (e.g. 54031) — got "${capeId}"`);
+        capeId = (await ask(`  ${c.cyan('CAPE campaign ID')} ${c.dim('(numeric, e.g. 54031)')}: `)).trim();
+      }
+    }
   }
 
   // 3. Market
