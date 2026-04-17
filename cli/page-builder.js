@@ -186,16 +186,16 @@ function buildLanding(els, opts) {
           </div>` : '<div />';
 
   const partnersBlock = hasPartners ? `
-          {/* Partner logos */}
+          {/* Partner logos — add one img per partner using CAPE image keys */}
+          {/* e.g. <img src={getCapeImage(capeData, 'general.landing.partner1')} alt="" className="h-8 w-auto object-contain" /> */}
           <div className="flex flex-wrap items-center justify-center gap-4 opacity-60">
-            {/* TODO: map getCapeImage array from 'general.landing.partners' */}
           </div>` : '';
 
   const ctaBlock = (hasCta || hasCtaSec || hasPartners) ? `
           {/* CTAs */}
-          <div className="flex w-full max-w-xs flex-col gap-3" style={{ animation: 'fadeIn 0.5s 0.3s ease both' }}>
+          <div className="flex w-full flex-col gap-3" style={{ animation: 'fadeIn 0.5s 0.3s ease both' }}>
             ${hasCta    ? `<Button fullWidth size="lg" onClick={() => router.push('${opts.nextRoute}')}>{ctaLabel}</Button>` : ''}
-            ${hasCtaSec ? `<Button fullWidth variant="ghost" size="sm" onClick={() => router.push('/onboarding')}>{ctaLabel2}</Button>` : ''}
+            ${hasCtaSec ? `<Button fullWidth variant="secondary" size="lg" onClick={() => router.push('/onboarding')}>{ctaLabel2}</Button>` : ''}
             ${partnersBlock}
           </div>` : '<div />';
 
@@ -213,7 +213,10 @@ ${capeLines}
     <div className="relative h-full w-full overflow-hidden bg-black">
       ${bgBlock}
 
-      <div className="relative flex h-full flex-col items-center justify-between px-8 py-12">
+      <div
+        className="relative flex h-full flex-col items-center justify-between px-6"
+        style={{ paddingTop: 'max(2.5rem, env(safe-area-inset-top))', paddingBottom: 'max(2.5rem, env(safe-area-inset-bottom))' }}
+      >
         ${logoBlock}
         ${middleBlock}
         ${ctaBlock}
@@ -276,7 +279,10 @@ function buildOnboarding(els, opts) {
           </div>` : '';
 
   const ctaBlock = hasCta ? `
-      <div className="px-6 pb-8 pt-4" style={{ animation: 'fadeIn 0.4s 0.4s ease both' }}>
+      <div
+        className="px-6 pt-4"
+        style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))', animation: 'fadeIn 0.4s 0.4s ease both' }}
+      >
         <Button fullWidth size="lg" onClick={() => router.push('${opts.nextRoute}')}>{ctaLabel}</Button>
       </div>` : '';
 
@@ -376,9 +382,9 @@ function buildResult(els, opts) {
           </div>`;
 
   const ctaBlock = (hasCta || hasCtaSec) ? `
-          <div className="flex w-full max-w-xs flex-col gap-3" style={{ animation: 'fadeIn 0.4s 0.25s ease both' }}>
+          <div className="flex w-full flex-col gap-3" style={{ animation: 'fadeIn 0.4s 0.25s ease both' }}>
             ${hasCta    ? `<Button fullWidth size="lg" onClick={() => router.push('${opts.nextRoute}')}>{ctaLabel}</Button>` : ''}
-            ${hasCtaSec ? `<Button fullWidth variant="ghost" size="sm" onClick={() => router.push('${opts.retryRoute ?? '/gameplay'}')}>{retryLabel}</Button>` : ''}
+            ${hasCtaSec ? `<Button fullWidth variant="secondary" size="lg" onClick={() => router.push('${opts.retryRoute ?? '/gameplay'}')}>{retryLabel}</Button>` : ''}
           </div>` : '<div />';
 
   const gameCtxImport = (hasScore || hasRank) ? `\nimport { useGameContext } from '@hooks/useGameContext';` : '';
@@ -397,7 +403,10 @@ ${capeLines}
   return (
     <div className="relative h-full w-full overflow-hidden bg-black">
       ${bgBlock}
-      <div className="relative flex h-full flex-col items-center justify-between px-8 py-12">
+      <div
+        className="relative flex h-full flex-col items-center justify-between px-6"
+        style={{ paddingTop: 'max(2.5rem, env(safe-area-inset-top))', paddingBottom: 'max(2.5rem, env(safe-area-inset-bottom))' }}
+      >
         ${titleBlock}
         ${middleBlock}
         ${ctaBlock}

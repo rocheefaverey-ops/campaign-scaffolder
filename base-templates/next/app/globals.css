@@ -1,6 +1,19 @@
 @import 'tailwindcss';
 
 /*
+ * ─── Tailwind v4 Theme ───────────────────────────────────────────────────────
+ * Registers custom utilities: font-default, text-primary, bg-primary, etc.
+ * Keep in sync with the CSS custom properties in :root below.
+ */
+@theme {
+  --font-family-default: var(--default-font-family, 'Inter', system-ui, sans-serif);
+  --color-primary:       #6c63ff;
+  --color-secondary:     #a09cff;
+  --color-tertiary:      #c8c5ff;
+  --color-statusRed:     #e82727;
+}
+
+/*
  * ─── Design Tokens ───────────────────────────────────────────────────────────
  * Placeholder defaults — overridden at runtime by CapeDataProvider.injectFonts()
  * and the CAPE design-tokens module. Variable names must stay stable.
@@ -342,4 +355,160 @@ img {
     padding: 0.5em;
     text-align: left;
   }
+}
+
+/* ─── Form Elements ──────────────────────────────────────────────────────────── */
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='number'],
+input[type='tel'],
+textarea,
+select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.75rem 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  transition: all 0.2s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type='text']:focus,
+input[type='email']:focus,
+input[type='password']:focus,
+input[type='number']:focus,
+input[type='tel']:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+}
+
+input[type='text']::placeholder,
+input[type='email']::placeholder,
+input[type='password']::placeholder,
+input[type='number']::placeholder,
+input[type='tel']::placeholder,
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+/* Select dropdown arrow */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%23ffffff' d='M0 0l6 8 6-8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+  background-size: 12px;
+}
+
+/* Checkbox and radio inputs */
+input[type='checkbox'],
+input[type='radio'] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+/* ─── Form Field Container ─────────────────────────────────────────────────── */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.form-field label {
+  font-weight: 500;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.form-field input,
+.form-field textarea,
+.form-field select {
+  font-size: 1rem;
+}
+
+/* ─── Card / Container ────────────────────────────────────────────────────── */
+.card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+.card--hover {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.card--hover:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+/* ─── Badge ──────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.badge--primary {
+  background: var(--color-primary);
+  color: #000;
+}
+
+.badge--secondary {
+  background: var(--color-secondary);
+  color: #000;
+}
+
+/* ─── Text Utilities ────────────────────────────────────────────────────── */
+.text-muted {
+  opacity: 0.65;
+}
+
+.text-success {
+  color: #10b981;
+}
+
+.text-warning {
+  color: #f59e0b;
+}
+
+.text-error {
+  color: var(--color-statusRed);
+}
+
+/* ─── Divider ──────────────────────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
+  margin: 1.5rem 0;
 }

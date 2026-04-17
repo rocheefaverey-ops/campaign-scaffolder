@@ -8,6 +8,10 @@
   },
   "scripts": {
     "scaffold": "node cli/scaffold.js",
+    "update": "node cli/scaffold.js --update",
+    "teardown": "node cli/teardown.js",
+    "teardown:all": "node cli/teardown.js --all",
+    "teardown:list": "node cli/teardown.js --list",
     "preview-message": "node cli/post-scaffold-message.js"
   },
   "engines": {

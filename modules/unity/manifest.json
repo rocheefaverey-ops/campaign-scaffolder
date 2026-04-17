@@ -1,42 +1,42 @@
 {
   "id": "unity",
-  "name": "Unity WebGL",
-  "description": "Embeds a Unity WebGL build. Handles the full boot sequence (init → preload → load → start), the SetData translation injection, and all Unity↔JS events (end, navigation, tracking, apiRequest).",
+  "name": "Unity WebGL Game",
+  "description": "Mount Unity WebGL games with automatic boot sequence and event handling",
+  "version": "1.0.0",
+  "order": 10,
+  "engine": "unity",
+
   "files": [
     {
-      "src": "lib/unity-adapter.ts",
-      "dest": "lib/game-bridge/unity-adapter.ts"
+      "src": "components/UnityCanvas.tsx",
+      "dest": "components/_modules/unity/UnityCanvas.tsx",
+      "type": "component"
     },
     {
-      "src": "components/UnityCanvas/UnityCanvas.tsx",
-      "dest": "components/_modules/UnityCanvas/UnityCanvas.tsx"
+      "src": "components/useUnityBridge.ts",
+      "dest": "components/_modules/unity/useUnityBridge.ts",
+      "type": "component"
     },
     {
-      "src": "components/UnityCanvas/UnityLoader.tsx",
-      "dest": "components/_modules/UnityCanvas/UnityLoader.tsx"
-    },
-    {
-      "src": "app/(campaign)/gameplay/page.tsx",
-      "dest": "app/(campaign)/gameplay/page.tsx",
-      "strategy": "replace"
+      "src": "lib/LivewallBridge.jslib",
+      "dest": "public/LivewallBridge.jslib",
+      "type": "asset"
     }
   ],
-  "envVars": [
-    "NEXT_PUBLIC_UNITY_BASE_URL",
-    "NEXT_PUBLIC_UNITY_GAME_NAME",
-    "NEXT_PUBLIC_UNITY_VERSION",
-    "NEXT_PUBLIC_UNITY_COMPRESSION",
-    "NEXT_PUBLIC_UNITY_DESKTOP_DPR",
-    "NEXT_PUBLIC_UNITY_MOBILE_DPR"
-  ],
+
   "packages": [],
+
+  "envVars": [],
+
   "cspPatch": {
-    "extras": ["'wasm-unsafe-eval'"]
+    "script-src": ["https://*.lwcf.nl", "https://*.lwcf5.nl", "https://lw-*.lwdev.nl"],
+    "frame-src": ["'self'"]
   },
+
   "notes": [
-    "Add UnityCanvas to gameplay/page.tsx — it manages its own boot sequence.",
-    "setData() is called automatically inside UnityCanvas before loadScene().",
-    "Extend IUnityInput in lib/game-bridge/game-bridge.types.ts for campaign-specific fields (team data, etc.).",
-    "Handle 'navigation', 'tracking', 'apiRequest' events in gameplay/page.tsx."
+    "Unity WebGL builds must include LivewallBridge.jslib in Assets/Plugins/WebGL/",
+    "Environment variables required: NEXT_PUBLIC_UNITY_BASE_URL, NEXT_PUBLIC_UNITY_GAME_NAME",
+    "Unity game must emit events via SendEventToReact() from LivewallBridge",
+    "See /public/LivewallBridge.jslib for C# integration examples"
   ]
 }

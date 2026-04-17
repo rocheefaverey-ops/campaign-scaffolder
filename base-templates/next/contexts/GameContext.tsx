@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from 'react';
 import type { GameContextValue, GameState, CampaignStatus, Platform } from '@/types/game';
@@ -22,7 +23,7 @@ const defaultState: GameState = {
   score: 0,
   highscore: 0,
   rank: null,
-  loading: true,
+  loading: false,
   gameIsReady: false,
   onboardingCompleted: false,
   campaignStatus: null,
@@ -87,23 +88,34 @@ export function GameProvider({ children, platform }: GameProviderProps) {
     setStorage(STORAGE_KEY, null);
   }, [platform]);
 
-  const value: GameContextValue = {
-    ...state,
-    setToken: (v) => set('token', v),
-    setUserId: (v) => set('userId', v),
-    setUserName: (v) => set('userName', v),
-    setAlreadyRegistered: (v) => set('alreadyRegistered', v),
-    setSessionId: (v) => set('sessionId', v),
-    setScore: (v) => set('score', v),
-    setHighscore: (v) => set('highscore', v),
-    setRank: (v) => set('rank', v),
-    setLoading: (v) => set('loading', v),
-    setGameIsReady: (v) => set('gameIsReady', v),
-    setOnboardingCompleted: (v) => set('onboardingCompleted', v),
-    setCampaignStatus: (v) => set('campaignStatus', v as CampaignStatus),
-    setIsMuted: (v) => set('isMuted', v),
-    reset,
-  };
+  // Stable setter functions via useCallback with empty deps
+  const setters = useMemo(
+    () => ({
+      setToken: (v: string | null) => set('token', v),
+      setUserId: (v: string | null) => set('userId', v),
+      setUserName: (v: string) => set('userName', v),
+      setAlreadyRegistered: (v: boolean) => set('alreadyRegistered', v),
+      setSessionId: (v: string | null) => set('sessionId', v),
+      setScore: (v: number) => set('score', v),
+      setHighscore: (v: number) => set('highscore', v),
+      setRank: (v: number | null) => set('rank', v),
+      setLoading: (v: boolean) => set('loading', v),
+      setGameIsReady: (v: boolean) => set('gameIsReady', v),
+      setOnboardingCompleted: (v: boolean) => set('onboardingCompleted', v),
+      setCampaignStatus: (v: CampaignStatus) => set('campaignStatus', v),
+      setIsMuted: (v: boolean) => set('isMuted', v),
+      reset,
+    }),
+    [set, reset],
+  );
+
+  const value: GameContextValue = useMemo(
+    () => ({
+      ...state,
+      ...setters,
+    }),
+    [state, setters],
+  );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }

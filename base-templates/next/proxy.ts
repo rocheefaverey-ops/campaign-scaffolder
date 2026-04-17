@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const unityOrigin = (() => {
-  try {
-    const raw = process.env.NEXT_PUBLIC_UNITY_BASE_URL ?? '';
-    return raw ? new URL(raw).origin : '';
-  } catch { return ''; }
-})();
+const safeOrigin = (envVar: string | undefined) => {
+  try { return envVar ? new URL(envVar).origin : ''; }
+  catch { return ''; }
+};
+
+const unityOrigin = safeOrigin(process.env.NEXT_PUBLIC_UNITY_BASE_URL);
+const apiOrigin   = safeOrigin(process.env.API_URL);
+const capeOrigin  = safeOrigin(process.env.NEXT_PUBLIC_CAPE_URL);
 
 // Restrict iframe embedding — update with your own domains before going live
 const frameAncestors = [
@@ -15,7 +17,7 @@ const frameAncestors = [
   'http://localhost:*',
 ].join(' ');
 
-export function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const nonce  = Buffer.from(crypto.randomUUID()).toString('base64');
   const isDev  = process.env.APP_ENV === 'local' || process.env.NODE_ENV === 'development';
 
@@ -23,10 +25,10 @@ export function middleware(request: NextRequest) {
     default-src 'self';
     script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} 'wasm-unsafe-eval'${unityOrigin ? ` ${unityOrigin}` : ''} https://www.googletagmanager.com https://storage.googleapis.com;
     style-src 'self' 'unsafe-inline';
-    connect-src 'self'${unityOrigin ? ` ${unityOrigin}` : ''} https://storage.bycape.io https://storage-acceptance.bycape.io https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://consentcdn.cookiebot.com;
-    img-src 'self' blob: data: https://storage.bycape.io https://storage-acceptance.bycape.io https://api.qrserver.com https://www.googletagmanager.com;
-    font-src 'self' https://fonts.gstatic.com https://storage.bycape.io https://storage-acceptance.bycape.io;
-    media-src 'self' blob: https://storage.bycape.io https://storage-acceptance.bycape.io;
+    connect-src 'self'${unityOrigin ? ` ${unityOrigin}` : ''}${apiOrigin ? ` ${apiOrigin}` : ''}${capeOrigin ? ` ${capeOrigin}` : ''} https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://consentcdn.cookiebot.com;
+    img-src 'self' blob: data:${capeOrigin ? ` ${capeOrigin}` : ''} https://api.qrserver.com https://www.googletagmanager.com;
+    font-src 'self' https://fonts.gstatic.com${capeOrigin ? ` ${capeOrigin}` : ''};
+    media-src 'self' blob:${capeOrigin ? ` ${capeOrigin}` : ''};
     worker-src 'self' blob:;
     child-src 'self' blob:;
     object-src 'none';

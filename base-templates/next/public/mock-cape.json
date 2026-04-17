@@ -1,53 +1,160 @@
 {
+  "_comment": "Local dev mock — loaded when CAPE_MOCK=true. Edit freely, never committed with real data.",
+
   "settings": {
     "branding": {
-      "themeColor": "#1a1a2e",
-      "primaryColor": "#e94560",
+      "themeColor":     "#1a1a2e",
+      "primaryColor":   "#e94560",
       "secondaryColor": "#16213e",
-      "accentColor": "#0f3460",
-      "fontFamily": "Inter, sans-serif"
+      "accentColor":    "#4a9eff",
+      "fontFamily":     "Inter, sans-serif",
+      "favicon":        [{ "url": "/assets/favicon.svg" }],
+      "fontBrand":      [],
+      "fontLight":      []
     }
   },
+
   "header": {
     "enabled": true,
     "variant": "default"
   },
+
   "general": {
     "meta": {
-      "siteTitle": { "value": "Campaign (mock)" },
-      "siteDescription": { "value": "Local dev — mock CAPE data" }
-    }
-  },
-  "copy": {
+      "siteTitle":       { "value": "Mock Campaign" },
+      "siteDescription": { "value": "Local dev — mock CAPE data. Replace with real campaign data." }
+    },
+    "legal": {
+      "termsUrl":   { "value": "https://example.com/terms" },
+      "privacyUrl": { "value": "https://example.com/privacy" }
+    },
+    "header": {
+      "logo":       [{ "url": "/assets/placeholder-logo.svg" }],
+      "menuBtnBg":  [{ "url": "/assets/placeholder-icon.svg" }],
+      "menuIcon":   [{ "url": "/assets/placeholder-icon.svg" }]
+    },
     "landing": {
-      "headline": "Welcome",
-      "subline": "Mock copy — replace with real CAPE data",
-      "cta": "Play now"
+      "logo":       [{ "url": "/assets/placeholder-logo.svg" }],
+      "background": [{ "url": "/assets/placeholder-bg.svg" }]
     },
     "onboarding": {
-      "headline": "How to play",
-      "body": "Mock instructions",
-      "cta": "Start"
-    },
-    "game": {
-      "headline": "Play",
-      "cta": "Submit"
+      "heroImage":  [{ "url": "/assets/placeholder-hero.svg" }],
+      "background": [{ "url": "/assets/placeholder-bg.svg" }]
     },
     "result": {
-      "headline": "Your score",
-      "ctaContinue": "Continue",
-      "ctaPlayAgain": "Play again"
-    },
-    "register": {
-      "headline": "Register",
-      "cta": "Submit",
-      "optIn1": "I agree to the terms",
-      "optIn2": "I'd like to receive updates"
-    },
-    "leaderboard": {
-      "headline": "Leaderboard",
-      "ctaDone": "Done"
+      "background": [{ "url": "/assets/placeholder-bg.svg" }]
     }
   },
-  "files": {}
+
+  "copy": {
+
+    "landing": {
+      "headline":    "Welcome to the Campaign",
+      "subline":     "This is mock copy — replace via CAPE.",
+      "body":        "Play the game, win prizes, and have fun.",
+      "cta":         "Speel nu",
+      "ctaSecondary": "Meer info"
+    },
+
+    "video": {
+      "headline": "Watch this",
+      "subline":  "Mock video page",
+      "cta":      "Volgende"
+    },
+
+    "onboarding": {
+      "headline":   "Hoe het werkt",
+      "subline":    "Volg de stappen hieronder.",
+      "cta":        "Start",
+      "step1Title": "Stap 1",
+      "step1Body":  "Mock instructie voor stap één.",
+      "step2Title": "Stap 2",
+      "step2Body":  "Mock instructie voor stap twee.",
+      "step3Title": "Stap 3",
+      "step3Body":  "Mock instructie voor stap drie."
+    },
+
+    "game": {
+      "headline":     "Speel!",
+      "loadingLabel": "Laden…",
+      "cta":          "Verzend score"
+    },
+
+    "result": {
+      "headline":         "Jouw score",
+      "subline":          "Goed gedaan!",
+      "scoreLabel":       "Score",
+      "rankLabel":        "Rang",
+      "ctaContinue":      "Doorgaan",
+      "ctaPlayAgain":     "Opnieuw spelen",
+      "ctaLeaderboard":   "Ranglijst bekijken",
+      "ctaRegister":      "Registreer voor de prijs"
+    },
+
+    "register": {
+      "headline":        "Registreer",
+      "subline":         "Vul je gegevens in om mee te dingen.",
+      "cta":             "Verzenden",
+      "labelFirstName":  "Voornaam",
+      "labelInfix":      "Tussenvoegsel",
+      "labelLastName":   "Achternaam",
+      "labelEmail":      "E-mailadres",
+      "optIn1":          "Ik ga akkoord met de <a href='/terms'>algemene voorwaarden</a>.",
+      "optIn2":          "Ja, ik ontvang graag nieuws en aanbiedingen.",
+      "successHeadline": "Bedankt voor je inschrijving!",
+      "successBody":     "We nemen contact op als je gewonnen hebt."
+    },
+
+    "leaderboard": {
+      "headline":       "Ranglijst",
+      "subline":        "Top 10 spelers",
+      "tabTotal":       "Totaal",
+      "tabDaily":       "Vandaag",
+      "tabWeekly":      "Deze week",
+      "tabMonthly":     "Deze maand",
+      "rankLabel":      "#",
+      "nameLabel":      "Naam",
+      "scoreLabel":     "Score",
+      "youLabel":       "Jij",
+      "emptyState":     "Nog geen scores.",
+      "ctaDone":        "Klaar"
+    },
+
+    "voucher": {
+      "headline":     "Jouw voucher",
+      "subline":      "Scan de QR-code bij de kassa.",
+      "codeLabel":    "Code",
+      "expiryLabel":  "Geldig t/m",
+      "expiryDate":   "31-12-2025",
+      "cta":          "Klaar",
+      "ctaShare":     "Deel"
+    },
+
+    "menu": {
+      "headline":   "Menu",
+      "ctaHome":    "Home",
+      "ctaProfile": "Profiel",
+      "ctaLogout":  "Uitloggen"
+    }
+  },
+
+  "files": {
+    "landing": {
+      "heroImage":      [{ "url": "/assets/placeholder-hero.svg" }],
+      "heroVideo":      [],
+      "backgroundImage":[{ "url": "/assets/placeholder-bg.svg" }]
+    },
+    "onboarding": {
+      "step1Image": [{ "url": "/assets/placeholder-hero.svg" }],
+      "step2Image": [{ "url": "/assets/placeholder-hero.svg" }],
+      "step3Image": [{ "url": "/assets/placeholder-hero.svg" }]
+    },
+    "result": {
+      "winImage":  [{ "url": "/assets/placeholder-hero.svg" }],
+      "loseImage": [{ "url": "/assets/placeholder-hero.svg" }]
+    },
+    "voucher": {
+      "voucherImage": [{ "url": "/assets/placeholder-hero.svg" }]
+    }
+  }
 }

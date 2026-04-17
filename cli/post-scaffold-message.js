@@ -60,18 +60,13 @@ export function printPostScaffoldMessage({ projectName, capeId, market, modules,
   console.log('');
   console.log(c.bold(`  ${ARROW} STEP 1 — Fill in your .env`));
   console.log('');
-  console.log(c.yellow(`  ${WARN}  Do NOT commit .env — it contains credentials.`));
-  console.log(`     ${BULLET} Copy ${c.cyan('.env.example')} to ${c.cyan('.env')}`);
-  console.log(`     ${BULLET} Set ${c.cyan('NEXT_PUBLIC_CAPE_DEFAULT_ID')}     = ${c.bold(capeId)}`);
-  console.log(`     ${BULLET} Set ${c.cyan('NEXT_PUBLIC_CAPE_DEFAULT_MARKET')} = ${c.bold(market)}`);
+  console.log(c.yellow(`  ${WARN}  .env was pre-created from env.dist — review and complete it.`));
+  console.log(`     ${BULLET} ${c.green('NEXT_PUBLIC_CAPE_URL')} is pre-set to the acceptance CDN`);
+  console.log(`     ${BULLET} ${c.green('NEXT_PUBLIC_CAPE_DEFAULT_ID')} is pre-set to ${c.bold(capeId)}`);
+  console.log(`     ${BULLET} ${c.green('NEXT_PUBLIC_CAPE_DEFAULT_MARKET')} is pre-set to ${c.bold(market)}`);
   console.log(`     ${BULLET} Set ${c.cyan('API_URL')} to your backend`);
   console.log(`     ${BULLET} Set ${c.cyan('SERVER_SECRET')} to a random secret`);
   console.log('');
-  console.log('');
-  console.log(c.dim(`  ${BULLET} Reuse an existing dev campaign instead of creating a new one:`));
-  console.log(c.dim(`       1. Point NEXT_PUBLIC_CAPE_DEFAULT_ID at your shared dev campaign`));
-  console.log(c.dim(`       2. npm run cape:fetch-mock  ← saves it to public/mock-cape.json`));
-  console.log(c.dim(`       3. Set CAPE_MOCK=true in .env  →  npm run dev:mock`));
 
   // ── Step 2: CAPE pull ─────────────────────────────────────────────────────
   console.log('');
@@ -218,12 +213,12 @@ function printPostScaffoldMessageTanstack({ projectName, capeId, market, outputD
   console.log('');
   console.log(c.bold(`  ${ARROW} STEP 1 — Fill in your .env`));
   console.log('');
-  console.log(c.yellow(`  ${WARN}  .env was pre-created from .env.example — review and complete it.`));
+  console.log(c.yellow(`  ${WARN}  .env was pre-created from env.dist — review and complete it.`));
+  console.log(`     ${BULLET} ${c.green('CAPE_BASE_URL')} is pre-set to the acceptance CDN`);
+  console.log(`     ${BULLET} ${c.green('CAPE_CAMPAIGN_ID')} is pre-set to ${c.bold(capeId)}`);
   console.log(`     ${BULLET} Set ${c.cyan('API_URL')} to your backend`);
   console.log(`     ${BULLET} Set ${c.cyan('API_SESSION_SECRET')} to a random secret`);
   console.log(`     ${BULLET} Set ${c.cyan('UNITY_BASE_URL')} and ${c.cyan('UNITY_GAME_NAME')} for your Unity build`);
-  console.log(`     ${BULLET} Set ${c.cyan('CAPE_BASE_URL')} to your CAPE CDN URL`);
-  console.log(`     ${BULLET} CAPE_CAMPAIGN_ID is pre-set to ${c.bold(capeId)}`);
 
   // Step 2: CAPE
   console.log('');

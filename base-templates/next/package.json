@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:mock": "cross-env CAPE_MOCK=true next dev --turbopack",
+    "dev:full-mock": "cross-env CAPE_MOCK=true API_MOCK=true NEXT_PUBLIC_GAME_MOCK=true next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -17,9 +18,9 @@
     "check-env": "node -e \"const fs=require('fs');const e=fs.existsSync('.env')?Object.fromEntries(fs.readFileSync('.env','utf8').split('\\n').filter(l=>l&&!l.startsWith('#')).map(l=>l.split('='))):{}; const required=['NEXT_PUBLIC_CAPE_URL','NEXT_PUBLIC_CAPE_DEFAULT_ID','API_URL','SERVER_SECRET']; const missing=required.filter(k=>!e[k]||e[k].trim()===''); if(missing.length){console.error('\\n[check-env] Missing required vars:\\n'+missing.map(k=>'  ✘ '+k).join('\\n')+'\\n');process.exit(1)}else{console.log('[check-env] All required vars present ✔')}\""
   },
   "dependencies": {
-    "next": "^15.3.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "next": "^16.2.3",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
     "@tanstack/react-query": "^5.74.4",
     "@tanstack/react-query-devtools": "^5.74.4",
     "gsap": "^3.12.7",
@@ -37,17 +38,17 @@
   "devDependencies": {
     "typescript": "^5.8.3",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@types/lodash": "^4.17.0",
     "tailwindcss": "^4.1.3",
     "@tailwindcss/postcss": "^4.1.3",
     "postcss": "^8.5.3",
     "eslint": "^9",
-    "eslint-config-next": "^15.3.0",
+    "eslint-config-next": "^16.2.3",
     "@svgr/webpack": "^8.1.0",
     "cross-env": "^7.0.3",
-    "@next/bundle-analyzer": "^15.3.0",
+    "@next/bundle-analyzer": "^16.2.3",
     "prettier": "^3.5.3",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.0"

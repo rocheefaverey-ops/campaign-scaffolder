@@ -17,10 +17,10 @@ export default function MenuPage() {
   const { capeData } = useCapeData();
 
   const logoUrl     = getCapeImage(capeData, 'general.header.logo');
-  const homeLabel   = getCapeText(capeData,  'general.menu.home',      'Home');
-  const resumeLabel = getCapeText(capeData,  'general.menu.resume',    'Resume game');
-  const howToLabel  = getCapeText(capeData,  'general.menu.howToPlay', 'How to play');
-  const termsLabel  = getCapeText(capeData,  'general.menu.terms',     'Terms & conditions');
+  const homeLabel   = getCapeText(capeData,  'copy.menu.home',      '[copy.menu.home]');
+  const resumeLabel = getCapeText(capeData,  'copy.menu.resume',    '[copy.menu.resume]');
+  const howToLabel  = getCapeText(capeData,  'copy.menu.howToPlay', '[copy.menu.howToPlay]');
+  const termsLabel  = getCapeText(capeData,  'copy.menu.terms',     '[copy.menu.terms]');
 
   return (
     <div

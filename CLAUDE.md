@@ -68,7 +68,7 @@ node cli/scaffold.js \
 2. For each selected module: reads `manifest.json`, copies files to their `dest` paths
 3. Resolves `implies` chains (e.g. `leaderboard` → adds `scoring` automatically)
 4. Token-replaces `{{PROJECT_NAME}}`, `{{CAPE_ID}}`, `{{MARKET}}` in all text files
-5. Appends module-specific env vars to `.env.example`
+5. Appends module-specific env vars to `env.dist`
 6. Patches `middleware.ts` CSP with `manifest.cspPatch` entries
 7. Runs `npm install` for any packages declared in manifests
 8. Prints a colour-coded post-scaffold checklist for the developer

@@ -11,9 +11,9 @@ export default function LandingPage() {
 
   const bgUrl    = getCapeImage(capeData, 'general.landing.background');
   const logoUrl  = getCapeImage(capeData, 'general.landing.logo') || getCapeImage(capeData, 'general.header.logo');
-  const title    = getCapeText(capeData, 'general.landing.title',    'Welcome');
-  const subtitle = getCapeText(capeData, 'general.landing.subtitle', 'Are you ready to play?');
-  const ctaLabel = getCapeText(capeData, 'general.landing.ctaLabel', 'Play now');
+  const title    = getCapeText(capeData, 'copy.landing.title',    '[copy.landing.title]');
+  const subtitle = getCapeText(capeData, 'copy.landing.subtitle', '[copy.landing.subtitle]');
+  const ctaLabel = getCapeText(capeData, 'copy.landing.ctaLabel', '[copy.landing.ctaLabel]');
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black">
@@ -32,8 +32,8 @@ export default function LandingPage() {
         }}
       />
 
-      {/* Layout: top logo — center title — bottom CTA */}
-      <div className="relative flex h-full flex-col items-center justify-between px-8 py-12">
+      {/* Content area */}
+      <div className="relative flex h-full flex-col items-center justify-center px-6 pt-12">
 
         {/* Logo */}
         <div style={{ animation: 'fadeIn 0.5s ease both' }}>
@@ -47,7 +47,7 @@ export default function LandingPage() {
 
         {/* Hero copy */}
         <div
-          className="flex flex-col items-center gap-4 text-center"
+          className="mt-20 flex flex-col items-center gap-4 text-center"
           style={{ animation: 'fadeIn 0.5s 0.15s ease both' }}
         >
           <h1 className="text-5xl font-black leading-tight text-white">
@@ -59,20 +59,20 @@ export default function LandingPage() {
             </p>
           )}
         </div>
+      </div>
 
-        {/* CTA */}
-        <div
-          className="w-full max-w-xs"
-          style={{ animation: 'fadeIn 0.5s 0.3s ease both' }}
+      {/* Bottom CTA — absolute positioning following HaasF1 pattern */}
+      <div
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full flex flex-col gap-6 items-center px-6 pb-8 pt-20"
+        style={{ animation: 'fadeIn 0.5s 0.3s ease both' }}
+      >
+        <Button
+          className="w-full"
+          size="lg"
+          onClick={() => router.push('{{NEXT_AFTER_LANDING}}')}
         >
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={() => router.push('{{NEXT_AFTER_LANDING}}')}
-          >
-            {ctaLabel}
-          </Button>
-        </div>
+          {ctaLabel}
+        </Button>
       </div>
     </div>
   );

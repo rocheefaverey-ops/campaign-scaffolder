@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useCapeData } from '@hooks/useCapeData';
+import { getCapeText, getCapeImage, getCapeBoolean } from '@utils/getCapeData';
 
 interface DesktopWrapperProps {
   children: React.ReactNode;
@@ -13,8 +14,7 @@ interface DesktopWrapperProps {
  * 375×667 phone-frame preview.
  * On mobile: renders children fullscreen.
  *
- * Controlled by CAPE at general.desktop.useDesktopWrapper (default: true).
- * Branding pulled from general.desktop.{logo, description, labelQr, backgroundIllustration}.
+ * Controlled by CAPE at desktop.* paths.
  */
 export default function DesktopWrapper({ children }: DesktopWrapperProps) {
   const { capeData } = useCapeData();
@@ -31,8 +31,7 @@ export default function DesktopWrapper({ children }: DesktopWrapperProps) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const desktopConfig = (capeData?.general as Record<string, unknown>)?.desktop as Record<string, unknown> | undefined;
-  const useDesktopLayout = desktopConfig?.useDesktopWrapper !== false; // default true
+  const useDesktopLayout = getCapeBoolean(capeData, 'desktop.useDesktopWrapper', true);
   const showDesktop = mounted && isDesktop && useDesktopLayout;
 
   if (!showDesktop) {
@@ -43,10 +42,10 @@ export default function DesktopWrapper({ children }: DesktopWrapperProps) {
     );
   }
 
-  const description = (desktopConfig?.description as string) ?? 'Scan the QR code to play on your mobile device';
-  const labelQr     = (desktopConfig?.labelQr     as string) ?? 'Scan to play';
-  const logoUrl     = (desktopConfig?.logo         as { url?: string }[])?.[0]?.url;
-  const bgUrl       = (desktopConfig?.backgroundIllustration as { url?: string }[])?.[0]?.url;
+  const description = getCapeText(capeData, 'desktop.description', 'Scan the QR code to play on your mobile device');
+  const labelQr     = getCapeText(capeData, 'desktop.qrText',      'Scan to play');
+  const logoUrl     = getCapeImage(capeData, 'desktop.logo');
+  const bgUrl       = getCapeImage(capeData, 'desktop.backgroundIllustration');
   const qrUrl       = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}&bgcolor=ffffff&color=000000`;
 
   return (

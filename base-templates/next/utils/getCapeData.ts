@@ -126,9 +126,6 @@ function resolveText(value: unknown): string {
   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
     const obj = value as Record<string, unknown>;
 
-    // { value: "text" } wrapper
-    if ('value' in obj && typeof obj.value === 'string') return obj.value;
-
     // textMultiLanguage object — try active language, then EN
     const lang = getActiveLang();
     for (const key of [lang, 'EN']) {
@@ -139,6 +136,9 @@ function resolveText(value: unknown): string {
         if (typeof inner === 'string' && inner) return inner;
       }
     }
+
+    // { value: "text" } wrapper
+    if ('value' in obj && typeof obj.value === 'string') return obj.value;
   }
   return '';
 }

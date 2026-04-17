@@ -12,11 +12,11 @@ export default function ResultPage() {
   const { score, rank, userName } = useGameContext();
 
   const bgUrl      = getCapeImage(capeData, 'general.result.background');
-  const title      = getCapeText(capeData,  'general.result.title',      'Game over');
-  const scoreLabel = getCapeText(capeData,  'general.result.scoreLabel', 'Your score');
-  const rankLabel  = getCapeText(capeData,  'general.result.rankLabel',  'Your rank');
-  const ctaLabel   = getCapeText(capeData,  'general.result.ctaLabel',   'Continue');
-  const retryLabel = getCapeText(capeData,  'general.result.retryLabel', 'Play again');
+  const title      = getCapeText(capeData,  'copy.result.title',      '[copy.result.title]');
+  const scoreLabel = getCapeText(capeData,  'copy.result.scoreLabel', '[copy.result.scoreLabel]');
+  const rankLabel  = getCapeText(capeData,  'copy.result.rankLabel',  '[copy.result.rankLabel]');
+  const ctaLabel   = getCapeText(capeData,  'copy.result.ctaLabel',   '[copy.result.ctaLabel]');
+  const retryLabel = getCapeText(capeData,  'copy.result.retryLabel', '[copy.result.retryLabel]');
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black">
@@ -34,8 +34,8 @@ export default function ResultPage() {
         }}
       />
 
-      {/* Layout: top title — center score — bottom CTAs */}
-      <div className="relative flex h-full flex-col items-center justify-between px-8 py-12">
+      {/* Content area — center score display */}
+      <div className="relative flex h-full flex-col items-center justify-center px-6 py-12">
 
         {/* Title + player name */}
         <div
@@ -50,7 +50,7 @@ export default function ResultPage() {
 
         {/* Score + rank */}
         <div
-          className="flex flex-col items-center gap-5"
+          className="mt-12 flex flex-col items-center gap-5"
           style={{ animation: 'fadeIn 0.4s 0.1s ease both' }}
         >
           {/* Score number */}
@@ -79,27 +79,27 @@ export default function ResultPage() {
             </div>
           )}
         </div>
+      </div>
 
-        {/* CTAs */}
-        <div
-          className="flex w-full max-w-xs flex-col gap-3"
-          style={{ animation: 'fadeIn 0.4s 0.25s ease both' }}
+      {/* Bottom CTAs — absolute positioning following HaasF1 pattern */}
+      <div
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full flex flex-col gap-6 items-center px-6 pb-8 pt-20"
+        style={{ animation: 'fadeIn 0.4s 0.25s ease both' }}
+      >
+        <Button
+          className="w-full"
+          size="lg"
+          onClick={() => router.push('{{NEXT_AFTER_RESULT}}')}
         >
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={() => router.push('{{NEXT_AFTER_RESULT}}')}
-          >
-            {ctaLabel}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('{{PLAY_AGAIN_ROUTE}}')}
-          >
-            {retryLabel}
-          </Button>
-        </div>
+          {ctaLabel}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('{{PLAY_AGAIN_ROUTE}}')}
+        >
+          {retryLabel}
+        </Button>
       </div>
     </div>
   );

@@ -26,6 +26,7 @@
   ],
   "envVars": [],
   "packages": [],
+  "implies": ["scoring"],
   "notes": [
     "Add or remove optin checkboxes in RegistrationForm.tsx — each one needs a label and link from CAPE.",
     "The register action sends PUT /api/users/register — adjust the path/method to match your backend."

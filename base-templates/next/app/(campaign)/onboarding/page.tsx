@@ -6,9 +6,9 @@ import { getCapeText } from '@utils/getCapeData';
 import Button from '@components/_core/Button/Button';
 
 const STEP_PATHS = [
-  { title: 'general.onboarding.step1Title', body: 'general.onboarding.step1Body' },
-  { title: 'general.onboarding.step2Title', body: 'general.onboarding.step2Body' },
-  { title: 'general.onboarding.step3Title', body: 'general.onboarding.step3Body' },
+  { title: 'copy.onboarding.step1Title', body: 'copy.onboarding.step1Body' },
+  { title: 'copy.onboarding.step2Title', body: 'copy.onboarding.step2Body' },
+  { title: 'copy.onboarding.step3Title', body: 'copy.onboarding.step3Body' },
 ];
 
 const DEFAULT_STEPS = [
@@ -21,9 +21,9 @@ export default function OnboardingPage() {
   const router       = useRouter();
   const { capeData } = useCapeData();
 
-  const title    = getCapeText(capeData, 'general.onboarding.title',    'How to play');
-  const subtitle = getCapeText(capeData, 'general.onboarding.subtitle', '');
-  const ctaLabel = getCapeText(capeData, 'general.onboarding.ctaLabel', "Let's go");
+  const title    = getCapeText(capeData, 'copy.onboarding.title',    '[copy.onboarding.title]');
+  const subtitle = getCapeText(capeData, 'copy.onboarding.subtitle', '');
+  const ctaLabel = getCapeText(capeData, 'copy.onboarding.ctaLabel', '[copy.onboarding.ctaLabel]');
 
   const steps = STEP_PATHS.map((paths, i) => ({
     title: getCapeText(capeData, paths.title, DEFAULT_STEPS[i].title),
@@ -76,9 +76,9 @@ export default function OnboardingPage() {
         </div>
       </div>
 
-      {/* Sticky CTA pinned to bottom */}
+      {/* Sticky CTA pinned to bottom — HaasF1 pattern */}
       <div
-        className="px-6 pb-8 pt-4"
+        className="flex flex-col gap-6 items-center px-6 pb-8 pt-20"
         style={{ animation: 'fadeIn 0.4s 0.4s ease both' }}
       >
         <Button

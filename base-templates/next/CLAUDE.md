@@ -63,5 +63,5 @@ npm run analyze      # Bundle analysis
 
 ## Environment Variables
 
-See `.env.example`. Minimum required before first run:
+See `env.dist`. Minimum required before first run:
 `NEXT_PUBLIC_CAPE_URL`, `NEXT_PUBLIC_CAPE_CAMPAIGN_ID`, `API_URL`
