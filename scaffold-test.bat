@@ -53,7 +53,10 @@ if "%STACK%"=="next" (
 
 :: ── Name + output ─────────────────────────────────────────────────────────────
 set NAME=test-%STACK%-%SUFFIX%
-set OUTPUT=C:\Dev\Livewall\%NAME%
+:: Output sibling to the scaffolder folder so it works on any machine
+pushd "%~dp0.."
+set OUTPUT=%CD%\%NAME%
+popd
 
 :: ── Summary ───────────────────────────────────────────────────────────────────
 echo.

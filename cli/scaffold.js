@@ -1332,6 +1332,7 @@ function acquireLock(outputDir) {
       `If the previous run crashed, delete the stale lock and retry:\n  del "${lockPath}"`,
     );
   }
+  mkdirSync(dirname(lockPath), { recursive: true });
   writeFileSync(lockPath, JSON.stringify({ pid: process.pid, outputDir, startedAt: new Date().toISOString() }), 'utf8');
   return lockPath;
 }
