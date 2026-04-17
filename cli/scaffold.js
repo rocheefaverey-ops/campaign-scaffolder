@@ -383,9 +383,9 @@ async function runWizard(pre) {
   if (!capeId) {
     const choice = (await ask(`  ${c.cyan('CAPE campaign')}  ${c.dim('[n=create new / e=use existing ID]')} ${c.dim('(default: n)')}: `)).trim().toLowerCase();
     if (choice === '' || choice === 'n' || choice === 'new') {
-      // Market may not be set yet for Next.js — ask here so createCampaign has it
+      // Market may not be asked yet — ask here so createCampaign has it
       let mktForCape = pre.market || 'NL';
-      if (!pre.market && stack !== 'tanstack') {
+      if (!pre.market) {
         const mv = (await ask(`  ${c.cyan('Market')} ${c.dim(`(default: ${mktForCape})`)} : `)).trim().toUpperCase();
         if (VALID_MARKETS.has(mv)) mktForCape = mv;
       }
@@ -424,8 +424,8 @@ async function runWizard(pre) {
     if (!pre.isUpdate && !unityCdnUrl) {
       console.log('');
       console.log(`  ${c.bold('Type Unity Game:')}`);
-      console.log(`    ${c.dim('1)')} Bestaande game   ${c.dim('← Plak de CDN URL (Build-map URL)')}`);
-      console.log(`    ${c.dim('2)')} Nieuwe game      ${c.dim('← Lege CDN vars — later invullen')}`);
+      console.log(`    ${c.dim('1)')} Existing game  ${c.dim('← paste the CDN URL (Build folder URL)')}`);
+      console.log(`    ${c.dim('2)')} New game       ${c.dim('← leave CDN vars empty — fill in later')}`);
       const ut = (await ask(`  ${c.cyan('Select')} ${c.dim('[1-2, default: 2]')}: `)).trim();
       if (ut === '1') {
         unityCdnUrl = (await ask(`  ${c.cyan('CDN URL')} ${c.dim('(e.g. https://cdn.example.com/Build)')}: `)).trim();
@@ -1412,15 +1412,26 @@ function appendEnvVars(outputDir, envVars) {
 function acquireLock(outputDir) {
   const lockPath = `${outputDir}.scaffold.lock`;
   if (existsSync(lockPath)) {
-    let hint = '';
+    let stale = false;
+    let hint  = '';
     try {
       const d = JSON.parse(readFileSync(lockPath, 'utf8'));
       hint = `\n  (PID ${d.pid}, started ${d.startedAt})`;
-    } catch { /* ignore parse errors */ }
-    throw new Error(
-      `A scaffold run is already in progress for:\n  ${outputDir}${hint}\n\n` +
-      `If the previous run crashed, delete the stale lock and retry:\n  del "${lockPath}"`,
-    );
+      // Check if the owning process is still alive. process.kill(pid, 0) throws
+      // ESRCH if the PID doesn't exist, EPERM if it exists but we can't signal it.
+      try { process.kill(d.pid, 0); }
+      catch (e) { if (e.code === 'ESRCH') stale = true; }
+    } catch { stale = true; /* unreadable / corrupt lock — treat as stale */ }
+
+    if (stale) {
+      console.warn(`  ${c.yellow('⚠')}  Removing stale lock (previous run crashed): ${lockPath}`);
+      try { rmSync(lockPath); } catch { /* best-effort */ }
+    } else {
+      throw new Error(
+        `A scaffold run is already in progress for:\n  ${outputDir}${hint}\n\n` +
+        `If the previous run crashed, delete the stale lock and retry:\n  del "${lockPath}"`,
+      );
+    }
   }
   mkdirSync(dirname(lockPath), { recursive: true });
   writeFileSync(lockPath, JSON.stringify({ pid: process.pid, outputDir, startedAt: new Date().toISOString() }), 'utf8');
@@ -2145,7 +2156,7 @@ async function main() {
       capeId:    args.capeId,
       market:    args.market,
       game:      args.game || 'unity',
-      pages:     args.pages.length > 0 ? args.pages : buildDefaultPages(args.game || ''),
+      pages:     args.pages.length > 0 ? args.pages : (stack === 'tanstack' ? ['launch', 'tutorial', 'game', 'score'] : buildDefaultPages(args.game || '')),
       regMode:   args.regMode || 'none',
       modules:   allModules,
       gtmId:     args.gtmId || '',
