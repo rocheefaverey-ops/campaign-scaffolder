@@ -1916,10 +1916,10 @@ async function runUpdateWizard(existing, args) {
   console.log(`  ${c.dim('Stack and project name are fixed.')}`);
   console.log('');
 
-  console.log(`  ${c.bold('Wat wil je updaten?')}`);
-  console.log(`    ${c.dim('1)')} Pagina toevoegen   ${c.dim('← voeg ontbrekende pagina\'s toe')}`);
-  console.log(`    ${c.dim('2)')} Module toevoegen   ${c.dim('← installeer extra modules')}`);
-  console.log(`    ${c.dim('3)')} Settings aanpassen ${c.dim('← Iframe/CSP of GTM ID wijzigen')}`);
+  console.log(`  ${c.bold('What do you want to update?')}`);
+  console.log(`    ${c.dim('1)')} Add pages    ${c.dim('← inject missing pages into the project')}`);
+  console.log(`    ${c.dim('2)')} Add modules  ${c.dim('← install extra modules')}`);
+  console.log(`    ${c.dim('3)')} Edit settings ${c.dim('← change iframe mode, CSP or GTM ID')}`);
   console.log(`    ${c.dim('0)')} Abort`);
   const choice = (await ask(`  ${c.cyan('Select')} ${c.dim('[1-3]')}: `)).trim();
 
@@ -1934,15 +1934,15 @@ async function runUpdateWizard(existing, args) {
     }
 
     console.log('');
-    console.log(`  ${c.bold('Selecteer NIEUWE pagina\'s')} ${c.dim('(comma-separated numbers):')}`);
-    console.log(`  ${c.dim('Al aanwezig:')} ${alreadyPages.map(p => c.dim(p)).join(', ') || c.dim('(none)')}`);
+    console.log(`  ${c.bold('Select NEW pages')} ${c.dim('(comma-separated numbers):')}`);
+    console.log(`  ${c.dim('Already present:')} ${alreadyPages.map(p => c.dim(p)).join(', ') || c.dim('(none)')}`);
     console.log('');
     available.forEach((p, i) => {
       const route = pageRoutes[p];
       console.log(`    ${c.dim(`${i + 1})`)} ${p}${route ? c.dim(` (${route})`) : ''}`);
     });
 
-    const v = (await ask(`  ${c.cyan('Kies pagina\'s')}: `)).trim();
+    const v = (await ask(`  ${c.cyan('Choose pages')}: `)).trim();
     if (!v) { rl.close(); return null; }
     const newPages = v.split(',').map(s => {
       const n = parseInt(s.trim(), 10);
@@ -1991,7 +1991,7 @@ async function runUpdateWizard(existing, args) {
 
     rl.close();
     console.log('');
-    console.log(`  ${c.green('✔')} Genereer alleen ontbrekende files voor: ${newPages.map(p => c.cyan(p)).join(', ')}`);
+    console.log(`  ${c.green('✔')} Generating missing files for: ${newPages.map(p => c.cyan(p)).join(', ')}`);
 
     return {
       ...existing,
@@ -2019,12 +2019,12 @@ async function runUpdateWizard(existing, args) {
     const smartSuggested = autoModulesForPages(existing.pages ?? [], existing.game ?? '').filter(m => available.includes(m));
 
     console.log('');
-    console.log(`  ${c.bold('Selecteer NIEUWE modules')} ${c.dim('(comma-separated numbers):')}`);
+    console.log(`  ${c.bold('Select NEW modules')} ${c.dim('(comma-separated numbers):')}`);
     if (alreadyModules.length > 0) {
-      console.log(`  ${c.dim('Al aanwezig:')} ${alreadyModules.map(m => c.dim(m)).join(', ')}`);
+      console.log(`  ${c.dim('Already installed:')} ${alreadyModules.map(m => c.dim(m)).join(', ')}`);
     }
     if (smartSuggested.length > 0) {
-      console.log(`  ${c.dim(`Smart defaults: ${smartSuggested.join(', ')} — gebaseerd op huidige pagina's`)}`);
+      console.log(`  ${c.dim(`Smart defaults: ${smartSuggested.join(', ')} — based on current pages`)}`);
     }
     console.log('');
     available.forEach((id, i) => {
@@ -2056,7 +2056,7 @@ async function runUpdateWizard(existing, args) {
 
     const allModules = resolveModules(existing.game ?? '', existing.pages ?? [], [...alreadyModules, ...newModules]);
     console.log('');
-    console.log(`  ${c.green('✔')} Update package.json & config voor: ${newModules.map(m => c.cyan(m)).join(', ')}`);
+    console.log(`  ${c.green('✔')} Updating package.json & config for: ${newModules.map(m => c.cyan(m)).join(', ')}`);
 
     return {
       ...existing,
@@ -2071,14 +2071,14 @@ async function runUpdateWizard(existing, args) {
   // ── 3. Edit settings ──────────────────────────────────────────────────────────
   if (choice === '3') {
     console.log('');
-    console.log(`  ${c.bold('Settings aanpassen')}`);
-    console.log(`  ${c.dim('Huidige waarden:')}`);
+    console.log(`  ${c.bold('Edit settings')}`);
+    console.log(`  ${c.dim('Current values:')}`);
     console.log(`    GTM ID:  ${existing.gtmId ? c.cyan(existing.gtmId) : c.dim('(not set)')}`);
     console.log(`    Iframe:  ${existing.iframe ? c.yellow('enabled') : c.dim('disabled (standalone)')}`);
     console.log('');
 
-    const gtmNew    = (await ask(`  ${c.cyan('GTM ID')} ${c.dim(`(huidig: ${existing.gtmId || 'none'} — leeglaten om te bewaren)`)}: `)).trim();
-    const iframeRaw = (await ask(`  ${c.cyan('Embedded in iframe?')} ${c.dim(`(huidig: ${existing.iframe ? 'yes' : 'no'}) [y/N]`)}: `)).trim().toLowerCase();
+    const gtmNew    = (await ask(`  ${c.cyan('GTM ID')} ${c.dim(`(current: ${existing.gtmId || 'none'} — leave blank to keep)`)}: `)).trim();
+    const iframeRaw = (await ask(`  ${c.cyan('Embedded in iframe?')} ${c.dim(`(current: ${existing.iframe ? 'yes' : 'no'}) [y/N]`)}: `)).trim().toLowerCase();
 
     rl.close();
 
@@ -2138,7 +2138,7 @@ async function main() {
   let options;
   if (isNonInteractive) {
     const stack = args.stack || 'next';
-    const allModules = stack === 'tanstack' ? [] : resolveModules(args.game || '', args.pages, args.modules);
+    const allModules = resolveModules(args.game || (stack === 'tanstack' ? 'unity' : ''), args.pages, args.modules);
     options = {
       stack,
       name:      args.name,

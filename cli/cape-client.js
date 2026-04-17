@@ -58,11 +58,16 @@ function makeHeaders(tokens) {
 }
 
 async function apiPost(endpoint, body, tokens) {
-  const res  = await fetch(`${API_URL}${endpoint}`, {
+  const res = await fetch(`${API_URL}${endpoint}`, {
     method:  'POST',
     headers: makeHeaders(tokens),
     body:    JSON.stringify(body),
   });
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await res.text();
+    throw new Error(`CAPE API ${endpoint} returned non-JSON (${res.status}): ${text.slice(0, 200)}`);
+  }
   const data = await res.json();
   return { ok: res.ok, status: res.status, data };
 }
