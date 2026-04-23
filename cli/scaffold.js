@@ -642,9 +642,67 @@ async function runWizard(pre) {
         try {
           capeId = await runCapeCreateFlow(ask, name, market, null, false, generatedFormat);
         } catch (err) {
-          console.log(`  ${c.yellow('⚠')} CAPE setup failed: ${err.message}`);
-          console.log(`  ${c.dim('Set CAPE_CAMPAIGN_ID in .env to connect a campaign later.')}`);
-          capeId = '0';
+          console.log(`\n  ${c.red('✘')} ${err.message}`);
+          console.log('');
+
+          let recovered = false;
+          while (!recovered && !capeId) {
+            console.log(`  ${c.bold('Recovery options:')}`);
+            console.log(`    ${c.dim('1)')} Retry login            ${c.dim('← clear cache & login fresh')}`);
+            console.log(`    ${c.dim('2)')} Open CAPE & retry      ${c.dim('← check account, then login')}`);
+            console.log(`    ${c.dim('3)')} Use existing ID        ${c.dim('← enter CAPE campaign ID manually')}`);
+            console.log(`    ${c.dim('4)')} Skip                   ${c.dim('← set CAPE_CAMPAIGN_ID in .env later')}`);
+
+            const choice = (await ask(`  ${c.cyan('Select')} ${c.dim('[1-4]')}: `)).trim();
+
+            if (choice === '1') {
+              console.log('');
+              await clearTokenCache();
+              try {
+                capeId = await runCapeCreateFlow(ask, name, market, null, true, generatedFormat);
+                recovered = true;
+              } catch (retryErr) {
+                console.log(`  ${c.red('✘')} ${retryErr.message}`);
+                console.log('');
+              }
+            } else if (choice === '2') {
+              console.log('');
+              console.log(`  ${c.dim('Opening https://engagement.acceptance.campaigndesigner.io ...')}`);
+              try {
+                const url = 'https://engagement.acceptance.campaigndesigner.io';
+                if (process.platform === 'win32') execSync(`start "${url}"`, { stdio: 'ignore', shell: true });
+                else if (process.platform === 'darwin') execSync(`open "${url}"`, { stdio: 'ignore' });
+                else execSync(`xdg-open "${url}"`, { stdio: 'ignore' });
+                console.log(`  ${c.green('✓')} Browser opened. Check your account, then return here.`);
+              } catch {
+                console.log(`  ${c.yellow('⚠')} Could not open browser. Visit: https://engagement.acceptance.campaigndesigner.io`);
+              }
+              console.log('');
+              await clearTokenCache();
+              try {
+                capeId = await runCapeCreateFlow(ask, name, market, null, true, generatedFormat);
+                recovered = true;
+              } catch (retryErr) {
+                console.log(`  ${c.red('✘')} ${retryErr.message}`);
+                console.log('');
+              }
+            } else if (choice === '3') {
+              console.log('');
+              while (!capeId || !/^\d+$/.test(capeId)) {
+                if (capeId) console.log(`  ${c.red('✘')} CAPE ID must be numeric (e.g. 54031)`);
+                capeId = (await ask(`  ${c.cyan('CAPE campaign ID')}: `)).trim();
+              }
+              console.log(`  ${c.green('✓')} Using CAPE ID: ${c.cyan(capeId)}`);
+              recovered = true;
+            } else if (choice === '4') {
+              console.log(`  ${c.dim('CAPE skipped — set CAPE_CAMPAIGN_ID in .env to connect later.')}`);
+              capeId = '0';
+              recovered = true;
+            } else {
+              console.log(`  ${c.red('✘')} Invalid selection. Please choose 1-4.`);
+              console.log('');
+            }
+          }
         }
         console.log('');
       } else if (capeOpt === 'e' || capeOpt === 'existing') {
