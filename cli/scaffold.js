@@ -1272,6 +1272,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
     }
     if (removed > 0) ok(`${removed} excluded page file(s) removed`);
 
+    mkdirSync(loadersDir, { recursive: true });
     for (const [page, elements] of Object.entries(tsPageElementSelections)) {
       if (page.includes('__') || !BUILDABLE_TS.includes(page)) continue;
       const stepCount = tsPageElementSelections[`${page}__stepCount`] ?? 3;
