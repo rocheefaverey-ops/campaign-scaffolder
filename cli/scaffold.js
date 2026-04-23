@@ -428,11 +428,16 @@ async function runWizard(pre) {
 
   // 1. Project name
   let name = pre.name;
-  if (!name) name = (await ask(`  ${c.cyan('Project name')} ${c.dim('(e.g. hema-handdoek-2025)')}: `)).trim();
-  if (!name) { rl.close(); throw new Error('Project name is required.'); }
-  if (!pre.isUpdate && !/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(name)) {
-    rl.close();
-    throw new Error(`Invalid project name "${name}". Use lowercase letters, numbers, and hyphens only (e.g. hema-handdoek-2025).`);
+  if (!name) {
+    let firstAttempt = true;
+    do {
+      if (!firstAttempt) {
+        if (!name) console.log(`  ${c.red('✘')} Name is required`);
+        else console.log(`  ${c.red('✘')} Invalid — use lowercase letters, numbers and hyphens only (e.g. hema-handdoek-2025)`);
+      }
+      name = (await ask(`  ${c.cyan('Project name')} ${c.dim('(e.g. hema-handdoek-2025)')}: `)).trim();
+      firstAttempt = false;
+    } while (!name || (!pre.isUpdate && !/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(name)));
   }
 
   // 2. CAPE campaign — TanStack defers this until after page/element selections
