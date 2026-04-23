@@ -1,139 +1,110 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import * as Phaser from 'phaser';
 import { useCapeData } from '@hooks/useCapeData';
 import { useGameContext } from '@hooks/useGameContext';
+import { PhaserGameBridgeAdapter } from '@lib/game-bridge/phaser-adapter';
+import Boot from '@/game/scenes/Boot';
+import Load from '@/game/scenes/Load';
+import Main from '@/game/scenes/Main';
+import HUD from '@/game/scenes/HUD';
 
 interface PhaserCanvasProps {
   onGameEnd: (result: Record<string, unknown>) => void;
   onReady?: () => void;
 }
 
-/**
- * PhaserCanvas — mounts Phaser 3/4 games
- *
- * Usage:
- * 1. Create your Phaser game with `new Phaser.Game(config)`
- * 2. Expose `window.gameInstance`
- * 3. Call `window.dispatchGameEvent('end', result)`
- */
 export default function PhaserCanvas({ onGameEnd, onReady }: PhaserCanvasProps) {
   const { capeData } = useCapeData();
   const { setGameIsReady, isMuted } = useGameContext();
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const gameRef = useRef<any>(null);
+  const gameRef = useRef<Phaser.Game | null>(null);
+  const bridgeRef = useRef<PhaserGameBridgeAdapter | null>(null);
 
-  // Set up event bridge
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    window.dispatchGameEvent = (eventName: string, data?: unknown) => {
-      console.log(`[Phaser Event] ${eventName}:`, data);
-
-      if (eventName === 'ready') {
-        setGameIsReady(true);
-        onReady?.();
-      } else if (eventName === 'end') {
-        onGameEnd(data as Record<string, unknown>);
-      }
-    };
-
-    return () => {
-      delete (window as any).dispatchGameEvent;
-    };
-  }, [setGameIsReady, onGameEnd, onReady]);
-
-  // Load Phaser and initialize game
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Load Phaser library
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.js';
-    script.async = true;
-    script.onload = () => {
-      console.log('[Phaser] Library loaded');
-      initializeGame();
-    };
-    script.onerror = () => {
-      console.error('[Phaser] Failed to load library');
-    };
+    const bridge = new PhaserGameBridgeAdapter();
+    bridgeRef.current = bridge;
 
-    document.head.appendChild(script);
+    // Wire bridge events
+    bridge.on('end', (data) => {
+      console.log('[Phaser] Game ended:', data);
+      onGameEnd(data as Record<string, unknown>);
+    });
 
-    return () => {
-      if (gameRef.current) {
-        gameRef.current.destroy(true);
-      }
-      document.head.removeChild(script);
-    };
-  }, []);
+    bridge.on('ready', () => {
+      console.log('[Phaser] Game ready');
+      setGameIsReady(true);
+      onReady?.();
+    });
 
-  const initializeGame = () => {
-    if (!containerRef.current) return;
+    // Set bridge data (CAPE content, etc.)
+    if (capeData) {
+      bridge.setData({
+        translations: capeData,
+        score: 0,
+      } as any);
+    }
 
-    const Phaser = (window as any).Phaser;
-
-    const config = {
+    // Create Phaser game
+    const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       parent: containerRef.current,
+      width: 1920,
+      height: 1080,
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+      },
       physics: {
         default: 'arcade',
-        arcade: { debug: false },
+        arcade: { debug: false, gravity: { y: 0 } },
       },
-      scene: {
-        preload: preload,
-        create: create,
-        update: update,
-      },
+      scene: [Boot, Load, Main, HUD],
+      backgroundColor: '#000000',
     };
 
     const game = new Phaser.Game(config);
     gameRef.current = game;
     (window as any).gameInstance = game;
+    (game as any).__bridge = bridge;
 
-    // Notify React
-    window.dispatchGameEvent?.('ready');
-  };
+    // Start the game
+    bridge.startGame();
 
-  const preload = function (this: any) {
-    // Load assets here
-    console.log('[Phaser] Preloading assets');
-  };
+    return () => {
+      if (gameRef.current) {
+        gameRef.current.destroy(true);
+        gameRef.current = null;
+      }
+      bridge.destroy();
+    };
+  }, [capeData, onGameEnd, onReady, setGameIsReady]);
 
-  const create = function (this: any) {
-    // Setup scene
-    const scene = this;
-    scene.add.text(100, 100, 'Phaser Game', { font: '32px Arial' });
-
-    // Example: End game on spacebar
-    this.input.keyboard.on('keydown-SPACE', () => {
-      window.dispatchGameEvent?.('end', {
-        score: 100,
-        playTime: 30000,
-      });
-    });
-
-    console.log('[Phaser] Scene created');
-  };
-
-  const update = function (this: any) {
-    // Game loop - runs every frame
-  };
+  // Handle mute state
+  useEffect(() => {
+    if (gameRef.current && bridgeRef.current) {
+      const data = bridgeRef.current.getData();
+      if (data) {
+        (gameRef.current as any).__muted = isMuted;
+      }
+    }
+  }, [isMuted]);
 
   return (
     <div
       ref={containerRef}
       className="absolute inset-0 w-full h-full"
-      style={{ overflow: 'hidden' }}
+      style={{ overflow: 'hidden', backgroundColor: '#000000' }}
     />
   );
 }
 
 declare global {
   interface Window {
-    dispatchGameEvent?: (eventName: string, data?: unknown) => void;
-    gameInstance?: any;
+    gameInstance?: Phaser.Game;
   }
 }

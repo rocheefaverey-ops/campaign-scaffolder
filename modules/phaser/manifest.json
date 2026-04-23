@@ -1,7 +1,7 @@
 {
   "id": "phaser",
-  "name": "Phaser 3",
-  "description": "Phaser 3 game canvas with an EventEmitter-based bridge. The Phaser scene emits 'end' with a result object to trigger navigation.",
+  "name": "Phaser",
+  "description": "Phaser freekick game with arcade physics, full scene pipeline (Boot → Load → Main + HUD), and a CAPE-bridge adapter.",
   "files": [
     {
       "src": "lib/phaser-adapter.ts",
@@ -15,7 +15,33 @@
       "src": "app/(campaign)/gameplay/page.tsx",
       "dest": "app/(campaign)/gameplay/page.tsx",
       "strategy": "replace"
-    }
+    },
+    { "src": "game/utils/Scaling.ts",           "dest": "game/utils/Scaling.ts" },
+    { "src": "game/utils/Constants.ts",          "dest": "game/utils/Constants.ts" },
+    { "src": "game/utils/Helpers.ts",            "dest": "game/utils/Helpers.ts" },
+    { "src": "game/controllers/eventsController.ts", "dest": "game/controllers/eventsController.ts" },
+    { "src": "game/controllers/controlController.ts", "dest": "game/controllers/controlController.ts" },
+    { "src": "game/data/teams.json",             "dest": "game/data/teams.json" },
+    { "src": "game/components/Trail.ts",         "dest": "game/components/Trail.ts" },
+    { "src": "game/components/playfield/Playfield.ts",             "dest": "game/components/playfield/Playfield.ts" },
+    { "src": "game/components/playfield/objects/Ball.ts",          "dest": "game/components/playfield/objects/Ball.ts" },
+    { "src": "game/components/playfield/objects/Goal.ts",          "dest": "game/components/playfield/objects/Goal.ts" },
+    { "src": "game/components/playfield/objects/PlayfieldLine.ts", "dest": "game/components/playfield/objects/PlayfieldLine.ts" },
+    { "src": "game/components/stadium/Grandstand.ts",              "dest": "game/components/stadium/Grandstand.ts" },
+    { "src": "game/components/playerteam/Player.ts",               "dest": "game/components/playerteam/Player.ts" },
+    { "src": "game/components/enemyteam/EnemyTeam.ts",             "dest": "game/components/enemyteam/EnemyTeam.ts" },
+    { "src": "game/components/enemyteam/objects/EnemyPlayer.ts",   "dest": "game/components/enemyteam/objects/EnemyPlayer.ts" },
+    { "src": "game/components/enemyteam/objects/EnemyGoalkeeper.ts", "dest": "game/components/enemyteam/objects/EnemyGoalkeeper.ts" },
+    { "src": "game/components/systems/Match.ts",      "dest": "game/components/systems/Match.ts" },
+    { "src": "game/components/systems/Tournament.ts", "dest": "game/components/systems/Tournament.ts" },
+    { "src": "game/scenes/Boot.ts", "dest": "game/scenes/Boot.ts" },
+    { "src": "game/scenes/Load.ts", "dest": "game/scenes/Load.ts" },
+    { "src": "game/scenes/Main.ts", "dest": "game/scenes/Main.ts" },
+    { "src": "game/scenes/HUD.ts",  "dest": "game/scenes/HUD.ts" }
+  ],
+  "copyDirs": [
+    { "src": "public/images", "dest": "public/images" },
+    { "src": "public/sounds", "dest": "public/sounds" }
   ],
   "envVars": [],
   "packages": ["phaser"],
@@ -24,8 +50,10 @@
     "extras": ["'wasm-unsafe-eval'"]
   },
   "notes": [
-    "Install Phaser: npm install phaser",
-    "Emit the game end event from inside your Phaser scene: this.game.events.emit('end', { score: 100 })",
-    "Add your Phaser scenes to PhaserCanvas.tsx in the scene array."
+    "Game scenes: Boot → Load → Main + HUD. Add new scenes in PhaserCanvas.tsx.",
+    "CAPE translations are passed via IUnityInput.translations — access in any scene: (this.game as any).__bridge.getData().translations",
+    "Muted state from CAPE is applied automatically on init and synced live via PhaserCanvas.",
+    "To emit game end: this.game.events.emit('end', { score: 100 })",
+    "Game assets (images, sounds) are in public/images/ and public/sounds/."
   ]
 }

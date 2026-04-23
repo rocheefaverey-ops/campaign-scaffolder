@@ -3,11 +3,10 @@ setlocal enabledelayedexpansion
 
 :: ─────────────────────────────────────────────────────────────────────────────
 :: scaffold-test.bat
-:: Scaffolds a semi-random test project using CAPE campaign 59822
-:: (the dedicated scaffolder test campaign on acceptance)
+:: Scaffolds a semi-random test project with a freshly created CAPE campaign
+:: so each run starts clean without stale keys from previous iterations.
 :: ─────────────────────────────────────────────────────────────────────────────
 
-set CAPE_ID=59822
 set SCAFFOLDER_DIR=%~dp0
 
 :: ── Random picks ─────────────────────────────────────────────────────────────
@@ -61,7 +60,7 @@ popd
 :: ── Summary ───────────────────────────────────────────────────────────────────
 echo.
 echo  ============================================================
-echo   scaffold-test.bat  --  CAPE %CAPE_ID%
+echo   scaffold-test.bat  --  new CAPE campaign (fresh each run)
 echo  ============================================================
 echo   Name   : %NAME%
 echo   Stack  : %STACK%
@@ -79,7 +78,7 @@ echo.
 :: ── Run ───────────────────────────────────────────────────────────────────────
 node "%SCAFFOLDER_DIR%cli\scaffold.js" ^
   --name=%NAME% ^
-  --cape-id=%CAPE_ID% ^
+  --create-cape ^
   --market=%MARKET% ^
   --stack=%STACK% ^
   %GAME_FLAG% ^

@@ -1,0 +1,16 @@
+{
+  "teams": [
+    {
+      "id": "jet",
+      "difficulty": 4,
+      "isPlayer": true
+    },
+    {
+      "id": "en",
+      "difficulty": 4,
+      "settings": {
+        "goalsRequired": 5
+      }
+    }
+  ]
+}

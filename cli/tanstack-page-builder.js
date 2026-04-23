@@ -160,16 +160,17 @@ function buildLaunchRoute(els) {
   const lines = [
     `import { createFileRoute, useLoaderData } from '@tanstack/react-router';`,
     hasLogo   ? `import { SmartImage } from '~/components/visuals/SmartImage.tsx';` : '',
-    hasLogo   ? `import VisualImage from '~/assets/images/logo.png';` : '',
+    hasLogo   ? `import VisualImage from '~/assets/images/logo.svg';` : '',
     `import { PageContainer } from '~/components/containers/PageContainer.tsx';`,
     (hasTitle || hasDesc) ? `import { StyledText } from '~/components/texts/StyledText.tsx';` : '',
     (hasCta || hasTutBtn) ? `import { StyledButton } from '~/components/buttons/StyledButton.tsx';` : '',
     `import { loadLaunchData } from '~/routes/-loaders/launchLoader.ts';`,
     hasCta    ? `import { useGameNavigation } from '~/hooks/useGameNavigation.ts';` : '',
+    `import styles from './launch.module.scss';`,
   ].filter(Boolean).join('\n');
 
   const body = [
-    hasLogo   ? `      <SmartImage src={VisualImage} alt={'logo'} width={200} aspectRatio={1} placeholder={logoPlaceholder} />` : '',
+    hasLogo   ? `      <SmartImage src={VisualImage} alt={'logo'} width={240} aspectRatio={2} placeholder={logoPlaceholder} />` : '',
     hasTitle  ? `      <StyledText type={'title'} marginTop={16} alternate>{copy.title}</StyledText>` : '',
     hasDesc   ? `      <StyledText type={'description'} marginTop={8} alternate>{copy.description}</StyledText>` : '',
     hasCta    ? `      <StyledButton marginTop={16} loading={isPending} onClick={navigate}>{copy.button}</StyledButton>` : '',
@@ -189,7 +190,7 @@ function Launch() {
   ${hasCta  ? `const { isPending, navigate } = useGameNavigation();` : ''}
 
   return (
-    <PageContainer>
+    <PageContainer className={styles.launch}>
 ${body}
     </PageContainer>
   );
@@ -241,10 +242,11 @@ import type { IContentSliderItem } from '~/components/slider/ContentSliderItem.t
 import type { IContentSliderHandle } from '~/components/slider/ContentSlider.tsx';
 ${hasSteps ? `import { ContentSlider } from '~/components/slider/ContentSlider.tsx';` : ''}
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
-import LogoVisual from '~/assets/images/logo.png';
+import LogoVisual from '~/assets/images/logo.svg';
 import { loadTutorialData } from '~/routes/-loaders/tutorialLoader.ts';
 import { useGameNavigation } from '~/hooks/useGameNavigation.ts';
 ${hasSkip ? `import { IconButton } from '~/components/buttons/IconButton.tsx';` : ''}
+import styles from './tutorial.module.scss';
 
 export const Route = createFileRoute('/tutorial')({
   component: Tutorial,
@@ -265,7 +267,7 @@ ${stepsArr}
   }, [navigate]);` : ''}
 
   return (
-    <PageContainer>
+    <PageContainer className={styles.tutorial}>
       ${hasSteps ? `<ContentSlider ref={contentRef} items={data} loading={isPending} onItemClicked={onItemClicked} />` : ''}
       ${hasSkip  ? `<IconButton icon={'close'} loading={isPending} onClick={navigate} />` : ''}
     </PageContainer>
@@ -306,20 +308,21 @@ ${stepsReturn}
 
 // ─── Score page ───────────────────────────────────────────────────────────────
 
-function buildScoreRoute(els) {
-  const hasConfetti  = els.includes('confetti');
-  const hasPlayTime  = els.includes('play-time');
-  const hasTitle     = els.includes('title');
-  const hasDesc      = els.includes('description');
-  const hasCtaReg    = els.includes('cta-register');
-  const hasCtaAgain  = els.includes('cta-play-again');
+function buildScoreRoute(els, pages = []) {
+  const hasConfetti   = els.includes('confetti');
+  const hasPlayTime   = els.includes('play-time');
+  const hasTitle      = els.includes('title');
+  const hasDesc       = els.includes('description');
+  const hasCtaReg     = els.includes('cta-register');
+  const hasCtaAgain   = els.includes('cta-play-again');
+  const registerRoute = pages.includes('register') ? '/register' : '/launch';
 
   const body = [
     hasConfetti ? `      <ConfettiOverlay config={confettiConfig} visual={'confetti'} visualCount={2} />` : '',
     hasPlayTime ? `      <StyledText type={'header'} alternate>{result.playTime}</StyledText>` : '',
     hasTitle    ? `      <StyledText type={'title'} marginTop={8} alternate>{copy.title}</StyledText>` : '',
     hasDesc     ? `      <StyledText type={'description'} marginTop={8} alternate>{copy.description}</StyledText>` : '',
-    hasCtaReg   ? `      <StyledButton linkOptions={{ to: '/register' }} marginTop={16}>{copy.buttonRegister}</StyledButton>` : '',
+    hasCtaReg   ? `      <StyledButton linkOptions={{ to: '${registerRoute}' }} marginTop={16}>{copy.buttonRegister || 'Play Again'}</StyledButton>` : '',
     hasCtaAgain ? `      <StyledButton linkOptions={{ to: '/launch' }} marginTop={8} alternate>{copy.buttonPlayAgain}</StyledButton>` : '',
   ].filter(Boolean).join('\n');
 
@@ -330,6 +333,7 @@ ${hasPlayTime ? `import { useUnityStore } from '~/hooks/stores/useUnityStore.ts'
 import { StyledText } from '~/components/texts/StyledText.tsx';
 ${(hasCtaReg || hasCtaAgain) ? `import { StyledButton } from '~/components/buttons/StyledButton.tsx';` : ''}
 import { loadScoreData } from '~/routes/-loaders/scoreLoader.ts';
+import styles from './score.module.scss';
 
 export const Route = createFileRoute('/score')({
   component: Score,
@@ -348,7 +352,7 @@ function Score() {
   }), []);` : ''}
 
   return (
-    <PageContainer>
+    <PageContainer className={styles.score}>
 ${body}
     </PageContainer>
   );
@@ -554,10 +558,11 @@ ${copyFields}
  */
 export function buildTsPage(pageType, elements, opts = {}) {
   const stepCount = opts.stepCount ?? 3;
+  const pages = opts.pages ?? [];
   switch (pageType) {
     case 'launch':   return { route: buildLaunchRoute(elements),   loader: buildLaunchLoader(elements) };
     case 'tutorial': return { route: buildTutorialRoute(elements, stepCount), loader: buildTutorialLoader(elements, stepCount) };
-    case 'score':    return { route: buildScoreRoute(elements),    loader: buildScoreLoader(elements) };
+    case 'score':    return { route: buildScoreRoute(elements, pages),    loader: buildScoreLoader(elements) };
     case 'register': return { route: buildRegisterRoute(elements), loader: buildRegisterLoader(elements) };
     default: throw new Error(`Unknown TanStack page type: ${pageType}`);
   }

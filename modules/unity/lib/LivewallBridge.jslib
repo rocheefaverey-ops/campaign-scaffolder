@@ -13,17 +13,22 @@ mergeInto(LibraryManager.library, {
    */
 
   SendEventToReact: function (eventName, jsonData) {
-    var eventNameStr = Pointer_stringify(eventName);
-    var jsonStr = jsonData ? Pointer_stringify(jsonData) : "{}";
+    var eventNameStr = UTF8ToString(eventName);
+    var jsonStr = jsonData ? UTF8ToString(jsonData) : "{}";
 
     try {
       var data = JSON.parse(jsonStr);
       console.log("[Livewall Bridge] SendEventToReact:", eventNameStr, data);
 
-      if (window.unityEventMap && typeof window.unityEventMap.dispatchToGame === "function") {
-        window.unityEventMap.dispatchToGame(eventNameStr, data);
+      if (window.unityEventMap) {
+        var listeners = window.unityEventMap.get(eventNameStr);
+        if (listeners && listeners.length > 0) {
+          listeners.forEach(function (cb) { cb(data); });
+        } else {
+          console.warn("[Livewall Bridge] No listeners for event:", eventNameStr);
+        }
       } else {
-        console.warn("[Livewall Bridge] window.unityEventMap.dispatchToGame not available");
+        console.warn("[Livewall Bridge] window.unityEventMap not available");
       }
     } catch (error) {
       console.error("[Livewall Bridge] JSON parse error:", error, "Raw:", jsonStr);
@@ -49,7 +54,7 @@ mergeInto(LibraryManager.library, {
    *   LogToReact("My debug message from Unity");
    */
   LogToReact: function (message) {
-    var messageStr = Pointer_stringify(message);
+    var messageStr = UTF8ToString(message);
     console.log("[Unity]", messageStr);
   },
 
@@ -59,9 +64,6 @@ mergeInto(LibraryManager.library, {
    *   bool isMuted = IsMuted() == 1;
    */
   IsMuted: function () {
-    if (window.__unityBootData && window.__unityBootData.muted) {
-      return 1;
-    }
-    return 0;
+    return window.muted ? 1 : 0;
   },
 });

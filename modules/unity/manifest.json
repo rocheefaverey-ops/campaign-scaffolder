@@ -1,21 +1,37 @@
 {
   "id": "unity",
   "name": "Unity WebGL Game",
-  "description": "Mount Unity WebGL games with automatic boot sequence and event handling",
-  "version": "1.0.0",
+  "description": "Mount Unity WebGL games using the Livewall standard: persistent layout-level context, version.json resolution, platform detection, and structured boot sequence",
+  "version": "2.0.0",
   "order": 10,
   "engine": "unity",
 
   "files": [
     {
-      "src": "components/UnityCanvas.tsx",
-      "dest": "components/_modules/unity/UnityCanvas.tsx",
+      "src": "components/IUnity.ts",
+      "dest": "components/_modules/unity/IUnity.ts",
       "type": "component"
     },
     {
-      "src": "components/useUnityBridge.ts",
-      "dest": "components/_modules/unity/useUnityBridge.ts",
+      "src": "components/UnityLogger.ts",
+      "dest": "components/_modules/unity/UnityLogger.ts",
       "type": "component"
+    },
+    {
+      "src": "components/UnityGame.tsx",
+      "dest": "components/_modules/unity/UnityGame.tsx",
+      "type": "component"
+    },
+    {
+      "src": "components/UnityContainer.tsx",
+      "dest": "components/_modules/unity/UnityContainer.tsx",
+      "type": "component"
+    },
+    {
+      "src": "app/(campaign)/gameplay/page.tsx",
+      "dest": "app/(campaign)/gameplay/page.tsx",
+      "type": "page",
+      "strategy": "replace"
     },
     {
       "src": "lib/LivewallBridge.jslib",
@@ -26,7 +42,12 @@
 
   "packages": [],
 
-  "envVars": [],
+  "envVars": [
+    "NEXT_PUBLIC_UNITY_BASE_URL=https://lw-wave-{{PROJECT_NAME}}-unity-acc.lwcf5.nl",
+    "NEXT_PUBLIC_UNITY_GAME_NAME=Game",
+    "NEXT_PUBLIC_UNITY_MIN_DPR=1",
+    "NEXT_PUBLIC_UNITY_MAX_DPR=1.5"
+  ],
 
   "cspPatch": {
     "script-src": ["https://*.lwcf.nl", "https://*.lwcf5.nl", "https://lw-*.lwdev.nl"],
@@ -34,9 +55,14 @@
   },
 
   "notes": [
-    "Unity WebGL builds must include LivewallBridge.jslib in Assets/Plugins/WebGL/",
-    "Environment variables required: NEXT_PUBLIC_UNITY_BASE_URL, NEXT_PUBLIC_UNITY_GAME_NAME",
-    "Unity game must emit events via SendEventToReact() from LivewallBridge",
-    "See /public/LivewallBridge.jslib for C# integration examples"
+    "IMPORTANT: Wrap {children} in the campaign layout with <UnityContainer> so Unity persists across routes (video → gameplay → result).",
+    "Example: import UnityContainer from '@components/_modules/unity/UnityContainer'; then <UnityContainer>{children}</UnityContainer>",
+    "Unity build must include LivewallBridge.jslib — copy public/LivewallBridge.jslib to Assets/Plugins/WebGL/ in your Unity project.",
+    "Unity build must emit a version.json at {NEXT_PUBLIC_UNITY_BASE_URL}/{NEXT_PUBLIC_UNITY_GAME_NAME}/version.json with { currentVersion: N }.",
+    "Unity build files must live at {baseUrl}/{gameName}/V{N}/{platform}/ where platform is 'desktop', 'ios', or 'android'.",
+    "Boot sequence: initializeUnity (createUnityInstance → sceneLoaded) → preloadScene (SetScene → addressableLoaded) → loadScene (LoadScene → sceneLoaded) → startGame (StartGame).",
+    "Call ctx.setData({ translations, playTutorial }) before fullBoot — UnityGame adds environment + muted automatically.",
+    "For replay support call ctx.replayBoot() instead of fullBoot() on subsequent plays.",
+    "See components/_modules/unity/IUnity.ts to extend IUnitySetData with campaign-specific fields."
   ]
 }

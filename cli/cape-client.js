@@ -113,6 +113,19 @@ export async function login(email, password) {
 }
 
 /**
+ * Clear cached CAPE tokens (typically before forcing re-login).
+ * Deletes the token file so checkAuth() returns null.
+ */
+export async function clearTokenCache() {
+  try {
+    const fs = await import('fs/promises');
+    await fs.unlink(AUTH_FILE);
+  } catch {
+    // File doesn't exist — that's fine
+  }
+}
+
+/**
  * Create a new campaign. Returns the numeric campaign ID string.
  *
  * @param {object} tokens
@@ -163,7 +176,8 @@ export async function pushFormat(tokens, campaignId, formatFile) {
     brand:       formatData.brand        || '',
     department:  formatData.department   || '',
     active:      formatData.active       ?? '1',
-    publishProfiles: formatFile.publishProfiles ?? formatData.publishProfiles,
+    // CAPE stores both publishProfiles and interfaceSetup as JSON strings in the format API
+    publishProfiles: JSON.stringify(formatFile.publishProfiles ?? formatData.publishProfiles),
     interfaceSetup:  JSON.stringify(formatFile.interfaceSetup),
   };
 
@@ -274,6 +288,19 @@ export async function populateDefaults(tokens, campaignId, interfaceSetup) {
   }
 
   return populated;
+}
+
+/**
+ * Delete a campaign permanently.
+ *
+ * @param {object} tokens
+ * @param {string} campaignId
+ */
+export async function deleteCampaign(tokens, campaignId) {
+  const { ok, data } = await apiPost('/campaigns/delete', { id: campaignId }, tokens);
+  if (!ok || data?.success === 0) {
+    throw new Error(`Campaign delete failed: ${data?.error || JSON.stringify(data)}`);
+  }
 }
 
 /**

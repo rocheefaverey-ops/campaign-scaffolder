@@ -52,9 +52,9 @@ export interface IUnityNavigation {
 }
 
 export enum UnityNavigationType {
-  INTERNAL_URL = 0,
-  EXTERNAL_URL = 1,
-  TERMS = 2,
+  INTERNAL_URL = 'INTERNAL_URL',
+  EXTERNAL_URL = 'EXTERNAL_URL',
+  TERMS = 'TERMS',
 }
 
 /**
@@ -68,8 +68,8 @@ export interface IUnityTracking {
 }
 
 export enum UnityTrackingType {
-  VIEW = 0,
-  EVENT = 1,
+  VIEW = 'VIEW',
+  EVENT = 'EVENT',
 }
 
 /**

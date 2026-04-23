@@ -17,6 +17,7 @@ import { createInterface } from 'readline';
 import { existsSync, readdirSync, statSync, readFileSync, rmSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { checkAuth, deleteCampaign } from './cape-client.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -58,6 +59,21 @@ function deleteProject(dir, entry) {
   console.log(`  ${c.green('✔')} Deleted ${c.cyan(entry)}`);
 }
 
+async function deleteCapeProject(tokens, project) {
+  const capeId = project.meta.capeId;
+  if (!capeId) {
+    console.log(`  ${c.dim('⊘')} ${c.dim(project.entry)} — no CAPE ID recorded, skipping`);
+    return;
+  }
+  process.stdout.write(`  ${c.dim('⟳')} Deleting CAPE campaign ${c.cyan(capeId)} (${project.entry})... `);
+  try {
+    await deleteCampaign(tokens, capeId);
+    console.log(c.green('✔'));
+  } catch (err) {
+    console.log(`${c.yellow('⚠')}  ${err.message}`);
+  }
+}
+
 async function main() {
   const argv    = process.argv.slice(2);
   const listOnly = argv.includes('--list');
@@ -88,45 +104,62 @@ async function main() {
   const rl  = createInterface({ input: process.stdin, output: process.stdout });
   const ask = (q) => new Promise((res) => rl.question(q, res));
 
+  let toDelete = [];
+
   if (deleteAll) {
     const confirm = (await ask(`  ${c.red('Delete ALL')} ${projects.length} project(s)? ${c.dim('[y/N]')}: `)).trim().toLowerCase();
-    rl.close();
-    if (confirm !== 'y' && confirm !== 'yes') { console.log('\n  Aborted.\n'); return; }
-    console.log('');
-    for (const p of projects) deleteProject(p.dir, p.entry);
-    console.log('');
-    return;
-  }
-
-  // Interactive picker
-  console.log(`  ${c.dim('Enter numbers to delete (comma-separated), "a" for all, or Enter to cancel:')}`);
-  const input = (await ask(`  ${c.cyan('Select')}: `)).trim().toLowerCase();
-  rl.close();
-
-  if (!input) { console.log('\n  Nothing deleted.\n'); return; }
-
-  let toDelete = [];
-  if (input === 'a' || input === 'all') {
+    if (confirm !== 'y' && confirm !== 'yes') { rl.close(); console.log('\n  Aborted.\n'); return; }
     toDelete = projects;
   } else {
-    toDelete = input.split(',').map(s => {
-      const n = parseInt(s.trim(), 10);
-      return (n >= 1 && n <= projects.length) ? projects[n - 1] : null;
-    }).filter(Boolean);
+    // Interactive picker
+    console.log(`  ${c.dim('Enter numbers to delete (comma-separated), "a" for all, or Enter to cancel:')}`);
+    const input = (await ask(`  ${c.cyan('Select')}: `)).trim().toLowerCase();
+
+    if (!input) { rl.close(); console.log('\n  Nothing deleted.\n'); return; }
+
+    if (input === 'a' || input === 'all') {
+      toDelete = projects;
+    } else {
+      toDelete = input.split(',').map(s => {
+        const n = parseInt(s.trim(), 10);
+        return (n >= 1 && n <= projects.length) ? projects[n - 1] : null;
+      }).filter(Boolean);
+    }
+
+    if (toDelete.length === 0) { rl.close(); console.log('\n  Nothing to delete.\n'); return; }
+
+    console.log('');
+    console.log(`  About to delete:`);
+    for (const p of toDelete) {
+      const capeInfo = p.meta.capeId ? c.dim(` (CAPE ${p.meta.capeId})`) : '';
+      console.log(`    ${c.red('✘')} ${p.entry}${capeInfo}`);
+    }
+    const confirm = (await ask(`\n  Confirm? ${c.dim('[y/N]')}: `)).trim().toLowerCase();
+    if (confirm !== 'y' && confirm !== 'yes') { rl.close(); console.log('\n  Aborted.\n'); return; }
   }
 
-  if (toDelete.length === 0) { console.log('\n  Nothing to delete.\n'); return; }
+  // Ask whether to also delete CAPE campaigns
+  const withCape = toDelete.filter(p => p.meta.capeId);
+  let deleteCape = false;
+  if (withCape.length > 0) {
+    const capeAnswer = (await ask(`\n  Also delete ${c.cyan(String(withCape.length))} CAPE campaign(s) on acceptance? ${c.dim('[y/N]')}: `)).trim().toLowerCase();
+    deleteCape = capeAnswer === 'y' || capeAnswer === 'yes';
+  }
 
-  console.log('');
-  console.log(`  About to delete:`);
-  for (const p of toDelete) console.log(`    ${c.red('✘')} ${p.entry}`);
-  const confirm = (await new Promise((res) => {
-    const rl2 = createInterface({ input: process.stdin, output: process.stdout });
-    rl2.question(`\n  Confirm? ${c.dim('[y/N]')}: `, (a) => { rl2.close(); res(a); });
-  })).trim().toLowerCase();
+  rl.close();
 
-  if (confirm !== 'y' && confirm !== 'yes') { console.log('\n  Aborted.\n'); return; }
+  // Delete CAPE campaigns first (while we still have the IDs)
+  if (deleteCape) {
+    console.log('');
+    const tokens = await checkAuth();
+    if (!tokens) {
+      console.log(`  ${c.yellow('⚠')}  Not logged in to CAPE — skipping campaign deletion. Log in via the scaffold wizard first.`);
+    } else {
+      for (const p of withCape) await deleteCapeProject(tokens, p);
+    }
+  }
 
+  // Delete local project folders
   console.log('');
   for (const p of toDelete) deleteProject(p.dir, p.entry);
   console.log('');

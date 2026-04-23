@@ -1,7 +1,7 @@
 {
   "publishProfiles": {
     "export": {
-      "title": "Publish",
+      "title": "Publish game",
       "tasks": [
         {
           "customerFunction": "publishGame",
@@ -67,7 +67,7 @@
                     "key": "settings-branding-themecolor",
                     "itemType": "input",
                     "picker": "picker",
-                    "defaultValue": "#1a1a2e"
+                    "defaultValue": "#000000"
                   },
                   {
                     "type": "color",
@@ -76,7 +76,7 @@
                     "key": "settings-branding-primarycolor",
                     "itemType": "input",
                     "picker": "picker",
-                    "defaultValue": "#e94560"
+                    "defaultValue": "#C4FF00"
                   },
                   {
                     "type": "color",
@@ -85,7 +85,7 @@
                     "key": "settings-branding-secondarycolor",
                     "itemType": "input",
                     "picker": "picker",
-                    "defaultValue": "#16213e"
+                    "defaultValue": "#000000"
                   },
                   {
                     "type": "color",
@@ -94,7 +94,7 @@
                     "key": "settings-branding-accentcolor",
                     "itemType": "input",
                     "picker": "picker",
-                    "defaultValue": "#4a9eff"
+                    "defaultValue": "#C4FF00"
                   }
                 ]
               },

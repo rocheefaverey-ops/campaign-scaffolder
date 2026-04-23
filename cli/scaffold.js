@@ -22,15 +22,16 @@
  */
 
 import { createInterface } from 'readline';
+import { randomBytes } from 'crypto';
 import { existsSync, mkdirSync, cpSync, rmSync, renameSync, readdirSync, statSync, readFileSync, writeFileSync } from 'fs';
 import { join, resolve, dirname, relative } from 'path';
 import { fileURLToPath } from 'url';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import { printPostScaffoldMessage } from './post-scaffold-message.js';
 import { PAGE_ELEMENTS, PAGE_DEFAULTS, ELEMENT_CATALOGUE, buildPage } from './page-builder.js';
 import { TS_PAGE_ELEMENTS, TS_PAGE_DEFAULTS, TS_ELEMENT_CATALOGUE, TS_ALL_PAGES, TS_PAGE_ROUTES, buildTsPage } from './tanstack-page-builder.js';
 import { getGamesByEngine, getGame, gameEnvLines, gameLabel } from './game-registry.js';
-import { checkAuth, login, createCampaign, pushFormat, populateDefaults, publishCampaign, SCAFFOLDER_FORMAT_FILE } from './cape-client.js';
+import { checkAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, publishCampaign, SCAFFOLDER_FORMAT_FILE } from './cape-client.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -46,27 +47,62 @@ const MODULES_DIR        = join(SCAFFOLDER_ROOT, 'modules');
  * Checks/prompts for auth, creates a campaign, pushes the scaffolder format,
  * populates defaults, and publishes to acceptance.
  * Returns the new numeric campaign ID string.
+ *
+ * Includes retry logic: up to 3 login attempts before throwing.
+ * Supports opening CAPE website to verify/reset account before retrying.
  */
-async function runCapeCreateFlow(ask, projectName, market) {
-  // 1. Auth
-  let tokens = await checkAuth();
+async function runCapeCreateFlow(ask, projectName, market, autoTitle = null, forceNewLogin = false) {
+  // 1. Auth — with retry logic (up to 3 attempts)
+  let tokens = forceNewLogin ? null : await checkAuth();
   if (!tokens) {
-    console.log(`\n  ${c.yellow('⚠')}  Not logged in to CAPE. Enter your credentials:`);
-    const email    = (await ask(`  ${c.cyan('CAPE email')}: `)).trim();
-    const password = (await ask(`  ${c.cyan('CAPE password')}: `)).trim();
-    try {
-      tokens = await login(email, password);
-      console.log(`  ${c.green('✓')}  Logged in.`);
-    } catch (err) {
-      throw new Error(`CAPE login failed: ${err.message}`);
+    const askAuth = ask ?? ((q) => promptOnce(q));
+    const MAX_LOGIN_ATTEMPTS = 3;
+    let loginAttempt = 0;
+    let loginError = null;
+
+    while (loginAttempt < MAX_LOGIN_ATTEMPTS && !tokens) {
+      loginAttempt++;
+      console.log(`\n  ${c.yellow('⚠')}  Not logged in to CAPE. Enter your credentials:`);
+      if (loginAttempt > 1) {
+        console.log(`  ${c.dim(`Attempt ${loginAttempt}/${MAX_LOGIN_ATTEMPTS}`)}`);
+      }
+
+      const email    = (await askAuth(`  ${c.cyan('CAPE email')}: `)).trim();
+      const password = (await askAuth(`  ${c.cyan('CAPE password')}: `)).trim();
+
+      if (!email || !password) {
+        console.log(`  ${c.red('✘')} Email and password are required.`);
+        continue;
+      }
+
+      try {
+        tokens = await login(email, password);
+        console.log(`  ${c.green('✓')}  Logged in.`);
+      } catch (err) {
+        loginError = err;
+        if (loginAttempt < MAX_LOGIN_ATTEMPTS) {
+          console.log(`  ${c.red('✘')} ${err.message}`);
+          console.log(`  ${c.dim(`Try again (${MAX_LOGIN_ATTEMPTS - loginAttempt} attempt${MAX_LOGIN_ATTEMPTS - loginAttempt === 1 ? '' : 's'} remaining)`)}`);
+        }
+      }
+    }
+
+    if (!tokens) {
+      throw new Error(`CAPE login failed after ${MAX_LOGIN_ATTEMPTS} attempts: ${loginError?.message || 'unknown error'}`);
     }
   }
 
-  // 2. Campaign title
+  // 2. Campaign title — use autoTitle if provided (non-interactive mode), otherwise prompt
   const defaultTitle = projectName
     .split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-  const rawTitle = (await ask(`  ${c.cyan('Campaign title')} ${c.dim(`(default: ${defaultTitle})`)}: `)).trim();
-  const title    = rawTitle || defaultTitle;
+  let title;
+  if (autoTitle !== null) {
+    title = autoTitle || defaultTitle;
+    console.log(`  ${c.dim('Campaign title:')} ${title}`);
+  } else {
+    const rawTitle = (await ask(`  ${c.cyan('Campaign title')} ${c.dim(`(default: ${defaultTitle})`)}: `)).trim();
+    title = rawTitle || defaultTitle;
+  }
 
   // 3. Create campaign
   process.stdout.write(`  ${c.dim('Creating campaign...')} `);
@@ -152,7 +188,7 @@ const c = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const GAME_ENGINES = ['unity', 'r3f', 'phaser', 'video', 'pure-react'];
+const GAME_ENGINES = ['unity', 'r3f', 'phaser', 'memory', 'video', 'pure-react'];
 
 const ALL_PAGES = ['landing', 'video', 'onboarding', 'register', 'game', 'result', 'leaderboard', 'voucher'];
 
@@ -259,6 +295,9 @@ function parseArgs(argv) {
     else if (key === 'iframe')   args.iframe   = true;
     else if (key === 'update' || key === 'u') args.update = true;
     else if (key === 'yes' || key === 'y') args.yes = true;
+    else if (key === 'create-cape') args.createCape = true;
+    else if (key === 'recreate' || key === 'rebuild') args.recreate = true;
+    else if (key === 'repush-format') args.repushFormat = val;
   }
   return args;
 }
@@ -359,14 +398,36 @@ async function runWizard(pre) {
   }
   console.log('');
 
-  // 0. Stack
+  // 0. Stack + experience type — combined into one prompt
   let stack = pre.stack ?? null;
+  let game  = pre.game  ?? null;
+  let selectedGame = null;
   if (stack === null) {
-    console.log(`  ${c.bold('Experience / Engine:')}`);
-    console.log(`    ${c.dim('0)')} Front-end based   ${c.dim('← Next.js 16 — CAPE-heavy, registration flows, SSR')}`);
-    console.log(`    ${c.dim('1)')} Unity-based        ${c.dim('← TanStack + Vite (NHL-Crush pattern)')}`);
-    const v = (await ask(`  ${c.cyan('Select')} ${c.dim('[0-1, default: 0]')}: `)).trim();
-    stack = v === '1' ? 'tanstack' : 'next';
+    console.log(`  ${c.bold('Experience type:')}`);
+    console.log(`    ${c.dim('1)')} ${c.cyan('HaasF1')}            ${c.dim('← Next.js 16 + Unity WebGL')}`);
+    console.log(`    ${c.dim('2)')} ${c.cyan('NHL-Crush')}         ${c.dim('← TanStack Start + Unity WebGL')}`);
+    console.log(`    ${c.dim('3)')} ${c.cyan('React Three Fiber')} ${c.dim('← 3D — R3F / ThreeJS')}`);
+    console.log(`    ${c.dim('4)')} ${c.cyan('Phaser 3')}          ${c.dim('← 2D game engine — like Freekick')}`);
+    console.log(`    ${c.dim('5)')} ${c.cyan('Frontend')}          ${c.dim('← Pure React — like Hunkemoller memory game')}`);
+    console.log(`    ${c.dim('6)')} ${c.cyan('No game')}           ${c.dim('← Next.js 16 — CAPE only, registration flows')}`);
+    const v = (await ask(`  ${c.cyan('Select')} ${c.dim('[1-6, default: 1]')}: `)).trim();
+    if (v === '2') {
+      stack = 'tanstack'; game = 'unity';
+    } else if (v === '3') {
+      stack = 'next'; game = 'r3f';
+    } else if (v === '4') {
+      stack = 'next'; game = 'phaser';
+    } else if (v === '5') {
+      stack = 'next'; game = 'memory';
+    } else if (v === '6') {
+      stack = 'next'; game = '';
+    } else {
+      // Default / option 1: HaasF1 (Next.js + Unity)
+      stack = 'next'; game = 'unity';
+      const allGames = getGamesByEngine('unity');
+      selectedGame = allGames.find(g => g.id === 'haas-f1') ?? allGames[0] ?? null;
+      if (selectedGame) console.log(`      ${c.green('✔')} Template: ${selectedGame.name}`);
+    }
   }
 
   // 1. Project name
@@ -390,7 +451,85 @@ async function runWizard(pre) {
         if (VALID_MARKETS.has(mv)) mktForCape = mv;
       }
       console.log('');
-      capeId = await runCapeCreateFlow(ask, name, mktForCape);
+
+      // Attempt campaign creation with recovery options on failure
+      try {
+        capeId = await runCapeCreateFlow(ask, name, mktForCape);
+      } catch (err) {
+        console.log(`\n  ${c.red('✘')} ${err.message}`);
+        console.log('');
+
+        // Show recovery menu
+        let recovered = false;
+        while (!recovered && !capeId) {
+          console.log(`  ${c.bold('Recovery options:')}`);
+          console.log(`    ${c.dim('1)')} Retry login            ${c.dim('← clear cache & login fresh')}`);
+          console.log(`    ${c.dim('2)')} Open CAPE & retry      ${c.dim('← check account, then login')}`);
+          console.log(`    ${c.dim('3)')} Use existing ID        ${c.dim('← enter CAPE campaign ID manually')}`);
+          console.log(`    ${c.dim('4)')} Cancel                 ${c.dim('← start over')}`);
+
+          const choice = (await ask(`  ${c.cyan('Select')} ${c.dim('[1-4]')}: `)).trim();
+
+          if (choice === '1') {
+            // Retry login with fresh auth
+            console.log('');
+            await clearTokenCache();
+            try {
+              capeId = await runCapeCreateFlow(ask, name, mktForCape, null, true);  // autoTitle=null, forceNewLogin=true
+              recovered = true;
+            } catch (retryErr) {
+              console.log(`  ${c.red('✘')} ${retryErr.message}`);
+              console.log('');
+            }
+          } else if (choice === '2') {
+            // Open CAPE website then retry login
+            console.log('');
+            console.log(`  ${c.dim('Opening https://engagement.acceptance.campaigndesigner.io ...')}`);
+            try {
+              const { platform } = process;
+              const url = 'https://engagement.acceptance.campaigndesigner.io';
+              if (platform === 'win32') {
+                execSync(`start "${url}"`, { stdio: 'ignore', shell: true });
+              } else if (platform === 'darwin') {
+                execSync(`open "${url}"`, { stdio: 'ignore' });
+              } else {
+                execSync(`xdg-open "${url}"`, { stdio: 'ignore' });
+              }
+              console.log(`  ${c.green('✓')} Browser opened. Check your account, reset password if needed, then return here.`);
+            } catch {
+              console.log(`  ${c.yellow('⚠')} Could not open browser. Visit: https://engagement.acceptance.campaigndesigner.io`);
+            }
+            console.log('');
+            await clearTokenCache();
+            try {
+              capeId = await runCapeCreateFlow(ask, name, mktForCape, null, true);  // autoTitle=null, forceNewLogin=true
+              recovered = true;
+            } catch (retryErr) {
+              console.log(`  ${c.red('✘')} ${retryErr.message}`);
+              console.log('');
+            }
+          } else if (choice === '3') {
+            // Manual CAPE ID entry
+            console.log('');
+            while (!capeId || !/^\d+$/.test(capeId)) {
+              if (capeId) console.log(`  ${c.red('✘')} CAPE ID must be numeric (e.g. 54031)`);
+              capeId = (await ask(`  ${c.cyan('CAPE campaign ID')}: `)).trim();
+            }
+            console.log(`  ${c.green('✓')} Using CAPE ID: ${c.cyan(capeId)}`);
+            recovered = true;
+          } else if (choice === '4') {
+            // Cancel
+            console.log('');
+            console.log(`  ${c.yellow('⚠')} Aborted campaign creation. You can try again next time.`);
+            rl.close();
+            throw new Error('Campaign creation cancelled.');
+          } else {
+            console.log(`  ${c.red('✘')} Invalid selection. Please choose 1-4.`);
+            console.log('');
+          }
+        }
+      }
+
       console.log('');
       // Pre-fill market so the later market step is skipped
       if (!pre.market) pre = { ...pre, market: mktForCape };
@@ -419,16 +558,21 @@ async function runWizard(pre) {
 
   // TanStack — full wizard for pages + elements
   if (stack === 'tanstack') {
-    // 3b. Unity game type: existing (CDN URL) or new
+    // 3b. Unity game type: existing (CDN URL), NHL-Crush example, or new
+    const NHL_CRUSH_CDN = 'https://lw-someone-something-unity-test.lwcf4.nl';
     let unityCdnUrl = pre.unityCdnUrl ?? '';
     if (!pre.isUpdate && !unityCdnUrl) {
       console.log('');
-      console.log(`  ${c.bold('Type Unity Game:')}`);
-      console.log(`    ${c.dim('1)')} Existing game  ${c.dim('← paste the CDN URL (Build folder URL)')}`);
-      console.log(`    ${c.dim('2)')} New game       ${c.dim('← leave CDN vars empty — fill in later')}`);
-      const ut = (await ask(`  ${c.cyan('Select')} ${c.dim('[1-2, default: 2]')}: `)).trim();
+      console.log(`  ${c.bold('Unity game:')}`);
+      console.log(`    ${c.dim('1)')} Existing game      ${c.dim('← paste the CDN URL (Build folder URL)')}`);
+      console.log(`    ${c.dim('2)')} NHL-Crush example  ${c.dim('← use NHL-Crush CDN for quick testing')}`);
+      console.log(`    ${c.dim('3)')} New game           ${c.dim('← leave CDN vars empty — fill in later')}`);
+      const ut = (await ask(`  ${c.cyan('Select')} ${c.dim('[1-3, default: 3]')}: `)).trim();
       if (ut === '1') {
         unityCdnUrl = (await ask(`  ${c.cyan('CDN URL')} ${c.dim('(e.g. https://cdn.example.com/Build)')}: `)).trim();
+      } else if (ut === '2') {
+        unityCdnUrl = NHL_CRUSH_CDN;
+        console.log(`      ${c.green('✔')} CDN: ${c.dim(unityCdnUrl)}`);
       }
     }
 
@@ -564,25 +708,8 @@ async function runWizard(pre) {
     return { stack, name, capeId, market, game: 'unity', pages: tsPages, regMode: 'none', modules: [], gtmId, iframe: false, outputDir, tsPageElementSelections, unityCdnUrl, isUpdate: pre.isUpdate ?? false };
   }
 
-  // 4. Experience / engine
-  let game = pre.game ?? null;
-  if (game === null) {
-    console.log('');
-    console.log(`  ${c.bold('Experience type:')}`);
-    console.log(`    ${c.dim('0)')} No game (registration / voucher only)`);
-    console.log(`    ${c.dim('1)')} Unity WebGL`);
-    console.log(`    ${c.dim('2)')} React Three Fiber (3D)`);
-    console.log(`    ${c.dim('3)')} Phaser 3 (2D)`);
-    console.log(`    ${c.dim('4)')} Video experience`);
-    console.log(`    ${c.dim('5)')} Pure React (custom — you wire it in)`);
-    const v = (await ask(`  ${c.cyan('Select')} ${c.dim('[0-5, default: 0]')}: `)).trim();
-    const MAP = { '1': 'unity', '2': 'r3f', '3': 'phaser', '4': 'video', '5': 'pure-react' };
-    game = MAP[v] ?? '';
-  }
-
-  // 4b. Game picker — shown when a game engine is selected
-  let selectedGame = null;
-  if (game === 'unity') {
+  // 4b. Game picker — shown when Unity is chosen but no specific game was pre-selected
+  if (game === 'unity' && selectedGame === null) {
     const unityGames = getGamesByEngine('unity');
     if (unityGames.length > 0) {
       console.log('');
@@ -622,7 +749,7 @@ async function runWizard(pre) {
   }
 
   // Ensure engine-required pages are present
-  if (game && game !== 'pure-react' && !pages.includes('game')) pages.push('game');
+  if (game && game !== 'pure-react' && game !== 'none' && !pages.includes('game')) pages.push('game');
 
   // 5b. Page builder — ask what elements each page should have
   const BUILDABLE = ['landing', 'onboarding', 'result', 'menu'];
@@ -834,7 +961,7 @@ function autoModulesForPages(pages, game = '') {
 function resolveModules(game, pages, extraModules) {
   const all = new Set();
   // Game engine module
-  if (game && GAME_ENGINES.includes(game) && game !== 'pure-react' && game !== 'video') {
+  if (game && GAME_ENGINES.includes(game) && game !== 'pure-react' && game !== 'video' && game !== 'none') {
     all.add(game);
   }
   // Page-required modules
@@ -897,8 +1024,8 @@ async function scaffold(options) {
 
     // 4a. Atomic rename: temp → final.
     //     On Windows, antivirus (Defender) can briefly hold a lock on newly-written
-    //     files, causing EBUSY.  Retry up to 4 times with back-off; if still busy,
-    //     fall back to cpSync + rmSync (skip .git — there is none yet) which always works.
+    //     files, causing EBUSY or EPERM.  Retry up to 4 times with back-off; if still
+    //     busy/denied, fall back to cpSync + rmSync which always works.
     let renamed = false;
     for (let attempt = 1; attempt <= 4; attempt++) {
       try {
@@ -906,7 +1033,7 @@ async function scaffold(options) {
         renamed = true;
         break;
       } catch (e) {
-        if (e.code !== 'EBUSY') throw e;
+        if (e.code !== 'EBUSY' && e.code !== 'EPERM') throw e;
         await new Promise(r => setTimeout(r, attempt * 250));
       }
     }
@@ -926,13 +1053,18 @@ async function scaffold(options) {
       }
     }
 
+    // 5. Print cd command so the developer can navigate there themselves
+    const frontendDir = join(outputDir, 'frontend');
+    console.log(`\n  ${c.bold('Ready!')} Navigate to your project:\n`);
+    console.log(`  ${c.cyan(`cd "${frontendDir}"`)}\n`);
+
   } catch (err) {
     // Cleanup temp dir + lock before rethrowing so main() can print the error.
     runCleanup();
     throw err;
   }
 
-  // 5. Success — unregister cleanup (temp dir is now the final dir).
+  // 6. Success — unregister cleanup (temp dir is now the final dir).
   unregister();
   releaseLock(lockPath);
 }
@@ -972,6 +1104,48 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
     try { return JSON.parse(readFileSync(join(outputDir, '.scaffolded'), 'utf8')).createdAt; } catch { return null; }
   })();
 
+  // 1b. Install Livewall brand placeholder images
+  step('1b', 'Installing brand placeholder images…');
+  const imagesDir = join(frontendDir, 'src', 'assets', 'images');
+  mkdirSync(imagesDir, { recursive: true });
+
+  const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360">
+  <rect width="720" height="360" fill="#C4FF00" rx="16"/>
+  <text x="360" y="220" font-family="'Arial Black', 'Impact', sans-serif" font-size="108" font-weight="900" fill="#000000" text-anchor="middle" letter-spacing="-2">livewall</text>
+</svg>`;
+
+  const ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <circle cx="100" cy="100" r="100" fill="#C4FF00"/>
+  <text x="100" y="130" font-family="'Arial Black', 'Impact', sans-serif" font-size="80" font-weight="900" fill="#000000" text-anchor="middle" letter-spacing="-2">lw</text>
+</svg>`;
+
+  writeFileSync(join(imagesDir, 'logo.svg'), LOGO_SVG, 'utf8');
+  writeFileSync(join(imagesDir, 'logo-icon.svg'), ICON_SVG, 'utf8');
+
+  // Patch boilerplate file references from logo.png → svg variants + brand fixes
+  const logoPatchMap = {
+    [join(frontendDir, 'src', 'routes', '-loaders', 'rootLoader.ts')]: (c) => c.replace(/logo\.png/g, 'logo.svg'),
+    [join(frontendDir, 'src', 'components', 'containers', 'ViewContainer.tsx')]: (c) => c.replace(/logo\.png/g, 'logo-icon.svg'),
+    // Add data URI passthrough so inlined SVGs don't produce warnings
+    [join(frontendDir, 'src', 'server', 'ImageBlurUri.ts')]: (c) => c.replace(
+      `if (!isRelativeUrl(data.imageUrl)) {`,
+      `if (data.imageUrl.startsWith('data:')) { return data.imageUrl; }\n    if (!isRelativeUrl(data.imageUrl)) {`,
+    ),
+    // Add $brandColor to SCSS variables
+    [join(frontendDir, 'src', 'assets', 'styles', '_variables.scss')]: (c) => c.replace(
+      `$primaryColor:`,
+      `$brandColor: #C4FF00;\n$primaryColor:`,
+    ),
+    // Apply brand color to primary CTA button
+    [join(frontendDir, 'src', 'components', 'buttons', 'StyledButton.module.scss')]: (c) => c
+      .replace(`background-color: $secondaryColor;`, `background-color: $brandColor;`)
+      .replace(`color: $whiteColor;`, `color: $blackColor;`),
+  };
+  for (const [file, patch] of Object.entries(logoPatchMap)) {
+    if (existsSync(file)) writeFileSync(file, patch(readFileSync(file, 'utf8')), 'utf8');
+  }
+  ok('Brand placeholders installed (replace logo.svg / logo-icon.svg with actual assets)');
+
   // 2. Token replacement
   step(2, 'Replacing tokens…');
   const tokens = {
@@ -991,9 +1165,22 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   const envDest = join(frontendDir, '.env');
   if (envSrc && !existsSync(envDest)) {
     let envContent = readFileSync(envSrc, 'utf8');
+    const devSecret = randomBytes(16).toString('hex');
     envContent = envContent
-      .replace(/^CAPE_CAMPAIGN_ID=.*/m,         `CAPE_CAMPAIGN_ID=${capeId}`)
-      .replace(/^CAPE_CAMPAIGN_MARKET=.*/m,      `CAPE_CAMPAIGN_MARKET=${market}`)
+      // Replace CI/CD shell-variable references with dev-friendly values
+      .replace(/^VITE_ENVIRONMENT=\$\S*/m,          'VITE_ENVIRONMENT=development')
+      .replace(/^API_URL=(\$\S*)?$/m,               `API_URL=https://wave-${name}-api-acc.lwdev.nl`)
+      .replace(/^VITE_API_URL=(\$\S*)?$/m,          `VITE_API_URL=https://wave-${name}-api-acc.lwdev.nl`)
+      .replace(/^API_SESSION_SECRET=(\$\S*)?$/m,    `API_SESSION_SECRET=${devSecret}`)
+      .replace(/^UNITY_BASE_URL=(\$\S*)?$/m,        `UNITY_BASE_URL=${unityCdnUrl || ''}`)
+      .replace(/^GCP_REPORTING_NAME=\$\S*/m,        'GCP_REPORTING_NAME=')
+      // Disable GCP logging for local dev
+      .replace(/^LOG_TO_GCP=.*/m,                    'LOG_TO_GCP=0')
+      .replace(/^LOG_STRUCTURED_CONSOLE=.*/m,        'LOG_STRUCTURED_CONSOLE=0')
+      // CAPE campaign
+      .replace(/^CAPE_CAMPAIGN_ID=.*/m,              `CAPE_CAMPAIGN_ID=${capeId}`)
+      .replace(/^CAPE_CAMPAIGN_MARKET=.*/m,          `CAPE_CAMPAIGN_MARKET=${market}`)
+      // Legacy Next.js-style CAPE vars (fallback if boilerplate ever includes them)
       .replace(/^NEXT_PUBLIC_CAPE_DEFAULT_ID=.*/m,     `NEXT_PUBLIC_CAPE_DEFAULT_ID=${capeId}`)
       .replace(/^NEXT_PUBLIC_CAPE_DEFAULT_MARKET=.*/m, `NEXT_PUBLIC_CAPE_DEFAULT_MARKET=${market}`);
     writeFileSync(envDest, envContent, 'utf8');
@@ -1025,7 +1212,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
       if (page.includes('__') || !BUILDABLE_TS.includes(page)) continue;
       const stepCount = tsPageElementSelections[`${page}__stepCount`] ?? 3;
       try {
-        const { route, loader } = buildTsPage(page, elements, { stepCount });
+        const { route, loader } = buildTsPage(page, elements, { stepCount, pages });
         writeFileSync(join(routesDir, ROUTE_FILES[page]), route, 'utf8');
         writeFileSync(join(loadersDir, LOADER_FILES[page]), loader, 'utf8');
         generated++;
@@ -1077,6 +1264,8 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   ok('.scaffolded config written');
   writeChecklistFile(outputDir, scaffoldedConfig);
   ok('SCAFFOLD_CHECKLIST.md written');
+  writeDebugFile(outputDir, scaffoldedConfig);
+  ok('SCAFFOLD_DEBUG.json written');
 
   console.log('');
   const _tsFinalFrontendDir = _displayDir ? join(_displayDir, 'frontend') : frontendDir;
@@ -1113,6 +1302,10 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
   })();
 
   // 2. Copy module files
+  // Track dest paths written by modules with strategy:"replace" so the page
+  // builder (step 3b) doesn't overwrite them with the generic stub.
+  const moduleReplacedPaths = new Set();
+
   if (modules.length > 0) {
     step(2, 'Copying module files…');
     for (const moduleId of modules) {
@@ -1132,8 +1325,23 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
             mkdirSync(dirname(destPath), { recursive: true });
             cpSync(srcPath, destPath);
             copied++;
+            if (file.strategy === 'replace') moduleReplacedPaths.add(destPath);
           } catch (e) {
             warn(`[${moduleId}] failed to copy ${file.src}: ${e.message}`);
+          }
+        }
+        // copyDirs: recursively copy whole directories (e.g. public/images, public/sounds)
+        for (const dir of manifest.copyDirs ?? []) {
+          if (!dir.src || !dir.dest) continue;
+          const srcDir  = join(moduleDir, dir.src);
+          const destDir = join(frontendDir, dir.dest);
+          if (!existsSync(srcDir)) { warn(`[${moduleId}] copyDirs source missing: ${dir.src}`); continue; }
+          try {
+            mkdirSync(destDir, { recursive: true });
+            cpSync(srcDir, destDir, { recursive: true });
+            copied++;
+          } catch (e) {
+            warn(`[${moduleId}] failed to copy dir ${dir.src}: ${e.message}`);
           }
         }
         ok(`[${moduleId}] ${copied} file(s) copied`);
@@ -1203,13 +1411,14 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
       }
     }
 
-    // Always generate gameplay from page builder (no element choices, just route tokens)
-    if (pages.includes('game') && !pageElementSelections['gameplay']) {
+    // Generate gameplay stub — but skip if a module already owns that file
+    const gameplayPagePath = join(PAGE_DIR, 'gameplay', 'page.tsx');
+    if (pages.includes('game') && !pageElementSelections['gameplay'] && !moduleReplacedPaths.has(gameplayPagePath)) {
       try {
         const code = buildPage('gameplay', [], { nextRoute: nextRoute('game') });
         const dir  = join(PAGE_DIR, 'gameplay');
         mkdirSync(dir, { recursive: true });
-        writeFileSync(join(dir, 'page.tsx'), code, 'utf8');
+        writeFileSync(gameplayPagePath, code, 'utf8');
         generated++;
       } catch (e) {
         warn(`[page-builder] gameplay: ${e.message}`);
@@ -1342,11 +1551,62 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
   ok('.scaffolded config written');
   writeChecklistFile(outputDir, scaffoldedConfig);
   ok('SCAFFOLD_CHECKLIST.md written');
+  writeDebugFile(outputDir, scaffoldedConfig);
+  ok('SCAFFOLD_DEBUG.json written');
 
   // Done
   console.log('');
   const _nextFinalFrontendDir = _displayDir ? join(_displayDir, 'frontend') : frontendDir;
   printPostScaffoldMessage({ projectName: name, capeId, market, modules: _optionalModules, outputDir: _nextFinalFrontendDir, stack: 'next' });
+}
+
+// ─── Debug file ───────────────────────────────────────────────────────────────
+
+function buildCliCommand(config) {
+  const parts = [`node ${SCAFFOLDER_ROOT.replace(/\\/g, '/')}/cli/scaffold.js`];
+  parts.push(`--name=${config.name}`);
+  if (config.capeId)  parts.push(`--cape-id=${config.capeId}`);
+  if (config.market)  parts.push(`--market=${config.market}`);
+  if (config.stack && config.stack !== 'next') parts.push(`--stack=${config.stack}`);
+  if (config.game && config.game !== 'none')   parts.push(`--game=${config.game}`);
+  for (const page of config.pages ?? [])           parts.push(`--page=${page}`);
+  for (const mod  of config.optionalModules ?? []) parts.push(`--module=${mod}`);
+  if (config.gtmId)  parts.push(`--gtm-id=${config.gtmId}`);
+  if (config.iframe) parts.push('--iframe');
+  parts.push('--yes');
+  return parts.join(' \\\n  ');
+}
+
+function writeDebugFile(outputDir, config) {
+  const moduleDetails = (config.modules ?? []).map(id => {
+    try {
+      const manifest = loadManifest(id);
+      return {
+        id,
+        impliedBy: (manifest.implies ?? []).length > 0 ? manifest.implies : undefined,
+        filesCopied: (manifest.files ?? []).map(f => ({
+          from: `modules/${id}/${f.src}`,
+          to:   f.dest,
+          ...(f.strategy ? { strategy: f.strategy } : {}),
+        })),
+        dirsCopied: (manifest.copyDirs ?? []).map(d => ({ from: `modules/${id}/${d.src}`, to: d.dest })),
+        packages:    manifest.packages    ?? [],
+        devPackages: manifest.devPackages ?? [],
+      };
+    } catch {
+      return { id, error: 'manifest not found' };
+    }
+  });
+
+  const debug = {
+    recreateCommand: buildCliCommand(config),
+    scaffoldedAt: config.createdAt,
+    updatedAt:    config.updatedAt,
+    options: config,
+    moduleDetails,
+  };
+
+  writeFileSync(join(outputDir, 'SCAFFOLD_DEBUG.json'), JSON.stringify(debug, null, 2), 'utf8');
 }
 
 // ─── Token replacement ────────────────────────────────────────────────────────
@@ -2119,6 +2379,102 @@ async function runUpdateWizard(existing, args) {
 async function main() {
   const args = parseArgs(process.argv);
 
+  // ── Repush format mode: push scaffolder format + publishProfiles to existing campaign ──
+  if (args.repushFormat) {
+    const campaignId = args.repushFormat;
+    if (!/^\d+$/.test(campaignId)) {
+      throw new Error(`--repush-format expects a numeric campaign ID (e.g. --repush-format=54031)`);
+    }
+
+    console.log(`\n  ${c.bold('Repushing format to CAPE campaign')} ${c.cyan(campaignId)}…\n`);
+
+    let tokens = await checkAuth();
+    if (!tokens) {
+      const email    = (await promptOnce(`  ${c.cyan('CAPE email')}: `)).trim();
+      const password = (await promptOnce(`  ${c.cyan('CAPE password')}: `)).trim();
+      tokens = await login(email, password);
+      console.log(`  ${c.green('✓')}  Logged in.\n`);
+    }
+
+    const formatFile = JSON.parse(readFileSync(SCAFFOLDER_FORMAT_FILE, 'utf8'));
+
+    process.stdout.write(`  ${c.dim('Pushing format (interfaceSetup + publishProfiles)...')} `);
+    try {
+      await pushFormat(tokens, campaignId, formatFile);
+      console.log(`${c.green('✓')}`);
+    } catch (err) {
+      console.log(`${c.red('✗')}  ${err.message}`);
+      process.exit(1);
+    }
+
+    process.stdout.write(`  ${c.dim('Populating defaults...')} `);
+    try {
+      const count = await populateDefaults(tokens, campaignId, formatFile.interfaceSetup);
+      console.log(`${c.green('✓')}  ${count} fields`);
+    } catch (err) {
+      console.log(`${c.yellow('⚠')}  ${err.message} (continuing)`);
+    }
+
+    console.log(`\n  ${c.green('✓')}  Done. Open the campaign in CAPE and verify the Publish tab is visible.\n`);
+    return;
+  }
+
+  // ── Recreate mode: delete + re-scaffold from .scaffolded ─────────────────────
+  if (args.recreate) {
+    const targetDir  = args.output ? resolve(args.output) : process.cwd();
+    const markerPath = join(targetDir, '.scaffolded');
+    if (!existsSync(markerPath)) {
+      throw new Error(
+        `No .scaffolded marker found in:\n  ${targetDir}\n\n` +
+        `Pass --output=<path> pointing to a scaffolded project, or run from inside one.`
+      );
+    }
+    let existing;
+    try { existing = JSON.parse(readFileSync(markerPath, 'utf8')); }
+    catch { throw new Error(`Could not read .scaffolded config in ${targetDir}`); }
+
+    console.log('');
+    console.log(c.bold('  ┌──────────────────────────────────────────────┐'));
+    console.log(c.bold('  │   Livewall Campaign Scaffolder — Recreate    │'));
+    console.log(c.bold('  └──────────────────────────────────────────────┘'));
+    console.log('');
+    console.log(`  ${c.yellow('Recreating')} ${c.cyan(existing.name)}  ${c.dim(`(${existing.stack ?? 'next'} / ${existing.game ?? 'no game'})`)}`);
+    console.log(`  ${c.dim('Will DELETE and rebuild:')} ${c.cyan(targetDir)}`);
+    console.log('');
+
+    if (!args.yes) {
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      const answer = await new Promise(res => rl.question(`  ${c.red('Delete and recreate?')} ${c.dim('[y/N]')}: `, res));
+      rl.close();
+      if (!answer.trim().toLowerCase().startsWith('y')) {
+        console.log('\n  Aborted.\n'); process.exit(0);
+      }
+    }
+
+    console.log(`\n  ${c.dim('Deleting')} ${targetDir}...`);
+    rmSync(targetDir, { recursive: true, force: true });
+
+    const options = {
+      stack:                 existing.stack ?? 'next',
+      name:                  existing.name,
+      capeId:                existing.capeId,
+      market:                existing.market,
+      game:                  existing.game || 'none',
+      pages:                 existing.pages ?? [],
+      regMode:               existing.regMode || 'none',
+      modules:               existing.modules ?? [],
+      gtmId:                 existing.gtmId || '',
+      iframe:                existing.iframe || false,
+      outputDir:             targetDir,
+      pageElementSelections: existing.pageElementSelections ?? {},
+      tsPageElementSelections: existing.tsPageElementSelections ?? {},
+      unityCdnUrl:           existing.unityCdnUrl || '',
+    };
+
+    await scaffold(options);
+    return;
+  }
+
   // ── Update mode: auto-detect .scaffolded in CWD or explicit --update flag ────
   const targetDir  = args.output ? resolve(args.output) : process.cwd();
   const markerPath = join(targetDir, '.scaffolded');
@@ -2145,15 +2501,24 @@ async function main() {
   // runs (CI) fail fast with a clear message rather than mid-scaffold.
   validateArgs(args);
 
-  const isNonInteractive = Boolean(args.name && args.capeId);
+  const isNonInteractive = Boolean(args.name && (args.capeId || args.createCape));
   let options;
   if (isNonInteractive) {
     const stack = args.stack || 'next';
     const allModules = resolveModules(args.game || (stack === 'tanstack' ? 'unity' : ''), args.pages, args.modules);
+
+    let capeId = args.capeId;
+    if (!capeId && args.createCape) {
+      const autoTitle = args.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      console.log(`\n  ${c.bold('Creating CAPE campaign...')}`);
+      capeId = await runCapeCreateFlow(null, args.name, args.market || 'NL', autoTitle);
+      console.log('');
+    }
+
     options = {
       stack,
       name:      args.name,
-      capeId:    args.capeId,
+      capeId,
       market:    args.market,
       game:      args.game || 'unity',
       pages:     args.pages.length > 0 ? args.pages : (stack === 'tanstack' ? ['launch', 'tutorial', 'game', 'score'] : buildDefaultPages(args.game || '')),
