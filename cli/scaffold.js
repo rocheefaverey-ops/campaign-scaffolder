@@ -32,6 +32,7 @@ import { PAGE_ELEMENTS, PAGE_DEFAULTS, ELEMENT_CATALOGUE, buildPage } from './pa
 import { TS_PAGE_ELEMENTS, TS_PAGE_DEFAULTS, TS_ELEMENT_CATALOGUE, TS_ALL_PAGES, TS_PAGE_ROUTES, buildTsPage } from './tanstack-page-builder.js';
 import { getGamesByEngine, getGame, gameEnvLines, gameLabel } from './game-registry.js';
 import { checkAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, publishCampaign, SCAFFOLDER_FORMAT_FILE } from './cape-client.js';
+import { buildTanStackCapeFormat } from './cape-format-builder.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -44,14 +45,17 @@ const MODULES_DIR        = join(SCAFFOLDER_ROOT, 'modules');
 
 /**
  * Interactive CAPE campaign creation flow.
- * Checks/prompts for auth, creates a campaign, pushes the scaffolder format,
- * populates defaults, and publishes to acceptance.
- * Returns the new numeric campaign ID string.
+ * Checks/prompts for auth, creates a campaign, pushes the format,
+ * and populates defaults. Returns the new numeric campaign ID string.
  *
- * Includes retry logic: up to 3 login attempts before throwing.
- * Supports opening CAPE website to verify/reset account before retrying.
+ * @param {Function}      ask           readline-compatible prompt function
+ * @param {string}        projectName   used to derive default title
+ * @param {string}        market        e.g. 'NL'
+ * @param {string|null}   autoTitle     skip title prompt when provided
+ * @param {boolean}       forceNewLogin clear cached tokens before login
+ * @param {object|null}   formatOverride  dynamically generated format; falls back to static scaffolder-format.json
  */
-async function runCapeCreateFlow(ask, projectName, market, autoTitle = null, forceNewLogin = false) {
+async function runCapeCreateFlow(ask, projectName, market, autoTitle = null, forceNewLogin = false, formatOverride = null) {
   // 1. Auth — with retry logic (up to 3 attempts)
   let tokens = forceNewLogin ? null : await checkAuth();
   if (!tokens) {
@@ -114,33 +118,25 @@ async function runCapeCreateFlow(ask, projectName, market, autoTitle = null, for
     throw new Error(`Campaign creation failed: ${err.message}`);
   }
 
-  // 4. Push format
+  // 4. Push format — use dynamic override if provided, else static scaffolder-format.json
   process.stdout.write(`  ${c.dim('Pushing format...')} `);
+  let formatFile;
   try {
-    const formatFile = JSON.parse(readFileSync(SCAFFOLDER_FORMAT_FILE, 'utf8'));
+    formatFile = formatOverride ?? JSON.parse(readFileSync(SCAFFOLDER_FORMAT_FILE, 'utf8'));
     await pushFormat(tokens, campaignId, formatFile);
     console.log(`${c.green('✓')}`);
   } catch (err) {
     console.log(`${c.yellow('⚠')}  ${err.message} (continuing)`);
+    if (!formatFile) formatFile = { interfaceSetup: { pages: [] } };
   }
 
   // 5. Populate defaults
   process.stdout.write(`  ${c.dim('Populating defaults...')} `);
   try {
-    const formatFile = JSON.parse(readFileSync(SCAFFOLDER_FORMAT_FILE, 'utf8'));
     const count = await populateDefaults(tokens, campaignId, formatFile.interfaceSetup);
     console.log(`${c.green('✓')}  ${count} fields`);
   } catch (err) {
     console.log(`${c.yellow('⚠')}  ${err.message} (continuing)`);
-  }
-
-  // 6. Publish
-  process.stdout.write(`  ${c.dim('Publishing to acceptance...')} `);
-  try {
-    await publishCampaign(tokens, campaignId);
-    console.log(`${c.green('✓')}`);
-  } catch (err) {
-    console.log(`${c.yellow('⚠')}  ${err.message} (you can publish manually in CAPE)`);
   }
 
   return campaignId;
@@ -439,9 +435,10 @@ async function runWizard(pre) {
     throw new Error(`Invalid project name "${name}". Use lowercase letters, numbers, and hyphens only (e.g. hema-handdoek-2025).`);
   }
 
-  // 2. CAPE campaign — create new or use existing
+  // 2. CAPE campaign — TanStack defers this until after page/element selections
+  //    so the format can be generated from what was actually chosen.
   let capeId = pre.capeId;
-  if (!capeId) {
+  if (!capeId && stack !== 'tanstack') {
     const choice = (await ask(`  ${c.cyan('CAPE campaign')}  ${c.dim('[n=create new / e=use existing ID]')} ${c.dim('(default: n)')}: `)).trim().toLowerCase();
     if (choice === '' || choice === 'n' || choice === 'new') {
       // Market may not be asked yet — ask here so createCampaign has it
@@ -627,6 +624,33 @@ async function runWizard(pre) {
         const sv = (await ask(`  ${c.cyan('How many tutorial steps?')} ${c.dim('[default: 3]')}: `)).trim();
         const n  = parseInt(sv, 10);
         tsPageElementSelections['tutorial__stepCount'] = (!isNaN(n) && n > 0) ? n : 3;
+      }
+    }
+
+    // 5b. CAPE campaign — now that selections are known, build a project-specific format
+    const generatedFormat = buildTanStackCapeFormat({ pages: tsPages, tsPageElementSelections });
+    if (!capeId) {
+      console.log('');
+      const capeOpt = (await ask(`  ${c.cyan('CAPE campaign')}  ${c.dim('[n=create new / e=use existing ID / s=skip]')} ${c.dim('(default: n)')}: `)).trim().toLowerCase();
+      if (capeOpt === '' || capeOpt === 'n' || capeOpt === 'new') {
+        console.log('');
+        try {
+          capeId = await runCapeCreateFlow(ask, name, market, null, false, generatedFormat);
+        } catch (err) {
+          console.log(`  ${c.yellow('⚠')} CAPE setup failed: ${err.message}`);
+          console.log(`  ${c.dim('Set CAPE_CAMPAIGN_ID in .env to connect a campaign later.')}`);
+          capeId = '0';
+        }
+        console.log('');
+      } else if (capeOpt === 'e' || capeOpt === 'existing') {
+        while (!capeId || !/^\d+$/.test(capeId)) {
+          if (capeId) console.log(`  ${c.red('✘')} CAPE ID must be numeric (e.g. 54031)`);
+          capeId = (await ask(`  ${c.cyan('CAPE campaign ID')}: `)).trim();
+        }
+        console.log(`  ${c.green('✓')} Using CAPE ID: ${c.cyan(capeId)}`);
+      } else {
+        console.log(`  ${c.dim('CAPE skipped — set CAPE_CAMPAIGN_ID in .env to connect later.')}`);
+        capeId = '0';
       }
     }
 
@@ -1132,14 +1156,54 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
       `if (data.imageUrl.startsWith('data:')) { return data.imageUrl; }\n    if (!isRelativeUrl(data.imageUrl)) {`,
     ),
     // Add $brandColor to SCSS variables
-    [join(frontendDir, 'src', 'assets', 'styles', '_variables.scss')]: (c) => c.replace(
+    [join(frontendDir, 'src', 'assets', 'styles', '_variables.scss')]: (c) => c.includes('$brandColor') ? c : c.replace(
       `$primaryColor:`,
       `$brandColor: #C4FF00;\n$primaryColor:`,
     ),
-    // Apply brand color to primary CTA button
+    // Apply brand color + CSS custom properties to primary CTA button
     [join(frontendDir, 'src', 'components', 'buttons', 'StyledButton.module.scss')]: (c) => c
-      .replace(`background-color: $secondaryColor;`, `background-color: $brandColor;`)
-      .replace(`color: $whiteColor;`, `color: $blackColor;`),
+      .replace(`background-color: $secondaryColor;`, `background-color: var(--lw-primary, #{$brandColor});`)
+      .replace(`background-color: $brandColor;`,     `background-color: var(--lw-primary, #{$brandColor});`)
+      .replace(`color: $whiteColor;`, `color: var(--lw-text, #{$blackColor});`)
+      .replace(`color: $blackColor;`, `color: var(--lw-text, #{$blackColor});`),
+    // Page backgrounds — use CSS custom property so Cape branding overrides them
+    [join(frontendDir, 'src', 'routes', 'launch.module.scss')]: (c) => c
+      .replace(`background-color: $whiteColor;`, `background-color: var(--lw-bg, #{$whiteColor});`),
+    [join(frontendDir, 'src', 'routes', 'score.module.scss')]: (c) => c
+      .replace(`background-color: $whiteColor;`, `background-color: var(--lw-bg, #{$whiteColor});`),
+    [join(frontendDir, 'src', 'routes', 'register.module.scss')]: (c) => c
+      .replace(`background-color: $whiteColor;`, `background-color: var(--lw-bg, #{$whiteColor});`),
+    [join(frontendDir, 'src', 'routes', 'tutorial.module.scss')]: (c) => c
+      .replace(`background-color: $whiteColor;`, `background-color: var(--lw-bg, #{$whiteColor});`),
+    [join(frontendDir, 'src', 'routes', 'leaderboard.module.scss')]: (c) => c
+      .replace(`background-color: $whiteColor;`, `background-color: var(--lw-bg, #{$whiteColor});`),
+    [join(frontendDir, 'src', 'routes', 'voucher.module.scss')]: (c) => c
+      .replace(`background-color: $whiteColor;`, `background-color: var(--lw-bg, #{$whiteColor});`),
+    // rootLoader — add branding color fetch from Cape settings
+    [join(frontendDir, 'src', 'routes', '-loaders', 'rootLoader.ts')]: (c) => {
+      if (c.includes('branding')) return c; // idempotent
+      return c
+        .replace(
+          `const [game, [desktopDesc, desktopQr, loadTitle, loadDesc1, loadDesc2, loadDesc3], gtmId, logoPH, unityEnv] = await Promise.all([`,
+          `const [game, [desktopDesc, desktopQr, loadTitle, loadDesc1, loadDesc2, loadDesc3], gtmId, logoPH, unityEnv, [lwPrimary, lwBg, lwText, lwTheme]] = await Promise.all([`,
+        )
+        .replace(
+          `    getUnityEnvironment(),\n  ]);`,
+          `    getUnityEnvironment(),\n    getCapeProperty([\n      { type: 'settings', path: ['branding', 'primaryColor'] },\n      { type: 'settings', path: ['branding', 'backgroundColor'] },\n      { type: 'settings', path: ['branding', 'textColor'] },\n      { type: 'settings', path: ['branding', 'themeColor'] },\n    ]),\n  ]);`,
+        )
+        .replace(
+          `    baseUrl: getBaseUrl(),\n  };`,
+          `    baseUrl: getBaseUrl(),\n    branding: {\n      primaryColor: lwPrimary.asString('#C4FF00'),\n      backgroundColor: lwBg.asString('#FFFFFF'),\n      textColor: lwText.asString('#000000'),\n      themeColor: lwTheme.asString('#000000'),\n    },\n  };`,
+        );
+    },
+    // __root.tsx — inject CSS custom properties from Cape branding onto #app
+    [join(frontendDir, 'src', 'routes', '__root.tsx')]: (c) => {
+      if (c.includes('--lw-primary')) return c; // idempotent
+      return c.replace(
+        `function RootComponent() {\n  return (\n    <main id="app">`,
+        `function RootComponent() {\n  const { branding } = Route.useLoaderData();\n  const cssVars = {\n    '--lw-primary': branding?.primaryColor || '#C4FF00',\n    '--lw-bg':      branding?.backgroundColor || '#FFFFFF',\n    '--lw-text':    branding?.textColor || '#000000',\n    '--lw-theme':   branding?.themeColor || '#000000',\n  } as React.CSSProperties;\n  return (\n    <main id="app" style={cssVars}>`,
+      );
+    },
   };
   for (const [file, patch] of Object.entries(logoPatchMap)) {
     if (existsSync(file)) writeFileSync(file, patch(readFileSync(file, 'utf8')), 'utf8');
