@@ -1,0 +1,248 @@
+variables:
+  REPO_INCLUDES_REF: v0.5
+
+include:
+  - project: lwhq/livewall/infrastructure/gitlab-ci-lwg-collection
+    ref: v0.5
+    file: /review_constraints/review_constraints.gitlab-ci.yml
+  - project: lwhq/livewall/infrastructure/gitlab-ci-lwg-collection
+    ref: v0.5
+    file: /googlesecrets-generic/googlesecrets.gitlab-ci.yml
+  - project: lwhq/livewall/infrastructure/gitlab-ci-lwg-collection
+    ref: v0.5
+    file: /vault-generic/vaultsecrets.gitlab-ci.yml
+  - project: lwhq/livewall/infrastructure/gitlab-ci-lwg-collection
+    ref: v0.5
+    file: /docker-build/dockerbuild.gitlab-ci.yml
+  - project: lwhq/livewall/infrastructure/gitlab-ci-lwg-collection
+    ref: v0.5
+    file: /docker-build/googleauth.gitlab-ci.yml
+  - project: lwhq/livewall/infrastructure/gitlab-ci-lwg-collection
+    ref: v0.5
+    file: /docker-build/copyimage_gcp.gitlab-ci.yml
+  - project: lwhq/livewall/infrastructure/gitlab-ci-lwg-collection
+    ref: v0.5
+    file: /cloudrun-generic/cloudrun-deploy.gitlab-ci.yml
+  - project: lwhq/livewall/infrastructure/gitlab-ci-lwg-collection
+    ref: v0.5
+    file: /terraform-schedules/schedules.gitlab-ci.yml
+
+stages:
+  - review_constraints
+  - getenv_googlesecrets
+  - getenv_vault
+  - build_prep
+  - build_execute
+  - googleauth
+  - copyimage
+  - deploy
+  - terraform_schedules
+
+.common_config:
+  only:
+    - master
+    - acceptance
+
+getenv_googlesecrets:
+  only: !reference [.common_config, only]
+
+getenv_vault:
+  only: !reference [.common_config, only]
+  dependencies:
+    - getenv_googlesecrets
+
+build_prep_site:
+  stage: !reference [.base_docker_build_prep, stage]
+  image: !reference [.base_docker_build_prep, image]
+  script: !reference [.base_docker_build_prep, script]
+  environment: !reference [.base_docker_build_prep, environment]
+  artifacts: !reference [.base_docker_build_prep, artifacts]
+  tags: !reference [.base_docker_build_prep, tags]
+  retry: !reference [.base_docker_build_prep, retry]
+  only: !reference [.common_config, only]
+  dependencies:
+    - getenv_vault
+  variables:
+    USE_DOCKERFILE: nodejs24-nextjs.Dockerfile
+    APP_DIR: frontend
+    GCP_REPORTING_NAME: "$TF_CUSTOMER_NAME-$TF_CUSTOMER_PROJECT-SITE-$CI_COMMIT_REF_NAME"
+    CLOUDTASK_QUEUE_BASENAME: "$TF_CUSTOMER_NAME-$TF_CUSTOMER_PROJECT-$CI_COMMIT_REF_NAME"
+    PRIVATE_IMG_PATH: "$CI_PROJECT_PATH"
+    PRIVATE_IMG_TAG: "$CI_COMMIT_REF_SLUG"
+  before_script:
+    # Load env file
+    - source $CI_PROJECT_DIR/envvars.sh
+    # Validate vars
+    - if [[ -z ${CR_NAME_SITE:-} ]]; then echo "Error - CR_NAME_SITE not specified" && exit 1; fi
+    - if [[ -z ${APP_HOST_SITE:-} ]]; then echo "Error - APP_HOST_SITE not specified" && exit 1; fi
+    - if [[ -z ${APP_HOST_DEQUEUE:-} ]]; then echo "Error - APP_HOST_DEQUEUE not specified" && exit 1; fi
+    # Add / convert vars
+    - export PRIVATE_IMG_NAME_UNTAGGED="$CR_NAME_SITE"
+    - export APP_URL="https://$APP_HOST_SITE"
+    - export CLOUDTASK_QUEUE_PROJECT="$GCP_PROJECT_ID"
+    - export CLOUDTASK_QUEUE_BASEURL="https://$APP_HOST_DEQUEUE"
+
+
+build_prep_dequeue:
+  stage: !reference [.base_docker_build_prep, stage]
+  image: !reference [.base_docker_build_prep, image]
+  script: !reference [.base_docker_build_prep, script]
+  environment: !reference [.base_docker_build_prep, environment]
+  artifacts: !reference [.base_docker_build_prep, artifacts]
+  tags: !reference [.base_docker_build_prep, tags]
+  retry: !reference [.base_docker_build_prep, retry]
+  only: !reference [.common_config, only]
+  dependencies:
+    - getenv_vault
+  variables:
+    USE_DOCKERFILE: nodejs24-nextjs.Dockerfile
+    APP_DIR: frontend
+    LOAD_ROUTES: api
+    ADMIN_PANEL_ENABLED: "0"
+    GCP_REPORTING_NAME: "$TF_CUSTOMER_NAME-$TF_CUSTOMER_PROJECT-dequeue-$CI_COMMIT_REF_NAME"
+    CLOUDTASK_QUEUE_BASENAME: "$TF_CUSTOMER_NAME-$TF_CUSTOMER_PROJECT-$CI_COMMIT_REF_NAME"
+    PRIVATE_IMG_PATH: "$CI_PROJECT_PATH"
+    PRIVATE_IMG_TAG: "$CI_COMMIT_REF_SLUG"
+  before_script:
+    # Load env file
+    - source $CI_PROJECT_DIR/envvars.sh
+    # Validate vars
+    - if [[ -z ${CR_NAME_DEQUEUE:-} ]]; then echo "Error - CR_NAME_DEQUEUE not specified" && exit 1; fi
+    - if [[ -z ${APP_HOST_DEQUEUE:-} ]]; then echo "Error - APP_HOST_DEQUEUE not specified" && exit 1; fi
+    # Add / convert vars
+    - export PRIVATE_IMG_NAME_UNTAGGED="$CR_NAME_DEQUEUE"
+    - export APP_URL="https://$APP_HOST_DEQUEUE"
+    - export CLOUDTASK_QUEUE_PROJECT="$GCP_PROJECT_ID"
+    - export CLOUDTASK_QUEUE_BASEURL="https://$APP_HOST_DEQUEUE"
+
+build_execute_site:
+  stage: !reference [.base_docker_build_execute, stage]
+  image: !reference [.base_docker_build_execute, image]
+  script: !reference [.base_docker_build_execute, script]
+  environment: !reference [.base_docker_build_execute, environment]
+  artifacts: !reference [.base_docker_build_execute, artifacts]
+  tags: !reference [.base_docker_build_execute, tags]
+  retry: !reference [.base_docker_build_execute, retry]
+  only: !reference [.common_config, only]
+  dependencies:
+    - build_prep_site
+
+build_execute_dequeue:
+  stage: !reference [.base_docker_build_execute, stage]
+  image: !reference [.base_docker_build_execute, image]
+  script: !reference [.base_docker_build_execute, script]
+  environment: !reference [.base_docker_build_execute, environment]
+  artifacts: !reference [.base_docker_build_execute, artifacts]
+  tags: !reference [.base_docker_build_execute, tags]
+  retry: !reference [.base_docker_build_execute, retry]
+  only: !reference [.common_config, only]
+  dependencies:
+    - build_prep_dequeue
+
+googleauth:
+  only: !reference [.common_config, only]
+
+copyimage_gcp_site:
+  stage: !reference [.base_copyimage_gcp, stage]
+  image: !reference [.base_copyimage_gcp, image]
+  script: !reference [.base_copyimage_gcp, script]
+  environment: !reference [.base_copyimage_gcp, environment]
+  artifacts: !reference [.base_copyimage_gcp, artifacts]
+  tags: !reference [.base_copyimage_gcp, tags]
+  retry: !reference [.base_copyimage_gcp, retry]
+  only: !reference [.common_config, only]
+  variables:
+    GIT_STRATEGY: none
+  dependencies:
+    - build_execute_site
+    - googleauth
+  before_script:
+    # Load env file
+    - source $CI_PROJECT_DIR/envvars.sh
+    # Validate vars
+    - if [[ -z ${CR_NAME_SITE:-} ]]; then echo "Error - CR_NAME_SITE not specified" && exit 1; fi
+    # Add / convert vars
+    - export IMG_NAME_UNTAGGED="$CR_NAME_SITE"
+
+copyimage_gcp_dequeue:
+  stage: !reference [.base_copyimage_gcp, stage]
+  image: !reference [.base_copyimage_gcp, image]
+  script: !reference [.base_copyimage_gcp, script]
+  environment: !reference [.base_copyimage_gcp, environment]
+  artifacts: !reference [.base_copyimage_gcp, artifacts]
+  tags: !reference [.base_copyimage_gcp, tags]
+  retry: !reference [.base_copyimage_gcp, retry]
+  only: !reference [.common_config, only]
+  variables:
+    GIT_STRATEGY: none
+  dependencies:
+    - build_execute_dequeue
+    - googleauth
+  before_script:
+    # Load env file
+    - source $CI_PROJECT_DIR/envvars.sh
+    # Validate vars
+    - if [[ -z ${CR_NAME_DEQUEUE:-} ]]; then echo "Error - CR_NAME_DEQUEUE not specified" && exit 1; fi
+    # Add / convert vars
+    - export IMG_NAME_UNTAGGED="$CR_NAME_DEQUEUE"
+
+cloudrun_deploy_site:
+  stage: !reference [.base_cloudrun_deploy, stage]
+  image: !reference [.base_cloudrun_deploy, image]
+  script: !reference [.base_cloudrun_deploy, script]
+  environment: !reference [.base_cloudrun_deploy, environment]
+  artifacts: !reference [.base_cloudrun_deploy, artifacts]
+  retry: !reference [.base_cloudrun_deploy, retry]
+  only: !reference [.common_config, only]
+  dependencies:
+    - copyimage_gcp_site
+  variables:
+    APP_PORT: 3000
+    CR_CONCURRENCY: 250
+    CR_INSTANCES_MAX: 20
+    CR_TIMEOUT_SEC: 60
+    CR_EXEC_ENV: gen2
+  before_script:
+    # Load env file
+    - source $CI_PROJECT_DIR/envvars.sh
+    # Validate vars
+    - if [[ -z ${CR_NAME_SITE:-} ]]; then echo "Error - CR_NAME_SITE not specified" && exit 1; fi
+    # Add / convert vars
+    - export CR_SERVICE_NAME="$CR_NAME_SITE"
+
+cloudrun_deploy_dequeue:
+  stage: !reference [.base_cloudrun_deploy, stage]
+  image: !reference [.base_cloudrun_deploy, image]
+  script: !reference [.base_cloudrun_deploy, script]
+  environment: !reference [.base_cloudrun_deploy, environment]
+  artifacts: !reference [.base_cloudrun_deploy, artifacts]
+  retry: !reference [.base_cloudrun_deploy, retry]
+  only: !reference [.common_config, only]
+  dependencies:
+    - copyimage_gcp_dequeue
+  variables:
+    APP_PORT: 3000
+    CR_CONCURRENCY: 250
+    CR_INSTANCES_MAX: 20
+    CR_TIMEOUT_SEC: 600
+    CR_EXEC_ENV: gen2
+  before_script:
+    # Load env file
+    - source $CI_PROJECT_DIR/envvars.sh
+    # Validate vars
+    - if [[ -z ${CR_NAME_DEQUEUE:-} ]]; then echo "Error - CR_NAME_DEQUEUE not specified" && exit 1; fi
+    # Add / convert vars
+    - export CR_SERVICE_NAME="$CR_NAME_DEQUEUE"
+
+terraform_schedules:
+  only: !reference [.common_config, only]
+  dependencies:
+    - getenv_vault
+  before_script:
+    # Load env file
+    - source envvars.sh
+    # Validate vars
+    - if [[ -z ${APP_HOST_DEQUEUE:-} ]]; then echo "Error - APP_HOST_DEQUEUE not specified" && exit 1; fi
+    # Add / convert vars
+    - export APP_HOST_SCHEDULES="$APP_HOST_DEQUEUE"
+    - export STATE_PATH_UNIQUE="$TF_CUSTOMER_NAME-$TF_CUSTOMER_PROJECT-$CI_COMMIT_REF_NAME"
