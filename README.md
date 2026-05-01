@@ -33,10 +33,19 @@ git push lwservice master:main
 
 ## Prerequisites
 - Node.js 18+ (TanStack stack requires Node 24+).
-- Windows helpers: `wizard.bat` (interactive) and `test-scaffold.bat` (sample non-interactive run).
+- Web UI: `cd cli/wizard-server && node server.js` → http://localhost:3456
+- CLI: `wizard.bat` (Windows) or `node cli/scaffold.js`
 
 ## Quick start
-Interactive wizard (recommended):
+**Recommended (Web UI):**
+```bash
+# Start the wizard server + UI
+cd cli/wizard-server
+node server.js
+# Then open http://localhost:3456 in your browser
+```
+
+**CLI (alternative):**
 ```bash
 node cli/scaffold.js
 # or on Windows
