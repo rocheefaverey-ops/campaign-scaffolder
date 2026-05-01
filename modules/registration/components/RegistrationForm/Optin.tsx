@@ -51,17 +51,19 @@ export default function Optin({
             required={required}
             checked={checked}
             onChange={(e) => onChange(e.target.checked)}
-            className="peer h-5 w-5 cursor-pointer rounded border-white/30 bg-white/10 accent-[var(--color-primary)]"
+            className="peer h-5 w-5 cursor-pointer rounded"
+            style={{ accentColor: 'var(--surface-ink)' }}
           />
         </span>
         <span
-          className={cn('text-sm leading-relaxed', error ? 'text-red-300' : 'opacity-80')}
+          className={cn('text-sm leading-relaxed')}
+          style={{ color: error ? 'var(--color-statusRed)' : 'var(--text-secondary)' }}
           dangerouslySetInnerHTML={{ __html: renderedLabel }}
         />
       </label>
 
       {error && (
-        <p className="ml-8 text-xs text-red-400" role="alert">
+        <p className="ml-8 text-xs" style={{ color: 'var(--color-statusRed)' }} role="alert">
           {error}
         </p>
       )}

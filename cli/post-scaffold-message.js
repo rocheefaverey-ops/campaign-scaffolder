@@ -38,9 +38,11 @@ const BULLET = c.dim('•');
  * @param {string}   opts.market        - e.g. 'NL'
  * @param {string[]} opts.modules       - e.g. ['unity', 'leaderboard', 'registration']
  * @param {string}   opts.outputDir     - absolute path to generated project
+ * @param {boolean}  [opts.capeAutoPublished]
+ * @param {string}   [opts.capePublishedUrl]
  */
-export function printPostScaffoldMessage({ projectName, capeId, market, modules, outputDir, stack = 'next' }) {
-  if (stack === 'tanstack') return printPostScaffoldMessageTanstack({ projectName, capeId, market, outputDir });
+export function printPostScaffoldMessage({ projectName, capeId, market, modules, outputDir, stack = 'next', capeAutoPublished = false, capePublishedUrl = '' }) {
+  if (stack === 'tanstack') return printPostScaffoldMessageTanstack({ projectName, capeId, market, outputDir, capeAutoPublished, capePublishedUrl });
 
   const divider = c.dim('─'.repeat(60));
 
@@ -72,11 +74,15 @@ export function printPostScaffoldMessage({ projectName, capeId, market, modules,
   console.log('');
   console.log(divider);
   console.log('');
-  console.log(c.bold(`  ${ARROW} STEP 2 — Pull your CAPE campaign data  ${c.dim('(manual — DO NOT automate)')}`));
+  console.log(c.bold(`  ${ARROW} STEP 2 — Pull your CAPE campaign data`));
   console.log('');
-  console.log(c.yellow(`  ${WARN}  The scaffolder intentionally did NOT run this for you.`));
-  console.log(`     ${c.dim('lwg-cli-cape has write access to ALL live campaigns.')}`);
-  console.log(`     ${c.dim('Always pull manually so you know exactly what is happening.')}`);
+  if (capeAutoPublished) {
+    console.log(c.green(`  ${CHECK}  CAPE campaign creation, format push, defaults, and publish were completed automatically.`));
+    if (capePublishedUrl) console.log(`     ${BULLET} Published URL: ${c.cyan(capePublishedUrl)}`);
+  } else {
+    console.log(c.yellow(`  ${WARN}  The scaffolder used the CAPE ID you provided and did not publish it for you.`));
+    console.log(`     ${c.dim('If this campaign is new or changed, publish it before testing.')}`);
+  }
   console.log('');
   console.log(`  ${BULLET} Also fill in the ${c.cyan('CAPE CLI')} block in your ${c.cyan('.env')}:`);
   console.log('');
@@ -92,9 +98,6 @@ export function printPostScaffoldMessage({ projectName, capeId, market, modules,
   console.log('');
   console.log(`     ${CHECK} This saves ${c.cyan(`workspace/campaign-${capeId}.json`)} locally for reference.`);
   console.log(`     ${c.dim('The Next.js app reads CAPE live at runtime — this file is for dev inspection only.')}`);
-  console.log('');
-  console.log(c.red(`  ${CROSS}  NEVER run:  node cli.js push / patch / publish`));
-  console.log(`     ${c.dim('Those commands modify live campaign data for ALL markets.')}`);
 
   // ── Step 3: Install & run ─────────────────────────────────────────────────
   console.log('');
@@ -108,7 +111,7 @@ export function printPostScaffoldMessage({ projectName, capeId, market, modules,
   console.log('');
 
   // ── Module-specific TODOs ─────────────────────────────────────────────────
-  const moduleTodos = buildModuleTodos(modules, capeId);
+  const moduleTodos = buildModuleTodos(modules, capeId, capeAutoPublished);
   if (moduleTodos.length > 0) {
     console.log(divider);
     console.log('');
@@ -128,7 +131,7 @@ export function printPostScaffoldMessage({ projectName, capeId, market, modules,
   console.log('');
 }
 
-function buildModuleTodos(modules, capeId) {
+function buildModuleTodos(modules, capeId, capeAutoPublished = false) {
   const todos = [];
 
   if (modules.includes('unity')) {
@@ -179,22 +182,18 @@ function buildModuleTodos(modules, capeId) {
     );
   }
 
-  if (modules.includes('design-tokens')) {
-    todos.push(
-      `[design-tokens] Mount ${c.cyan('<DesignTokenInjector capeData={capeData} />')} in app/providers.tsx`,
-    );
-  }
-
   // Always remind about CAPE ID
   todos.push(
-    `Verify CAPE campaign ${c.bold(capeId)} is published to ${c.cyan('acceptance')} before testing`,
+    capeAutoPublished
+      ? `CAPE campaign ${c.bold(capeId)} was auto-published to ${c.cyan('acceptance')} — verify the live JSON and content before testing`
+      : `Verify CAPE campaign ${c.bold(capeId)} is published to ${c.cyan('acceptance')} before testing`,
   );
 
   return todos;
 }
 
 // ─── TanStack post-scaffold message ──────────────────────────────────────────
-function printPostScaffoldMessageTanstack({ projectName, capeId, market, outputDir }) {
+function printPostScaffoldMessageTanstack({ projectName, capeId, market, outputDir, capeAutoPublished = false, capePublishedUrl = '' }) {
   const divider = c.dim('─'.repeat(60));
 
   console.log('');
@@ -224,16 +223,18 @@ function printPostScaffoldMessageTanstack({ projectName, capeId, market, outputD
   console.log('');
   console.log(divider);
   console.log('');
-  console.log(c.bold(`  ${ARROW} STEP 2 — Pull your CAPE campaign data  ${c.dim('(manual — DO NOT automate)')}`));
+  console.log(c.bold(`  ${ARROW} STEP 2 — Pull your CAPE campaign data`));
   console.log('');
-  console.log(c.yellow(`  ${WARN}  The scaffolder intentionally did NOT run this for you.`));
-  console.log(`     ${c.dim('lwg-cli-cape has write access to ALL live campaigns.')}`);
+  if (capeAutoPublished) {
+    console.log(c.green(`  ${CHECK}  CAPE campaign creation, format push, defaults, and publish were completed automatically.`));
+    if (capePublishedUrl) console.log(`     ${BULLET} Published URL: ${c.cyan(capePublishedUrl)}`);
+  } else {
+    console.log(c.yellow(`  ${WARN}  The scaffolder used the CAPE ID you provided and did not publish it for you.`));
+  }
   console.log('');
   console.log(c.cyan(`       cd /path/to/lwg-cli-cape`));
   console.log(c.cyan(`       node cli.js login`));
   console.log(c.cyan(`       node cli.js fetch ${capeId}`));
-  console.log('');
-  console.log(c.red(`  ${CROSS}  NEVER run:  node cli.js push / patch / publish`));
 
   // Step 3: Unity build
   console.log('');

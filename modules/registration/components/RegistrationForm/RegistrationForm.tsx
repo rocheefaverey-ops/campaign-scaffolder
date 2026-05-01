@@ -39,7 +39,7 @@ const INITIAL: FormValues = {
   optinPrivacy: false,
 };
 
-function validate(values: FormValues): FormErrors {
+function validate(values: FormValues, requireOptIns: boolean): FormErrors {
   const errors: FormErrors = {};
   const firstName = required(values.firstName);
   if (firstName) errors.firstName = firstName;
@@ -47,19 +47,38 @@ function validate(values: FormValues): FormErrors {
   if (lastName) errors.lastName = lastName;
   const email = required(values.email) ?? validEmail(values.email);
   if (email) errors.email = email;
-  if (!values.optin18) errors.optin18 = 'You must confirm you are 18 or older';
-  if (!values.optinTerms) errors.optinTerms = 'You must accept the terms';
-  if (!values.optinPrivacy) errors.optinPrivacy = 'You must accept the privacy policy';
+  if (requireOptIns) {
+    if (!values.optin18) errors.optin18 = 'You must confirm you are 18 or older';
+    if (!values.optinTerms) errors.optinTerms = 'You must accept the terms';
+    if (!values.optinPrivacy) errors.optinPrivacy = 'You must accept the privacy policy';
+  }
   return errors;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────
 
-interface Props {
-  onSuccess?: () => void;
+interface Labels {
+  firstName?:       string;
+  infix?:           string;
+  lastName?:        string;
+  email?:           string;
+  optIn1?:          string;
+  optIn2?:          string;
+  cta?:             string;
+  successHeadline?: string;
+  successBody?:     string;
 }
 
-export default function RegistrationForm({ onSuccess }: Props) {
+interface Props {
+  labels?:        Labels;
+  /** Hide the Dutch "infix" field (e.g. "van", "de"). Default true. */
+  showInfix?:     boolean;
+  /** When true (default) all 3 opt-ins are required to submit. Set false to make them advisory. */
+  requireOptIns?: boolean;
+  onSuccess?:     () => void;
+}
+
+export default function RegistrationForm({ labels = {}, showInfix = true, requireOptIns = true, onSuccess }: Props) {
   const router = useRouter();
   const { token, setUserName, setAlreadyRegistered } = useGameContext();
 
@@ -72,13 +91,13 @@ export default function RegistrationForm({ onSuccess }: Props) {
   const setField = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     const next = { ...values, [key]: value };
     setValues(next);
-    if (submitted) setErrors(validate(next));
+    if (submitted) setErrors(validate(next, requireOptIns));
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    const errs = validate(values);
+    const errs = validate(values, requireOptIns);
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
 
     setIsSubmitting(true);
@@ -115,7 +134,7 @@ export default function RegistrationForm({ onSuccess }: Props) {
       <div className="flex gap-3">
         <div className="flex-1">
           <FormInput
-            label="First name"
+            label={labels.firstName ?? 'First name'}
             name="firstName"
             autoComplete="given-name"
             required
@@ -125,20 +144,22 @@ export default function RegistrationForm({ onSuccess }: Props) {
             showValid={submitted && !errors.firstName && !!values.firstName}
           />
         </div>
-        <div className="w-20">
-          <FormInput
-            label="Infix"
-            name="infix"
-            autoComplete="additional-name"
-            placeholder="van"
-            value={values.infix}
-            onChange={(e) => setField('infix', e.target.value)}
-          />
-        </div>
+        {showInfix && (
+          <div className="w-20">
+            <FormInput
+              label={labels.infix ?? 'Infix'}
+              name="infix"
+              autoComplete="additional-name"
+              placeholder="van"
+              value={values.infix}
+              onChange={(e) => setField('infix', e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       <FormInput
-        label="Last name"
+        label={labels.lastName ?? 'Last name'}
         name="lastName"
         autoComplete="family-name"
         required
@@ -149,7 +170,7 @@ export default function RegistrationForm({ onSuccess }: Props) {
       />
 
       <FormInput
-        label="Email"
+        label={labels.email ?? 'Email'}
         name="email"
         type="email"
         autoComplete="email"
@@ -160,13 +181,12 @@ export default function RegistrationForm({ onSuccess }: Props) {
         showValid={submitted && !errors.email && EMAIL_RE.test(values.email)}
       />
 
-      {/* Opt-ins — update labels/links from CAPE copy if needed */}
       <div className="flex flex-col gap-3">
         <Optin
           id="optin18"
           name="optin18"
-          label="I confirm that I am 18 years of age or older"
-          required
+          label={labels.optIn1 ?? 'I confirm that I am 18 years of age or older'}
+          required={requireOptIns}
           checked={values.optin18}
           onChange={(v) => setField('optin18', v)}
           error={errors.optin18}
@@ -175,9 +195,9 @@ export default function RegistrationForm({ onSuccess }: Props) {
         <Optin
           id="optinTerms"
           name="optinTerms"
-          label="I accept the {{terms}}"
+          label={labels.optIn2 ?? 'I accept the {{terms}}'}
           links={[{ placeholder: '{{terms}}', url: '/terms', label: 'Terms & Conditions' }]}
-          required
+          required={requireOptIns}
           checked={values.optinTerms}
           onChange={(v) => setField('optinTerms', v)}
           error={errors.optinTerms}
@@ -188,7 +208,7 @@ export default function RegistrationForm({ onSuccess }: Props) {
           name="optinPrivacy"
           label="I have read and accept the {{privacy}}"
           links={[{ placeholder: '{{privacy}}', url: '/privacy', label: 'Privacy Policy' }]}
-          required
+          required={requireOptIns}
           checked={values.optinPrivacy}
           onChange={(v) => setField('optinPrivacy', v)}
           error={errors.optinPrivacy}
@@ -196,13 +216,21 @@ export default function RegistrationForm({ onSuccess }: Props) {
       </div>
 
       {serverError && (
-        <p className="rounded-lg bg-red-500/10 px-4 py-2 text-sm text-red-400" role="alert">
+        <p
+          className="rounded-2xl px-4 py-3 text-sm"
+          style={{
+            background: 'color-mix(in srgb, var(--color-statusRed) 10%, transparent)',
+            color: 'var(--color-statusRed)',
+            border: '1px solid color-mix(in srgb, var(--color-statusRed) 28%, transparent)',
+          }}
+          role="alert"
+        >
           {serverError}
         </p>
       )}
 
       <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
-        {isSubmitting ? 'Registering…' : 'Register'}
+        {isSubmitting ? 'Registering…' : (labels.cta ?? 'Register')}
       </Button>
     </form>
   );

@@ -12,7 +12,7 @@ Livewall builds branded, gamified web campaigns (spin-to-win, memory games, quiz
 
 Two output stacks:
 - **Next.js 16** (`base-templates/next/`) — CAPE-heavy, registration flows, SSR, most common
-- **TanStack Start + Vite** (cloned from `unity-tanstack-boilerplate`) — Unity WebGL focus, NHL-Crush pattern
+- **TanStack Start + Vite** (`base-templates/tanstack/`) — Unity WebGL focus, NHL-Crush pattern
 
 The repo lives at: `https://github.com/rocheefaverey-ops/campaign-scaffolder`
 
@@ -35,7 +35,6 @@ campaign-scaffolder/
 ├── modules/                     # Optional injectable modules
 │   ├── audio/                   # Howler.js audio player
 │   ├── cookie-consent/          # Cookiebot banner
-│   ├── design-tokens/           # CAPE → CSS custom properties
 │   ├── gtm/                     # Google Tag Manager
 │   ├── leaderboard/             # Score table (implies: scoring)
 │   ├── phaser/                  # Phaser game engine
@@ -279,7 +278,6 @@ Every module in `modules/{id}/` has a `manifest.json`:
 | `video` | — | — | — |
 | `audio` | howler | — | — |
 | `gtm` | — | — | NEXT_PUBLIC_GTM_ID |
-| `design-tokens` | — | — | — |
 | `cookie-consent` | — | — | NEXT_PUBLIC_COOKIEBOT_CBID |
 
 ---
@@ -349,10 +347,11 @@ base-templates/next/
 
 ---
 
-## TanStack boilerplate notes
+## TanStack base-template notes
 
-The TanStack stack is cloned from `unity-tanstack-boilerplate` (sibling repo).
-It must exist at `../unity-tanstack-boilerplate/frontend` relative to the scaffolder.
+The TanStack stack is generated from `base-templates/tanstack/` (in this repo).
+The sibling `unity-tanstack-boilerplate` repo is a read-only reference only — all
+template changes go into `base-templates/tanstack/`.
 
 Key differences vs Next.js:
 - File-based routing via TanStack Router (`src/routes/`)

@@ -39,7 +39,7 @@ function injectFonts(capeData: Record<string, unknown>) {
 
   const hasFontFiles = !!(condensedBlack || light || tertiary);
   const fontFamily   = (branding.fontFamily as string) ||
-    (hasFontFiles ? "'BrandFont', 'Helvetica Neue', Arial, sans-serif" : "'Helvetica Neue', Arial, sans-serif");
+    (hasFontFiles ? "'BrandFont', 'Inter', 'Segoe UI', Arial, sans-serif" : "'Inter', 'Segoe UI', Arial, sans-serif");
 
   document.documentElement.style.setProperty('--default-font-family', fontFamily);
 

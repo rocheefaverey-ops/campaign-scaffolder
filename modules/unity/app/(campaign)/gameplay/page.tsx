@@ -139,9 +139,14 @@ export default function GameplayPage() {
     ctx.setData({ translations, playTutorial: !onboardingCompleted });
 
     startTransition(async () => {
-      // TODO: call your create-session server action here before starting
-      await ctx.fullBoot();
+      ctx.setTargetScene('{{UNITY_DEFAULT_SCENE}}');
+      await ctx.initializeUnity(true);
+      // sendSetScene uses skipPreload:true — works for builds that don't fire
+      // addressableLoaded. For builds that do, use preloadScene() instead.
+      ctx.sendSetScene();
+      await ctx.loadScene(true);
       ctx.setUnityVisible(true);
+      // TODO: call your create-session server action here before starting
       ctx.startGame();
     });
 

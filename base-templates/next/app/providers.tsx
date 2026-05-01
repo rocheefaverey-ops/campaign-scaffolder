@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { getQueryClient } from '@lib/query/query-client';
 import { CapeDataProvider } from '@components/providers/CapeDataProvider';
 import { GameProvider } from '@contexts/GameContext';
+import DesignTokenInjector from '@components/_core/DesignTokenInjector/DesignTokenInjector';
 import { type Platform } from '@/types/game';
 
 interface ProvidersProps {
@@ -20,6 +21,7 @@ export default function Providers({ children, capeData, platform, nonce }: Provi
   return (
     <QueryClientProvider client={queryClient}>
       <CapeDataProvider initialData={capeData}>
+        <DesignTokenInjector capeData={capeData} />
         <GameProvider platform={platform} nonce={nonce}>
           {children}
         </GameProvider>

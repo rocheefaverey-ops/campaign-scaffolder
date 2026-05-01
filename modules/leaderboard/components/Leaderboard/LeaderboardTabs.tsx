@@ -14,16 +14,19 @@ interface LeaderboardTabsProps {
 
 export default function LeaderboardTabs({ active, onChange }: LeaderboardTabsProps) {
   return (
-    <div className="flex rounded-full bg-white/10 p-1">
+    <div
+      className="flex rounded-full p-1"
+      style={{ background: 'var(--surface-elevated)', border: '1px solid var(--line-soft)' }}
+    >
       {TABS.map((tab) => (
         <button
           key={tab.value}
           onClick={() => onChange(tab.value)}
           className={cn(
-            'flex-1 rounded-full py-2 text-sm font-brand font-bold transition-all duration-200',
+            'flex-1 rounded-full py-2 text-sm font-bold uppercase tracking-wider transition-all duration-200',
             active === tab.value
-              ? 'bg-[var(--color-primary)] text-[var(--color-secondary)]'
-              : 'text-white/60 hover:text-white',
+              ? 'bg-[var(--color-primary)] text-[var(--text-primary)] shadow-[var(--shadow-card)]'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
           )}
         >
           {tab.label}

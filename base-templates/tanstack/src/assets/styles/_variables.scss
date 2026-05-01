@@ -1,0 +1,38 @@
+// ── Livewall house palette — scaffolder baseline ────────────────────────────
+// CAPE `settings.branding.*` overrides these at runtime via DesignTokenInjector
+// (src/components/design-tokens/DesignTokenInjector.tsx). Unset CAPE values
+// fall through to the defaults below.
+
+// Sizes
+$desktopFrameWidth: 375px;
+$desktopFrameHeight: 667px;
+$mobileThreshold: 900px;
+$desktopBorderRadius: 2px;
+
+// Fonts
+$fontInter:    "Inter", "Segoe UI", Arial, sans-serif;
+$fontDisplay:  "Inter", "Segoe UI", Arial, sans-serif;
+// Legacy aliases — retained for code that still references them
+$fontScala:    $fontInter;
+$fontGaramond: $fontDisplay;
+
+// Colors — brand
+$primaryColor:   #CDFF00;   // Livewall lime
+$secondaryColor: #0E0E0E;   // Livewall ink
+$tertiaryColor:  #FAFAFA;   // Surface off-white
+$whiteColor:     #FFFFFF;
+$blackColor:     #000000;
+
+$formErrorColor: #E82727;
+
+// Colors — text
+$primaryTextColor:   #0E0E0E;
+$secondaryTextColor: rgba(14, 14, 14, 0.64);
+$inverseTextColor:   #FAFAFA;
+
+// Timings
+$baseFadeDuration: 400ms;
+
+// Safe-area margins
+$app-top-margin: env(safe-area-inset-top);
+$app-bottom-margin: env(safe-area-inset-bottom);

@@ -15,9 +15,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Filled — primary brand colour
+        // Filled lime-on-ink — the signature Livewall CTA
         primary:   'btn-primary',
-        // Outlined — primary colour border & text, fills on hover
+        // Filled ink-on-light — for "confirming" actions
+        ink:       'btn-ink',
+        // Outlined — for tertiary actions
         secondary: 'btn-secondary',
         // Minimal — text only
         ghost:     'btn-ghost',

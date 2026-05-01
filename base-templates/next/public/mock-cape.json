@@ -1,16 +1,46 @@
 {
-  "_comment": "Local dev mock — loaded when CAPE_MOCK=true. Edit freely, never committed with real data.",
+  "_comment": "Local dev mock — loaded when CAPE_MOCK=true. Edit freely, never committed with real data. Defaults reflect the Livewall house brand.",
 
   "settings": {
+    "title":         "Livewall Campaign",
+    "brand":         "",
+    "department":    "",
+    "languages":     { "EN": "EN - English" },
+    "timezone":      "Europe/Brussels",
+    "planning":      { "online": "", "offline": "" },
+    "maintenance":   false,
+    "notifications": {},
+    "admin":         {},
     "branding": {
-      "themeColor":     "#1a1a2e",
-      "primaryColor":   "#e94560",
-      "secondaryColor": "#16213e",
-      "accentColor":    "#4a9eff",
-      "fontFamily":     "Inter, sans-serif",
+      "themeColor":     "#CDFF00",
+      "primaryColor":   "#CDFF00",
+      "secondaryColor": "#0E0E0E",
+      "tertiaryColor":  "#FAFAFA",
+      "errorColor":     "#E82727",
+      "fontFamily":     "'Inter', 'Segoe UI', Arial, sans-serif",
       "favicon":        [{ "url": "/assets/favicon.svg" }],
       "fontBrand":      [],
       "fontLight":      []
+    },
+    "pages": {
+      "video": {
+        "_comment":         "mode: 'intro' = play once, skip after minPlaybackSec. 'loadingScreen' = loop until game ready, then surface skip.",
+        "mode":             "loadingScreen",
+        "minPlaybackSec":   3,
+        "readyFallbackSec": 8
+      }
+    },
+    "menu": {
+      "_comment":        "Toggle which links appear in the /menu route.",
+      "showHome":        true,
+      "showResume":      true,
+      "showHowToPlay":   true,
+      "showLeaderboard": false,
+      "showVoucher":     false,
+      "showTerms":       true,
+      "showPrivacy":     false,
+      "showFaq":         false,
+      "showLeave":       false
     }
   },
 
@@ -21,37 +51,45 @@
 
   "general": {
     "meta": {
-      "siteTitle":       { "value": "Mock Campaign" },
-      "siteDescription": { "value": "Local dev — mock CAPE data. Replace with real campaign data." }
+      "siteTitle":       { "value": "Livewall Campaign" },
+      "siteDescription": { "value": "Mock CAPE data — replace with campaign-specific copy." }
     },
     "legal": {
-      "termsUrl":   { "value": "https://example.com/terms" },
-      "privacyUrl": { "value": "https://example.com/privacy" }
+      "termsUrl":   { "value": "https://livewallgroup.com/terms" },
+      "privacyUrl": { "value": "https://livewallgroup.com/privacy" }
     },
     "header": {
-      "logo":       [{ "url": "/assets/placeholder-logo.svg" }],
-      "menuBtnBg":  [{ "url": "/assets/placeholder-icon.svg" }],
-      "menuIcon":   [{ "url": "/assets/placeholder-icon.svg" }]
+      "logo":       [{ "url": "/assets/logo-livewall-mark.svg" }],
+      "menuBtnBg":  [{ "url": "/assets/favicon.svg" }],
+      "menuIcon":   [{ "url": "/assets/favicon.svg" }]
     },
     "landing": {
-      "logo":       [{ "url": "/assets/placeholder-logo.svg" }],
-      "background": [{ "url": "/assets/placeholder-bg.svg" }]
+      "logo":       [{ "url": "/assets/logo-livewall-wordmark.svg" }],
+      "background": [{ "url": "/assets/hero-mobile.png" }]
     },
     "onboarding": {
-      "heroImage":  [{ "url": "/assets/placeholder-hero.svg" }],
-      "background": [{ "url": "/assets/placeholder-bg.svg" }]
+      "heroImage":  [{ "url": "/assets/hero-desktop-pattern.png" }],
+      "background": [{ "url": "/assets/hero-mobile.png" }]
     },
     "result": {
-      "background": [{ "url": "/assets/placeholder-bg.svg" }]
+      "background": [{ "url": "/assets/hero-mobile.png" }]
     }
+  },
+
+  "desktop": {
+    "useDesktopWrapper":       true,
+    "description":             "Scan de QR-code om te spelen op je telefoon",
+    "qrText":                  "Scan om te spelen",
+    "logo":                    [{ "url": "/assets/logo-livewall-wordmark.svg" }],
+    "backgroundIllustration":  [{ "url": "/assets/hero-desktop.png" }]
   },
 
   "copy": {
 
     "landing": {
       "headline":    "Welcome to the Campaign",
-      "subline":     "This is mock copy — replace via CAPE.",
-      "body":        "Play the game, win prizes, and have fun.",
+      "subline":     "Mock copy — replace via CAPE.",
+      "body":        "Play the game, score high, claim your reward.",
       "cta":         "Speel nu",
       "ctaSecondary": "Meer info"
     },
@@ -132,29 +170,34 @@
 
     "menu": {
       "headline":   "Menu",
-      "ctaHome":    "Home",
-      "ctaProfile": "Profiel",
-      "ctaLogout":  "Uitloggen"
+      "home":       "Home",
+      "resume":     "Hervatten",
+      "howToPlay":  "Hoe te spelen",
+      "terms":      "Voorwaarden"
     }
   },
 
   "files": {
+    "video": {
+      "introVideo":    [{ "url": "/assets/intro-livewall.mp4" }],
+      "loadingVideo":  [{ "url": "/assets/intro-livewall.mp4" }]
+    },
     "landing": {
-      "heroImage":      [{ "url": "/assets/placeholder-hero.svg" }],
-      "heroVideo":      [],
-      "backgroundImage":[{ "url": "/assets/placeholder-bg.svg" }]
+      "heroImage":       [{ "url": "/assets/hero-desktop-pattern.png" }],
+      "heroVideo":       [{ "url": "/assets/intro-livewall.mp4" }],
+      "backgroundImage": [{ "url": "/assets/hero-mobile.png" }]
     },
     "onboarding": {
-      "step1Image": [{ "url": "/assets/placeholder-hero.svg" }],
-      "step2Image": [{ "url": "/assets/placeholder-hero.svg" }],
-      "step3Image": [{ "url": "/assets/placeholder-hero.svg" }]
+      "step1Image": [{ "url": "/assets/hero-desktop-pattern.png" }],
+      "step2Image": [{ "url": "/assets/hero-desktop-pattern.png" }],
+      "step3Image": [{ "url": "/assets/hero-desktop-pattern.png" }]
     },
     "result": {
-      "winImage":  [{ "url": "/assets/placeholder-hero.svg" }],
-      "loseImage": [{ "url": "/assets/placeholder-hero.svg" }]
+      "winImage":  [{ "url": "/assets/hero-desktop-pattern.png" }],
+      "loseImage": [{ "url": "/assets/hero-desktop-pattern.png" }]
     },
     "voucher": {
-      "voucherImage": [{ "url": "/assets/placeholder-hero.svg" }]
+      "voucherImage": [{ "url": "/assets/logo-livewall-mark.svg" }]
     }
   }
 }

@@ -1,37 +1,55 @@
 @import 'tailwindcss';
 
-/*
- * ─── Tailwind v4 Theme ───────────────────────────────────────────────────────
- * Registers custom utilities: font-default, text-primary, bg-primary, etc.
- * Keep in sync with the CSS custom properties in :root below.
- */
+/* ──────────────────────────────────────────────────────────────────────────
+ * Livewall house palette — the scaffolder baseline.
+ * CAPE `settings.branding.*` values override these at runtime via
+ * DesignTokenInjector (components/_core/DesignTokenInjector). Unset CAPE
+ * values fall through to the lime + ink + off-white system below.
+ * ────────────────────────────────────────────────────────────────────────── */
+
 @theme {
-  --font-family-default: var(--default-font-family, 'Inter', system-ui, sans-serif);
-  --color-primary:       #6c63ff;
-  --color-secondary:     #a09cff;
-  --color-tertiary:      #c8c5ff;
-  --color-statusRed:     #e82727;
+  --font-family-default: var(--default-font-family, 'Inter', 'Segoe UI', Arial, sans-serif);
+  --color-primary:       #CDFF00;
+  --color-secondary:     #0E0E0E;
+  --color-tertiary:      #FAFAFA;
+  --color-statusRed:     #E82727;
 }
 
-/*
- * ─── Design Tokens ───────────────────────────────────────────────────────────
- * Placeholder defaults — overridden at runtime by CapeDataProvider.injectFonts()
- * and the CAPE design-tokens module. Variable names must stay stable.
- */
 :root {
-  --color-primary:   #6c63ff;
-  --color-secondary: #a09cff;
-  --color-tertiary:  #c8c5ff;
-  --color-statusRed: #e82727;
+  --color-primary:   #CDFF00;   /* Livewall lime */
+  --color-secondary: #0E0E0E;   /* Livewall ink */
+  --color-tertiary:  #FAFAFA;   /* Surface off-white */
+  --color-statusRed: #E82727;
 
-  /* Set by CapeDataProvider at runtime from CAPE branding */
-  --default-font-family: 'Inter', system-ui, sans-serif;
+  --default-font-family: var(--font-inter), 'Inter', 'Segoe UI', Arial, sans-serif;
+  --display-font-family: var(--font-inter), 'Inter', 'Segoe UI', Arial, sans-serif;
 
-  /* Derived gradient stops — used by Button, hero sections, etc. */
-  --gradient-primary-glow: radial-gradient(ellipse 120% 80% at 50% -10%, color-mix(in srgb, var(--color-primary) 60%, transparent) 0%, transparent 70%);
+  --surface-base:     #FAFAFA;
+  --surface-elevated: rgba(255, 255, 255, 0.80);
+  --surface-strong:   rgba(255, 255, 255, 0.96);
+  --surface-ink:      #0E0E0E;
+  --surface-lime:     var(--color-primary);
+
+  --line-soft:   rgba(14, 14, 14, 0.08);
+  --line-strong: rgba(14, 14, 14, 0.18);
+
+  --text-primary:   #0E0E0E;
+  --text-secondary: rgba(14, 14, 14, 0.64);
+  --text-inverse:   #FAFAFA;
+
+  --shadow-soft: 0 18px 48px rgba(14, 14, 14, 0.10);
+  --shadow-card: 0 10px 30px rgba(14, 14, 14, 0.08);
+  --shadow-lime: 0 14px 38px color-mix(in srgb, var(--color-primary) 45%, transparent);
+
+  --gradient-primary-glow: radial-gradient(ellipse 120% 80% at 50% -10%, color-mix(in srgb, var(--color-primary) 55%, transparent) 0%, transparent 70%);
+  --campaign-ambient:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 32%, transparent), transparent 38%),
+    radial-gradient(circle at 85% 15%, rgba(14, 14, 14, 0.06), transparent 32%),
+    linear-gradient(180deg, #FAFAFA 0%, #F2F2F2 100%);
+  --campaign-image-wash:
+    linear-gradient(180deg, rgba(250, 250, 250, 0.32) 0%, rgba(240, 240, 240, 0.20) 38%, rgba(235, 235, 235, 0.62) 100%);
 }
 
-/* ─── Reset ──────────────────────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -44,9 +62,9 @@ html,
 body {
   width: 100%;
   height: 100%;
-  overflow: hidden; /* Pages own their own scrolling */
-  background: #000;
-  color: #fff;
+  overflow: hidden;
+  background: var(--surface-base);
+  color: var(--text-primary);
   font-family: var(--default-font-family);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -62,7 +80,7 @@ body {
 button,
 a,
 [role='button'] {
-  touch-action: manipulation; /* Eliminates 300ms tap delay on mobile */
+  touch-action: manipulation;
 }
 
 button {
@@ -78,22 +96,21 @@ img {
   max-width: 100%;
 }
 
-/* ─── Utilities ──────────────────────────────────────────────────────────── */
 @utility no-scrollbar {
   &::-webkit-scrollbar { display: none; }
-  -ms-overflow-style:   none;
-  scrollbar-width:      none;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Safe-area padding helpers for notched / home-indicator phones */
-@utility safe-top    { padding-top:    env(safe-area-inset-top); }
+@utility safe-top { padding-top: env(safe-area-inset-top); }
 @utility safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-@utility safe-x      { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+@utility safe-x {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
 
-/* Full dynamic viewport height — avoids browser chrome on mobile */
 @utility dvh { height: 100dvh; }
 
-/* ─── Desktop Wrapper ────────────────────────────────────────────────────── */
 .desktop-wrapper {
   display: flex;
   align-items: center;
@@ -103,7 +120,7 @@ img {
   height: 100vh;
   position: relative;
   overflow: hidden;
-  background: #000;
+  background: var(--campaign-ambient);
 }
 
 .desktop-wrapper__bg {
@@ -117,7 +134,8 @@ img {
 .desktop-wrapper__overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background:
+    linear-gradient(90deg, rgba(247, 243, 236, 0.92) 0%, rgba(247, 243, 236, 0.74) 35%, rgba(247, 243, 236, 0.2) 100%);
 }
 
 .desktop-wrapper__info {
@@ -138,10 +156,10 @@ img {
 }
 
 .desktop-wrapper__description {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1.125rem;
   line-height: 1.5;
-  opacity: 0.9;
+  opacity: 0.78;
 }
 
 .desktop-wrapper__qr-container {
@@ -152,9 +170,10 @@ img {
 }
 
 .desktop-wrapper__qr-box {
-  background: #fff;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 20px;
   padding: 12px;
+  box-shadow: var(--shadow-card);
 }
 
 .desktop-wrapper__qr-img {
@@ -164,7 +183,7 @@ img {
 }
 
 .desktop-wrapper__qr-label {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
   font-size: 0.875rem;
 }
 
@@ -176,11 +195,11 @@ img {
 .desktop-wrapper__phone-frame {
   width: 375px;
   height: 667px;
-  border-radius: 24px;
+  border-radius: 14px;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24px 80px rgba(14, 14, 14, 0.18), 0 0 0 1px rgba(14, 14, 14, 0.08);
+  border: 1px solid rgba(14, 14, 14, 0.1);
 }
 
 @media (max-width: 768px) {
@@ -193,40 +212,39 @@ img {
   }
 }
 
-/* ─── Animations ─────────────────────────────────────────────────────────── */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeOut {
   from { opacity: 1; transform: translateY(0); }
-  to   { opacity: 0; transform: translateY(10px); }
+  to { opacity: 0; transform: translateY(10px); }
 }
 
 @keyframes fadeInDown {
   from { opacity: 0; transform: translateY(-16px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeInLeft {
   from { opacity: 0; transform: translateX(-16px); }
-  to   { opacity: 1; transform: translateX(0); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes fadeInRight {
   from { opacity: 0; transform: translateX(16px); }
-  to   { opacity: 1; transform: translateX(0); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes scaleIn {
   from { opacity: 0; transform: scale(0.92); }
-  to   { opacity: 1; transform: scale(1); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes spin {
@@ -235,129 +253,159 @@ img {
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+  50% { opacity: 0.4; }
 }
 
 @keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position:  400px 0; }
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
 }
 
-@keyframes gradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50%       { background-position: 100% 50%; }
-}
-
-/* Tailwind animation utilities */
-@utility animate-fadeIn      { animation: fadeIn      0.45s ease both; }
-@utility animate-fadeInDown  { animation: fadeInDown  0.45s ease both; }
-@utility animate-fadeInUp    { animation: fadeInUp    0.45s ease both; }
-@utility animate-fadeInLeft  { animation: fadeInLeft  0.45s ease both; }
+@utility animate-fadeIn { animation: fadeIn 0.45s ease both; }
+@utility animate-fadeInDown { animation: fadeInDown 0.45s ease both; }
+@utility animate-fadeInUp { animation: fadeInUp 0.45s ease both; }
+@utility animate-fadeInLeft { animation: fadeInLeft 0.45s ease both; }
 @utility animate-fadeInRight { animation: fadeInRight 0.45s ease both; }
-@utility animate-scaleIn     { animation: scaleIn     0.35s ease both; }
-@utility animate-spin        { animation: spin        1s linear infinite; }
-@utility animate-pulse       { animation: pulse       2s ease-in-out infinite; }
+@utility animate-scaleIn { animation: scaleIn 0.35s ease both; }
+@utility animate-spin { animation: spin 1s linear infinite; }
+@utility animate-pulse { animation: pulse 2s ease-in-out infinite; }
 @utility animate-shimmer {
-  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0) 100%);
+  background: linear-gradient(90deg, rgba(14,14,14,0) 0%, rgba(14,14,14,0.06) 50%, rgba(14,14,14,0) 100%);
   background-size: 400px 100%;
   animation: shimmer 1.4s ease infinite;
 }
 
-/* ─── Button variants ────────────────────────────────────────────────────── */
-/*
- * Complex gradients & shadows live here rather than in Tailwind arbitrary
- * values, which can break when they contain commas or nested parens.
+/* Livewall house buttons
+ *  primary    — lime on ink, the signature Livewall CTA
+ *  ink        — ink on lime-neutral, for secondary "confirming" actions
+ *  secondary  — outlined, for tertiary actions
+ *  ghost      — minimal text button
+ *  danger     — destructive/error
  */
-
 .btn-primary {
   background: var(--color-primary);
-  background-image: radial-gradient(ellipse 120% 60% at 50% -5%, rgba(255,255,255,0.25) 0%, transparent 70%);
-  color: #000;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.2);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lime);
 }
+
 .btn-primary:hover {
-  filter: brightness(1.12);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+  filter: brightness(1.04);
+  box-shadow: 0 18px 44px color-mix(in srgb, var(--color-primary) 55%, transparent);
+}
+
+.btn-ink {
+  background: var(--surface-ink);
+  color: var(--text-inverse);
+  box-shadow: 0 10px 24px rgba(14, 14, 14, 0.22);
+}
+
+.btn-ink:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 14px 32px rgba(14, 14, 14, 0.28);
 }
 
 .btn-secondary {
-  background: transparent;
-  color: var(--color-primary);
-  border: 2px solid var(--color-primary);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  background: var(--surface-strong);
+  color: var(--text-primary);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-card);
 }
+
 .btn-secondary:hover {
-  background: var(--color-primary);
-  color: #000;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  background: #fff;
+  color: var(--text-primary);
+  box-shadow: 0 16px 28px rgba(14, 14, 14, 0.14);
 }
 
 .btn-ghost {
   background: transparent;
-  color: rgba(255,255,255,0.65);
+  color: var(--text-secondary);
   min-height: 40px;
 }
+
 .btn-ghost:hover {
-  color: #fff;
-  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  background: rgba(14, 14, 14, 0.06);
 }
 
 .btn-danger {
   background: var(--color-statusRed);
   color: #fff;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.45);
-}
-.btn-danger:hover {
-  filter: brightness(1.1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
-/* ─── Skeleton loader ────────────────────────────────────────────────────── */
+.btn-danger:hover {
+  filter: brightness(1.08);
+}
+
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.04) 0%,
-    rgba(255, 255, 255, 0.1)  50%,
-    rgba(255, 255, 255, 0.04) 100%
-  );
+  background: linear-gradient(90deg, rgba(14, 14, 14, 0.04) 0%, rgba(14, 14, 14, 0.08) 50%, rgba(14, 14, 14, 0.04) 100%);
   background-size: 400px 100%;
   animation: shimmer 1.4s ease infinite;
   border-radius: 8px;
 }
 
-/* ─── Rich text (terms, FAQ, privacy) ────────────────────────────────────── */
 .rich-text {
   h1, h2, h3 {
     font-weight: 700;
     margin-top: 1.5em;
     margin-bottom: 0.5em;
-    color: #fff;
+    color: var(--text-primary);
   }
-  p { margin-bottom: 1em; line-height: 1.7; opacity: 0.85; }
-  ul { list-style: disc;     padding-left: 1.5em; margin-bottom: 1em; }
-  ol { list-style: decimal;  padding-left: 1.5em; margin-bottom: 1em; }
-  li { margin-bottom: 0.4em; line-height: 1.6; opacity: 0.85; }
-  a  { color: var(--color-primary); text-decoration: underline; }
+
+  p {
+    margin-bottom: 1em;
+    line-height: 1.7;
+    color: var(--text-secondary);
+  }
+
+  ul {
+    list-style: disc;
+    padding-left: 1.5em;
+    margin-bottom: 1em;
+  }
+
+  ol {
+    list-style: decimal;
+    padding-left: 1.5em;
+    margin-bottom: 1em;
+  }
+
+  li {
+    margin-bottom: 0.4em;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  a {
+    color: var(--text-primary);
+    text-decoration: underline;
+  }
+
   strong { font-weight: 700; }
+
   blockquote {
-    border-left: 3px solid rgba(255, 255, 255, 0.3);
+    border-left: 3px solid rgba(14, 14, 14, 0.2);
     padding-left: 1em;
-    opacity: 0.7;
+    color: var(--text-secondary);
     margin: 1em 0;
   }
+
   table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 1em;
     font-size: 0.875rem;
   }
-  td, th {
-    border: 1px solid rgba(255, 255, 255, 0.15);
+
+  td,
+  th {
+    border: 1px solid var(--line-soft);
     padding: 0.5em;
     text-align: left;
   }
 }
 
-/* ─── Form Elements ──────────────────────────────────────────────────────────── */
 input[type='text'],
 input[type='email'],
 input[type='password'],
@@ -368,10 +416,10 @@ select {
   width: 100%;
   min-height: 48px;
   padding: 0.75rem 1rem;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--text-primary);
   font: inherit;
   font-size: 1rem;
   line-height: 1.5;
@@ -388,9 +436,9 @@ input[type='tel']:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: var(--color-primary);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+  border-color: rgba(14, 14, 14, 0.38);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(14, 14, 14, 0.06);
 }
 
 input[type='text']::placeholder,
@@ -399,7 +447,7 @@ input[type='password']::placeholder,
 input[type='number']::placeholder,
 input[type='tel']::placeholder,
 textarea::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(14, 14, 14, 0.38);
 }
 
 textarea {
@@ -407,25 +455,22 @@ textarea {
   min-height: 120px;
 }
 
-/* Select dropdown arrow */
 select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%23ffffff' d='M0 0l6 8 6-8z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%230E0E0E' d='M0 0l6 8 6-8z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 1rem center;
   padding-right: 2.5rem;
   background-size: 12px;
 }
 
-/* Checkbox and radio inputs */
 input[type='checkbox'],
 input[type='radio'] {
   width: 20px;
   height: 20px;
   cursor: pointer;
-  accent-color: var(--color-primary);
+  accent-color: var(--surface-ink);
 }
 
-/* ─── Form Field Container ─────────────────────────────────────────────────── */
 .form-field {
   display: flex;
   flex-direction: column;
@@ -434,11 +479,11 @@ input[type='radio'] {
 }
 
 .form-field label {
-  font-weight: 500;
-  font-size: 0.875rem;
+  font-weight: 600;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
 }
 
 .form-field input,
@@ -447,12 +492,12 @@ input[type='radio'] {
   font-size: 1rem;
 }
 
-/* ─── Card / Container ────────────────────────────────────────────────────── */
 .card {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-soft);
+  border-radius: 24px;
   padding: 1.5rem;
+  box-shadow: var(--shadow-card);
 }
 
 .card--hover {
@@ -461,12 +506,11 @@ input[type='radio'] {
 }
 
 .card--hover:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: #fff;
+  border-color: var(--line-strong);
   transform: translateY(-2px);
 }
 
-/* ─── Badge ──────────────────────────────────────────────────────────────── */
 .badge {
   display: inline-block;
   padding: 0.375rem 0.75rem;
@@ -475,40 +519,480 @@ input[type='radio'] {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: rgba(14, 14, 14, 0.08);
+  color: var(--text-primary);
 }
 
 .badge--primary {
-  background: var(--color-primary);
-  color: #000;
+  background: var(--surface-ink);
+  color: var(--text-inverse);
 }
 
 .badge--secondary {
-  background: var(--color-secondary);
-  color: #000;
+  background: var(--color-primary);
+  color: var(--text-primary);
 }
 
-/* ─── Text Utilities ────────────────────────────────────────────────────── */
-.text-muted {
-  opacity: 0.65;
-}
+.text-muted { color: var(--text-secondary); }
+.text-success { color: #10b981; }
+.text-warning { color: #f59e0b; }
+.text-error { color: var(--color-statusRed); }
 
-.text-success {
-  color: #10b981;
-}
-
-.text-warning {
-  color: #f59e0b;
-}
-
-.text-error {
-  color: var(--color-statusRed);
-}
-
-/* ─── Divider ──────────────────────────────────────────────────────────────── */
 .divider {
   height: 1px;
-  background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
+  background: linear-gradient(to right, transparent, rgba(14,14,14,0.12), transparent);
   margin: 1.5rem 0;
+}
+
+.campaign-screen {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--campaign-ambient);
+  color: var(--text-primary);
+}
+
+.campaign-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(140deg, rgba(255,255,255,0.34) 0%, transparent 46%),
+    radial-gradient(circle at bottom right, rgba(14, 14, 14, 0.05), transparent 30%);
+  pointer-events: none;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Hero variant — content sits directly on a full-bleed image.
+ * Used by landing (and is the right starting point for any "on the brand
+ * atmosphere" page like a homescreen / loading / win celebration).
+ * ─────────────────────────────────────────────────────────────────────── */
+
+.campaign-screen--hero { background: var(--surface-ink); /* image-fail fallback */ }
+.campaign-screen--hero::before { display: none; }
+
+.campaign-hero-bleed {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.campaign-hero-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(14,14,14,0.32) 0%, transparent 22%),
+    linear-gradient(0deg,
+      rgba(14,14,14,0.78) 0%,
+      rgba(14,14,14,0.46) 28%,
+      transparent 56%),
+    radial-gradient(ellipse 100% 60% at 50% 102%,
+      color-mix(in srgb, var(--color-primary) 22%, transparent) 0%,
+      transparent 70%);
+}
+
+.campaign-screen--hero .campaign-shell {
+  position: relative;
+  z-index: 2;
+}
+
+.campaign-hero-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.campaign-hero-logo {
+  height: 44px;
+  width: auto;
+  max-width: 60vw;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 14px rgba(14,14,14,0.42));
+}
+
+/* Pin the headline/body to the lower third — logo top, content above CTA. */
+.campaign-hero-content {
+  margin-top: auto;
+  padding-bottom: 0.5rem;
+}
+
+/* Text-on-image — switch from dark-on-light to light-on-dark with subtle
+   text-shadows so copy stays legible across any uploaded brand image. */
+.campaign-screen--hero .campaign-kicker {
+  color: rgba(255,255,255,0.86);
+  text-shadow: 0 1px 8px rgba(14,14,14,0.42);
+}
+.campaign-screen--hero .campaign-title {
+  color: #fff;
+  text-shadow: 0 2px 18px rgba(14,14,14,0.42);
+}
+.campaign-screen--hero .campaign-copy {
+  color: rgba(255,255,255,0.92);
+  text-shadow: 0 1px 8px rgba(14,14,14,0.42);
+}
+
+/* Optional close button next to the logo (onboarding multi-slide variant). */
+.campaign-hero-header--with-close {
+  justify-content: space-between;
+}
+
+.campaign-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(14, 14, 14, 0.42);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.campaign-close:hover { background: rgba(14, 14, 14, 0.62); }
+
+/* Hamburger menu button — same frosted-glass treatment as .campaign-close.
+   Used in the campaign-hero-header on hero pages so the user can reach the
+   /menu route (terms / FAQ / leave) from anywhere. */
+.campaign-menu-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(14, 14, 14, 0.42);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease;
+}
+.campaign-menu-btn:hover { background: rgba(14, 14, 14, 0.62); }
+.campaign-menu-btn svg {
+  width: 18px; height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* Dot pagination — iOS-style expanding pill on the active dot. */
+.campaign-pagination {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0 8px;
+}
+
+.campaign-pagination__dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.32);
+  cursor: pointer;
+  transition: width 0.22s ease, background 0.22s ease;
+}
+.campaign-pagination__dot.is-active {
+  background: var(--color-primary);
+  width: 24px;
+}
+
+/* Optional secondary "Skip" link below the primary CTA. Onboarding uses
+   this when settings.pages.onboarding.allowSkip is true. */
+.campaign-skip {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+  padding: 8px 12px;
+  align-self: center;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.campaign-skip:hover { color: rgba(255, 255, 255, 0.92); }
+
+/* Top-of-screen countdown overlay used by gameplay pages when
+   settings.pages.game.timerEnabled is true. */
+.game-timer {
+  position: absolute;
+  top: max(1.25rem, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(14, 14, 14, 0.62);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 6px 18px rgba(14, 14, 14, 0.32);
+  font-family: var(--font-mono, var(--default-font-family));
+  color: #fff;
+  user-select: none;
+  pointer-events: none;
+}
+.game-timer__label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+.game-timer__value {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.game-timer[data-danger='true'] {
+  border-color: var(--color-primary);
+  box-shadow: 0 6px 22px color-mix(in srgb, var(--color-primary) 50%, transparent);
+}
+.game-timer[data-danger='true'] .game-timer__value { color: var(--color-primary); }
+
+/* Score plate — frosted glass on the hero, lime-tinted, score is the anchor. */
+.result-plate {
+  margin-top: 0.75rem;
+  padding: 18px 22px 20px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04)),
+    color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  box-shadow: 0 18px 44px rgba(14, 14, 14, 0.32);
+}
+.result-plate__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+.result-plate__score {
+  font-family: var(--display-font-family);
+  font-size: clamp(3rem, 11vw, 4.6rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: #fff;
+  text-shadow: 0 4px 18px rgba(14, 14, 14, 0.5);
+}
+.result-plate__rank {
+  margin-top: 6px;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-primary) 38%, transparent);
+}
+
+/* Voucher plate — full-width frosted card, code panel sits inside it. */
+.voucher-plate {
+  margin-top: 0.75rem;
+  width: 100%;
+  max-width: 24rem;
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 44px rgba(14, 14, 14, 0.32);
+}
+
+/* Scoped button overrides — when a button sits on a hero/dark image, the
+   default light-bg styles disappear. Re-tune secondary + ghost so they read.
+   The lime primary already works on dark, so it's left alone. */
+.campaign-screen--hero .btn-secondary {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: none;
+  backdrop-filter: blur(10px);
+}
+.campaign-screen--hero .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+.campaign-screen--hero .btn-ghost {
+  color: rgba(255, 255, 255, 0.78);
+}
+.campaign-screen--hero .btn-ghost:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.campaign-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.campaign-image--soft {
+  opacity: 0.78;
+  filter: saturate(0.94);
+}
+
+.campaign-image-wash {
+  position: absolute;
+  inset: 0;
+  background: var(--campaign-image-wash);
+}
+
+.campaign-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
+}
+
+.campaign-shell--centered {
+  justify-content: center;
+  gap: 1.25rem;
+}
+
+.campaign-panel {
+  position: relative;
+  border: 1px solid var(--line-soft);
+  background: var(--surface-elevated);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-soft);
+  border-radius: 28px;
+}
+
+.campaign-panel--strong {
+  background: var(--surface-strong);
+}
+
+.campaign-copy {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.campaign-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.campaign-title {
+  font-family: var(--display-font-family);
+  font-size: clamp(2.1rem, 6.4vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  color: var(--text-primary);
+}
+
+.campaign-title--compact {
+  font-size: clamp(1.75rem, 5.4vw, 2.6rem);
+}
+
+.campaign-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.campaign-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.campaign-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 22px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.66);
+  box-shadow: var(--shadow-card);
+}
+
+.campaign-step__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  background: var(--surface-ink);
+  color: var(--text-inverse);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.campaign-score {
+  font-family: var(--display-font-family);
+  font-size: clamp(4.5rem, 18vw, 7.5rem);
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+}
+
+.campaign-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.campaign-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255,255,255,0.62);
+}
+
+.campaign-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card);
 }

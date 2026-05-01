@@ -16,7 +16,6 @@ set /a ROLL_LEADERBOARD=%RANDOM% %% 2
 set /a ROLL_REGISTRATION=%RANDOM% %% 2
 set /a ROLL_VOUCHER=%RANDOM% %% 2
 set /a ROLL_AUDIO=%RANDOM% %% 2
-set /a ROLL_TOKENS=%RANDOM% %% 2
 set /a ROLL_COOKIE=%RANDOM% %% 2
 
 :: 4-digit suffix so names don't collide between runs
@@ -46,7 +45,6 @@ if "%STACK%"=="next" (
   if %ROLL_REGISTRATION%==1 set MODULES=!MODULES! --module=registration
   if %ROLL_VOUCHER%==1      set MODULES=!MODULES! --module=voucher
   if %ROLL_AUDIO%==1        set MODULES=!MODULES! --module=audio
-  if %ROLL_TOKENS%==1       set MODULES=!MODULES! --module=design-tokens
   if %ROLL_COOKIE%==1       set MODULES=!MODULES! --module=cookie-consent
 )
 

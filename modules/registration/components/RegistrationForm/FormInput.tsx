@@ -19,34 +19,40 @@ export default function FormInput({
 
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={inputId} className="text-sm font-medium opacity-70">
+      <label
+        htmlFor={inputId}
+        className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]"
+      >
         {label}
-        {props.required && <span className="ml-1 text-red-400">*</span>}
+        {props.required && (
+          <span className="ml-1" style={{ color: 'var(--color-statusRed)' }}>*</span>
+        )}
       </label>
 
       <div className="relative">
         <input
           id={inputId}
-          className={cn(
-            'w-full rounded-xl border bg-white/10 px-4 py-3 text-white placeholder-white/30 transition-colors focus:outline-none focus:ring-2',
+          className={cn('w-full transition-colors', className)}
+          style={
             error
-              ? 'border-red-400 focus:ring-red-400/40'
-              : showValid
-                ? 'border-green-400 focus:ring-green-400/40'
-                : 'border-white/20 focus:ring-[var(--color-primary)]/40',
-            className,
-          )}
+              ? { borderColor: 'var(--color-statusRed)' }
+              : undefined
+          }
           {...props}
         />
         {showValid && !error && (
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-green-400">
+          <span
+            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-lg font-bold"
+            style={{ color: 'var(--text-primary)' }}
+            aria-hidden
+          >
             ✓
           </span>
         )}
       </div>
 
       {error && (
-        <p className="text-xs text-red-400" role="alert">
+        <p className="text-xs" style={{ color: 'var(--color-statusRed)' }} role="alert">
           {error}
         </p>
       )}

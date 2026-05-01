@@ -20,10 +20,10 @@ export default function LeaderboardRow({
   return (
     <div
       className={cn(
-        'flex animate-fade-in items-center gap-3 rounded-xl px-4 py-3 transition-colors',
+        'animate-fadeInUp flex items-center gap-3 rounded-2xl px-4 py-3 transition-colors',
         isPersonal
-          ? 'bg-[var(--color-primary)] text-[var(--color-secondary)]'
-          : 'bg-white/5 hover:bg-white/10',
+          ? 'bg-[var(--color-primary)] text-[var(--text-primary)] font-semibold shadow-[var(--shadow-card)]'
+          : 'bg-[var(--surface-elevated)] border border-[var(--line-soft)] hover:bg-white',
       )}
       style={{ animationDelay: `${delayMs}ms` }}
     >
@@ -33,7 +33,7 @@ export default function LeaderboardRow({
       </span>
 
       {/* Name */}
-      <span className="flex-1 truncate font-brand font-bold">
+      <span className="flex-1 truncate font-bold">
         {entry.name}
         {isPersonal && (
           <span className="ml-2 text-xs font-normal opacity-70">(you)</span>
@@ -41,7 +41,7 @@ export default function LeaderboardRow({
       </span>
 
       {/* Score */}
-      <span className="shrink-0 font-mono font-bold tabular-nums">
+      <span className="shrink-0 font-bold tabular-nums">
         {entry.score.toLocaleString()}
       </span>
     </div>

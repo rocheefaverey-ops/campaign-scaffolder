@@ -1,0 +1,22 @@
+.styledButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: $fontScala;
+  font-size: 12px;
+  letter-spacing: 2px;
+  background-color: $secondaryColor;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  color: $whiteColor;
+  text-align: center;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-decoration: none;
+
+  &.alternate {
+    background-color: $tertiaryColor;
+    color: $blackColor;
+  }
+}

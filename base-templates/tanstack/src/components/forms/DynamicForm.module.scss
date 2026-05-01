@@ -1,0 +1,29 @@
+.dynamicForm {
+  width: 100%;
+
+  .form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    color: $secondaryColor;
+
+    .input:not(:first-child) {
+      margin-top: 16px;
+    }
+
+    & > .input.checkbox {
+      margin-top: 24px;
+    }
+
+    & > .checkbox ~ .checkbox {
+      margin-top: 16px;
+    }
+  }
+
+  .formError {
+    width: 100%;
+    background-color: $formErrorColor;
+    margin-bottom: 16px;
+    padding: 4px;
+  }
+}

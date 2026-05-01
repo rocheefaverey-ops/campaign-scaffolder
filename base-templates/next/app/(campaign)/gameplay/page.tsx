@@ -1,80 +1,68 @@
 'use client';
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCapeData } from '@hooks/useCapeData';
+import { getCapeBoolean, getCapeNumber } from '@utils/getCapeData';
 import { useGameContext } from '@hooks/useGameContext';
 import Button from '@components/_core/Button/Button';
-import UnityCanvas from '@components/_modules/unity/UnityCanvas';
+import GameTimer from '@components/_core/GameTimer/GameTimer';
 
-/**
- * Gameplay route — mount your game canvas here.
- *
- * Replace the placeholder div with your engine canvas:
- *   - Unity:  <UnityCanvas onGameEnd={handleGameEnd} />
- *   - R3F:    <R3FCanvas   onGameEnd={handleGameEnd} />
- *   - Phaser: <PhaserGame  onGameEnd={handleGameEnd} />
- *
- * The canvas should fill `absolute inset-0` and call handleGameEnd(score) when done.
- * This page deliberately has no header (see PAGES_WITHOUT_HEADER in layout.tsx).
- */
 export default function GameplayPage() {
-  const router = useRouter();
+  const router       = useRouter();
+  const { capeData } = useCapeData();
   const { setScore, setGameIsReady } = useGameContext();
-  const navigatingRef = useRef(false);
+
+  const timerEnabled = getCapeBoolean(capeData, 'settings.pages.game.timerEnabled', true);
+  const timerSec     = getCapeNumber (capeData, 'settings.pages.game.timerSec',     60);
 
   useEffect(() => {
     setGameIsReady(true);
     return () => setGameIsReady(false);
   }, [setGameIsReady]);
 
-  const handleGameEnd = useCallback((score: number) => {
-    if (navigatingRef.current) return;
-    navigatingRef.current = true;
+  const handleGameEnd = (nextScore: number) => {
+    setScore(nextScore);
+    router.push('{{NEXT_AFTER_GAME}}');
+  };
 
-    setScore(score);
-    // Use setTimeout to ensure state updates complete before navigation
-    setTimeout(() => {
-      router.push('{{NEXT_AFTER_GAME}}');
-    }, 0);
-  }, [setScore, router]);
+  // When the countdown expires we end the game with whatever score is in
+  // context. Engine modules that replace this page should hook the same
+  // CAPE keys but call their own engine.endGame() on expire.
+  const onTimerExpire = () => handleGameEnd(0);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-black">
-
-      {/* ── Canvas slot ────────────────────────────────────────────────────────
-          UnityCanvas handles:
-          - Loading Unity WebGL build from CDN
-          - Initializing with boot data
-          - Event listening (ready, start, end, sendEvent)
-          - Forwarding result to handleGameEnd()
-      ─────────────────────────────────────────────────────────────────────── */}
-      <UnityCanvas
-        onGameEnd={handleGameEnd}
-        onReady={() => console.log('Game ready')}
+    <div className="campaign-screen">
+      <div
+        className="absolute inset-0 opacity-40"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(14,14,14,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(14,14,14,0.08) 1px, transparent 1px)',
+          backgroundSize: '28px 28px',
+        }}
       />
-      {/* ── End canvas slot ─────────────────────────────────────────────────── */}
 
-      {/* Dev shortcut — visible only in development, remove before launch */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center">
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => handleGameEnd(Math.floor(Math.random() * 10000))}
-            className="!min-w-[200px]"
-          >
-            End Game (Score: Random)
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => handleGameEnd(5000)}
-          >
-            End with 5000
-          </Button>
-          <p className="text-xs text-gray-500 mt-2">Dev Controls</p>
-        </div>
+      {timerEnabled && timerSec > 0 && (
+        <GameTimer durationSec={timerSec} onExpire={onTimerExpire} />
       )}
+
+      <div className="campaign-shell campaign-shell--centered items-center text-center">
+        <div className="campaign-panel campaign-panel--strong w-full max-w-sm p-8">
+          <div className="campaign-stack items-center">
+            <p className="campaign-kicker">Gameplay</p>
+            <h1 className="campaign-title campaign-title--compact">Mount your game canvas here</h1>
+            <p className="campaign-copy">
+              Replace this placeholder with your Unity, R3F, Phaser, or custom gameplay component.
+            </p>
+          </div>
+        </div>
+
+        {process.env.NODE_ENV === 'development' && (
+          <Button variant="secondary" size="sm" onClick={() => handleGameEnd(Math.floor(Math.random() * 10000))}>
+            Simulate game end
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

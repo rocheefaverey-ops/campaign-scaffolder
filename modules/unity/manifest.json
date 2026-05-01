@@ -34,6 +34,13 @@
       "strategy": "replace"
     },
     {
+      "src": "app/(campaign)/video/page.tsx",
+      "dest": "app/(campaign)/video/page.tsx",
+      "type": "page",
+      "strategy": "replace",
+      "requires": "video"
+    },
+    {
       "src": "lib/LivewallBridge.jslib",
       "dest": "public/LivewallBridge.jslib",
       "type": "asset"
@@ -43,10 +50,10 @@
   "packages": [],
 
   "envVars": [
-    "NEXT_PUBLIC_UNITY_BASE_URL=https://lw-wave-{{PROJECT_NAME}}-unity-acc.lwcf5.nl",
-    "NEXT_PUBLIC_UNITY_GAME_NAME=Game",
-    "NEXT_PUBLIC_UNITY_MIN_DPR=1",
-    "NEXT_PUBLIC_UNITY_MAX_DPR=1.5"
+    "NEXT_PUBLIC_UNITY_BASE_URL",
+    "NEXT_PUBLIC_UNITY_GAME_NAME",
+    "NEXT_PUBLIC_UNITY_MIN_DPR",
+    "NEXT_PUBLIC_UNITY_MAX_DPR"
   ],
 
   "cspPatch": {

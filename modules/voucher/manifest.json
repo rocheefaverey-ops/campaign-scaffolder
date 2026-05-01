@@ -1,7 +1,7 @@
 {
   "id": "voucher",
   "name": "Voucher / Reward",
-  "description": "Reward screen with a unique code. Optional QR code for point-of-sale redemption (requires next-qrcode).",
+  "description": "Reward screen with a unique code. QR code rendered via api.qrserver.com out of the box; swap for a self-hosted lib in production.",
   "files": [
     {
       "src": "components/Voucher/Voucher.tsx",
@@ -18,8 +18,12 @@
   ],
   "envVars": [],
   "packages": [],
+  "cspPatch": {
+    "img-src": ["https://api.qrserver.com"]
+  },
   "notes": [
     "Voucher code comes from GameContext.voucherCode — set it in the end-session action response.",
-    "To enable QR: npm install next-qrcode, then uncomment the import in QRCode.tsx."
+    "QR rendering uses api.qrserver.com by default. Swap the <img> in Voucher.tsx for a self-hosted generator (e.g. `qrcode` package) for production resilience.",
+    "Toggle via CAPE: settings.pages.voucher.showQr (boolean) and settings.pages.voucher.codeLength (number)."
   ]
 }

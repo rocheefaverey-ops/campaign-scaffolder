@@ -15,8 +15,10 @@ campaign-scaffolder/
     ├── scoring/       # create-session / end-session actions
     ├── voucher/       # Reward screen + QR code
     ├── audio/         # Howler.js audio player
-    ├── design-tokens/ # CAPE → CSS custom properties injector
     └── cookie-consent/# Cookiebot consent banner
+
+> `DesignTokenInjector` (CAPE branding → CSS custom properties) is built into
+> the base template and always on. It is not an optional module.
 ```
 
 ## Module Structure Convention

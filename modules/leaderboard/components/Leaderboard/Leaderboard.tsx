@@ -71,7 +71,10 @@ export default function Leaderboard() {
         className="relative flex-1 overflow-y-auto"
       >
         {/* Top fade */}
-        <div className="pointer-events-none sticky top-0 h-6 bg-gradient-to-b from-black/60 to-transparent" />
+        <div
+          className="pointer-events-none sticky top-0 h-6"
+          style={{ background: 'linear-gradient(to bottom, var(--surface-strong), transparent)' }}
+        />
 
         <div className="space-y-2 px-1 pb-4">
           {entries.map((entry, i) => (
@@ -85,17 +88,26 @@ export default function Leaderboard() {
 
           {loading && (
             <div className="flex justify-center py-4">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+              <div
+                className="h-5 w-5 animate-spin rounded-full border-2"
+                style={{
+                  borderColor: 'var(--line-soft)',
+                  borderTopColor: 'var(--color-primary)',
+                }}
+              />
             </div>
           )}
 
           {!loading && entries.length === 0 && (
-            <p className="py-8 text-center opacity-40">No scores yet.</p>
+            <p className="py-8 text-center text-[var(--text-secondary)]">No scores yet.</p>
           )}
         </div>
 
         {/* Bottom fade */}
-        <div className="pointer-events-none sticky bottom-0 h-6 bg-gradient-to-t from-black/60 to-transparent" />
+        <div
+          className="pointer-events-none sticky bottom-0 h-6"
+          style={{ background: 'linear-gradient(to top, var(--surface-strong), transparent)' }}
+        />
       </div>
 
       {/* Personal best — pinned at bottom */}

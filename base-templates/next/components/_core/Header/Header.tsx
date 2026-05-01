@@ -41,7 +41,9 @@ export default function Header({
   onBackClick,
 }: HeaderProps) {
   const base    = 'grid grid-cols-3 items-center px-4 w-full relative z-[100]';
-  const bg      = variant === 'transparent' ? 'bg-transparent' : 'bg-black/30';
+  const bg      = variant === 'transparent'
+    ? 'bg-transparent'
+    : 'bg-[var(--surface-strong)] backdrop-blur-md border-b border-[var(--line-soft)]';
   const height  = type === 'gameplay' ? 'min-h-[112px] py-4' : 'h-[88px] py-6';
   const classes = `${base} ${height} ${bg} ${className}`.trim();
 
@@ -67,8 +69,8 @@ export default function Header({
     return (
       <header className={classes}>
         <div className="flex flex-col items-start gap-2">
-          {score !== undefined && <div className="text-white text-2xl font-bold">{score}</div>}
-          {time && <div className="text-white/80 text-sm">{time}</div>}
+          {score !== undefined && <div className="text-[var(--text-primary)] text-2xl font-bold">{score}</div>}
+          {time && <div className="text-[var(--text-secondary)] text-sm">{time}</div>}
         </div>
         <div className="flex items-center justify-center">{center}</div>
         <div className="flex items-center justify-end">{powerUps}</div>

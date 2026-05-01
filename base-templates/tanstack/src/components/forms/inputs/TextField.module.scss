@@ -1,0 +1,25 @@
+.textField {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+
+  input {
+    height: 48px;
+    padding: 0 16px;
+    width: 100%;
+    background-color: #EEE;
+    font-family: $fontScala;
+    font-size: 14px;
+    color: $secondaryColor;
+  }
+
+  ::placeholder {
+    color: rgba($secondaryColor, 0.5);
+  }
+
+  &.error {
+    input {
+      border-bottom: 1px solid $formErrorColor;
+    }
+  }
+}

@@ -15,7 +15,9 @@
   "envVars": [],
   "packages": [],
   "notes": [
-    "Set the video src from CAPE data: capeData?.intro?.video?.src",
-    "The page auto-navigates to {{NEXT_AFTER_VIDEO}} when the video ends."
+    "Video src is read from CAPE path: general.video.introVideo (assetSelector field).",
+    "Add an assetSelector field at model=general.video.introVideo to the campaign format.",
+    "If the field is missing from CAPE, the page auto-skips straight to {{NEXT_AFTER_VIDEO}}.",
+    "The page auto-navigates to {{NEXT_AFTER_VIDEO}} when the video ends or the user taps Skip."
   ]
 }

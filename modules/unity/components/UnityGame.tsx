@@ -23,6 +23,13 @@ export interface UnityContextType {
   setTargetScene: (sceneKey: string) => void;
   setData: (data: IUnitySetData) => void;
   initializeUnity: (omitLogs?: boolean) => Promise<void>;
+  /** Fire-and-forget: sends SetScene to Unity without waiting for any event.
+   *  skipPreload:true skips the addressable preload handshake — use for builds
+   *  that don't fire addressableLoaded (they respond to LoadScene directly). */
+  sendSetScene: () => void;
+  /** Waits for the next sceneLoaded event without sending anything to Unity.
+   *  Use after sendSetScene() if the build fires sceneLoaded from SetScene alone. */
+  waitForSceneLoad: () => Promise<void>;
   preloadScene: (omitLogs?: boolean) => Promise<void>;
   loadScene: (omitLogs?: boolean) => Promise<void>;
   startGame: (omitLogs?: boolean) => void;
@@ -216,6 +223,29 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const sendSetScene = useCallback(() => {
+    const payload: IUnitySceneLoad = {
+      sceneKey: targetSceneRef.current,
+      // skipPreload: true skips the addressable preload handshake so LoadScene
+      // works immediately. Use skipPreload: false if your build fires addressableLoaded.
+      skipPreload: true,
+    };
+    if (unityDataRef.current) {
+      sendMessage('WebService', 'SetData', JSON.stringify(unityDataRef.current));
+    }
+    uLog.lifecycle('sendSetScene — sending SetScene', payload);
+    sendMessage('WebService', 'SetScene', JSON.stringify(payload));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const waitForSceneLoad = useCallback(async () => {
+    uLog.lifecycle('waitForSceneLoad — waiting for sceneLoaded');
+    setLoading(true);
+    await waitForUnity('sceneLoaded');
+    setLoading(false);
+    uLog.lifecycle('waitForSceneLoad complete');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const initializeUnity = useCallback(
     async (omitLogs = false) => {
       if (isInitialized.current) {
@@ -283,8 +313,6 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
       await waitForUnity('sceneLoaded', unityLoader);
       setUnityLoading(false);
       uLog.lifecycle('initializeUnity complete — sceneLoaded received');
-
-      void preloadScene(true);
     },
     [buildBaseUrl, isLocal] // eslint-disable-line react-hooks/exhaustive-deps
   );
@@ -509,6 +537,8 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
       fullBoot,
       replayBoot,
       initializeUnity,
+      sendSetScene,
+      waitForSceneLoad,
       setData,
       setTargetScene,
       preloadScene,
@@ -525,10 +555,10 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
     <>
       <UnityContext value={ctxValue}>{children}</UnityContext>
 
-      {/* Unity canvas — hidden when not visible, always mounted so Unity can render */}
+      {/* Unity canvas — always mounted + sized so WebGL context is never 0×0 */}
       <div
         className="absolute inset-0 overflow-hidden"
-        style={{ display: isUnityVisible ? 'block' : 'none' }}
+        style={{ visibility: isUnityVisible ? 'visible' : 'hidden', pointerEvents: isUnityVisible ? 'auto' : 'none' }}
         aria-hidden="true"
       >
         <canvas ref={unityCanvasRef} id="unity-canvas" className="h-full w-full" />

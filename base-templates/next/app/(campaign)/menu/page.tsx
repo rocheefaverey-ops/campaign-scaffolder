@@ -2,82 +2,92 @@
 
 import { useRouter } from 'next/navigation';
 import { useCapeData } from '@hooks/useCapeData';
-import { getCapeText, getCapeImage } from '@utils/getCapeData';
+import { getCapeText, getCapeImage, getCapeBoolean } from '@utils/getCapeData';
 import Button from '@components/_core/Button/Button';
 
 /**
- * Menu overlay — navigated to when the user taps the header menu button.
- * Sits inside the (campaign) layout group so the header is hidden via
- * PAGES_WITHOUT_HEADER (add '/menu' to that list in layout.tsx to go full-bleed).
- *
- * Adjust nav items to match your campaign's page structure.
+ * Catalog of menu items. The wizard's MENU_ITEMS schema mirrors this list;
+ * keep them in sync. Each item has a default label that CAPE can override
+ * via `copy.menu.{id}` and a default visibility that CAPE can override via
+ * `settings.menu.show{Id}` (capitalised).
  */
+type MenuItem = {
+  id:     string;
+  label:  string;
+  target: string;
+  kind:   'primary' | 'secondary' | 'ghost';
+  defaultEnabled: boolean;
+};
+
+const MENU_ITEMS: MenuItem[] = [
+  { id: 'home',        label: 'Home',           target: '/landing',     kind: 'primary',   defaultEnabled: true  },
+  { id: 'resume',      label: 'Resume game',    target: '/gameplay',    kind: 'secondary', defaultEnabled: true  },
+  { id: 'howToPlay',   label: 'How to play',    target: '/onboarding',  kind: 'secondary', defaultEnabled: true  },
+  { id: 'leaderboard', label: 'Leaderboard',    target: '/leaderboard', kind: 'secondary', defaultEnabled: false },
+  { id: 'voucher',     label: 'My voucher',     target: '/voucher',     kind: 'secondary', defaultEnabled: false },
+  { id: 'terms',       label: 'Terms',          target: '/terms',       kind: 'ghost',     defaultEnabled: true  },
+  { id: 'privacy',     label: 'Privacy',        target: '/privacy',     kind: 'ghost',     defaultEnabled: false },
+  { id: 'faq',         label: 'FAQ',            target: '/faq',         kind: 'ghost',     defaultEnabled: false },
+  { id: 'leave',       label: 'Leave campaign', target: '/',            kind: 'ghost',     defaultEnabled: false },
+];
+
+function flagKey(id: string): string {
+  return `settings.menu.show${id[0].toUpperCase()}${id.slice(1)}`;
+}
+
 export default function MenuPage() {
   const router       = useRouter();
   const { capeData } = useCapeData();
 
-  const logoUrl     = getCapeImage(capeData, 'general.header.logo');
-  const homeLabel   = getCapeText(capeData,  'copy.menu.home',      '[copy.menu.home]');
-  const resumeLabel = getCapeText(capeData,  'copy.menu.resume',    '[copy.menu.resume]');
-  const howToLabel  = getCapeText(capeData,  'copy.menu.howToPlay', '[copy.menu.howToPlay]');
-  const termsLabel  = getCapeText(capeData,  'copy.menu.terms',     '[copy.menu.terms]');
+  const logoUrl  = getCapeImage(capeData, 'general.header.logo')
+                || getCapeImage(capeData, 'general.landing.logo')
+                || '/assets/logo-livewall-wordmark.svg';
+
+  // Filter to enabled items, keep MENU_ITEMS' canonical order.
+  const visible = MENU_ITEMS.filter(item =>
+    getCapeBoolean(capeData, flagKey(item.id), item.defaultEnabled),
+  );
 
   return (
-    <div
-      className="relative flex h-full flex-col items-center justify-between px-8 py-10"
-      style={{ background: 'rgba(0,0,0,0.97)' }}
-    >
-
-      {/* Top row: spacer — logo — close */}
-      <div
-        className="flex w-full items-center justify-between"
-        style={{ animation: 'fadeIn 0.3s ease both' }}
-      >
-        <div className="w-10" />
-
-        {logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
+    <div className="campaign-screen">
+      <div className="campaign-shell">
+        <div className="flex items-center justify-between" style={{ animation: 'fadeIn 0.3s ease both' }}>
+          <div className="w-11" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain" />
-        ) : (
-          <div className="h-10" />
-        )}
+          <button className="campaign-close" onClick={() => router.back()} aria-label="Close menu">
+            <span className="text-xl leading-none">×</span>
+          </button>
+        </div>
 
-        <button
-          className="flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
-          style={{ background: 'rgba(255,255,255,0.1)' }}
-          onClick={() => router.back()}
-          aria-label="Close menu"
-        >
-          <span className="text-xl leading-none text-white">✕</span>
-        </button>
-      </div>
+        <div className="campaign-panel campaign-panel--strong p-5 sm:p-6" style={{ animation: 'fadeIn 0.3s 0.05s ease both' }}>
+          <div className="campaign-actions">
+            {visible.length === 0 && (
+              <p className="campaign-copy text-center" style={{ padding: '12px 0' }}>
+                No menu items configured.
+              </p>
+            )}
+            {visible.map(item => {
+              const label = getCapeText(capeData, `copy.menu.${item.id}`, item.label);
+              return (
+                <Button
+                  key={item.id}
+                  variant={item.kind === 'primary' ? 'primary' : item.kind === 'secondary' ? 'secondary' : 'ghost'}
+                  size={item.kind === 'ghost' ? 'sm' : 'md'}
+                  className="w-full"
+                  onClick={() => router.push(item.target)}
+                >
+                  {label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
 
-      {/* Nav items */}
-      <div
-        className="flex w-full max-w-xs flex-col gap-3"
-        style={{ animation: 'fadeIn 0.3s 0.05s ease both' }}
-      >
-        <Button className="w-full" onClick={() => router.push('/landing')}>
-          {homeLabel}
-        </Button>
-        <Button variant="secondary" className="w-full" onClick={() => router.push('/gameplay')}>
-          {resumeLabel}
-        </Button>
-        <Button variant="secondary" className="w-full" onClick={() => router.push('/onboarding')}>
-          {howToLabel}
-        </Button>
-        <Button variant="ghost" size="sm" className="w-full" onClick={() => router.push('/terms')}>
-          {termsLabel}
-        </Button>
-      </div>
-
-      {/* Footer branding */}
-      <div
-        className="flex flex-col items-center gap-2 opacity-25"
-        style={{ animation: 'fadeIn 0.3s 0.1s ease both' }}
-      >
-        <div className="h-px w-10 bg-white" />
-        <p className="text-xs uppercase tracking-widest">Powered by Livewall</p>
+        <div className="campaign-stack items-center opacity-50" style={{ animation: 'fadeIn 0.3s 0.1s ease both' }}>
+          <div className="divider w-20" />
+          <p className="campaign-kicker">Powered by Livewall</p>
+        </div>
       </div>
     </div>
   );

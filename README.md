@@ -1,18 +1,17 @@
 # Livewall Campaign Scaffolder
 
-CLI and wizard that generate ready-to-run campaign frontends for Livewall. It can scaffold a Next.js 15 App Router app (CAPE-heavy flows) or copy the Unity TanStack boilerplate for Unity-only builds.
+CLI and wizard that generate ready-to-run campaign frontends for Livewall. It can scaffold a Next.js 15 App Router app (CAPE-heavy flows) or a TanStack Start + Vite app (Unity-focused).
 
 ## What it does
 - Asks (or reads flags for) project name, CAPE campaign id + market, stack, game engine, pages, registration mode, modules, GTM id, iframe mode, and output path.
-- Copies the base template (`base-templates/next`) or the sibling `unity-tanstack-boilerplate/frontend` folder for TanStack.
+- Copies the base template (`base-templates/next` or `base-templates/tanstack`) depending on the selected stack.
 - Drops selected modules from `modules/*` (files, env vars, CSP patches, npm deps).
 - Fills routing tokens between pages, writes `.env` and `.env.example`, optionally injects game-specific env vars from `games/{id}/game.json`.
 - Patches CSP, enables iframe mode if requested, installs module packages, and does a `git init` + initial commit.
 - Prints a post-scaffold checklist (env, CAPE pull reminder, npm install/dev).
 
 ## Prerequisites
-- Node.js 18+.
-- For TanStack runs: clone `unity-tanstack-boilerplate` as a sibling of this repo (`../unity-tanstack-boilerplate/frontend` must exist).
+- Node.js 18+ (TanStack stack requires Node 24+).
 - Windows helpers: `wizard.bat` (interactive) and `test-scaffold.bat` (sample non-interactive run).
 
 ## Quick start
@@ -75,8 +74,9 @@ Defaults: if you omit pages, the wizard suggests a sensible flow per engine; mod
 | `voucher` | Reward screen with unique code and optional QR. |
 | `audio` | Background audio via Howler with mute toggle. |
 | `cookie-consent` | Cookiebot banner + CSP additions. |
-| `design-tokens` | Injects CAPE branding tokens as CSS variables. |
 | `gtm` | Google Tag Manager script + typed `gtmPush` helper. |
+
+> CAPE branding tokens (colours, fonts) are flowed to CSS custom properties automatically via the built-in `DesignTokenInjector` in the base template — no module needed.
 
 Modules can add env vars, CSP directives, npm deps, and files listed in their `manifest.json`.
 
