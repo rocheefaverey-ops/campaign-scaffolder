@@ -1,0 +1,26 @@
+.textScroller {
+  width: 100%;
+  overflow: hidden;
+  text-align: center;
+
+  .animation {
+    position: absolute;
+    width: 100%;
+    padding: 0 16px;
+    transition: all cubic-bezier(.47,1.64,.41,.8);
+
+    &.idle {
+      opacity: 1;
+    }
+
+    &.out {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+
+    &.in {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+  }
+}

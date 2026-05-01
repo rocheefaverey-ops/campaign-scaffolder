@@ -1,0 +1,73 @@
+{
+  "id": "simple-test-game",
+  "name": "Simple Test Game",
+  "description": "Minimal test game for scaffolder testing",
+  "engine": "unity",
+
+  "cdn": {
+    "baseUrl": "https://test-cdn.example.com/simple-game",
+    "gameName": "Game",
+    "platforms": ["desktop", "mobile"],
+    "compression": null,
+    "versionFile": "version.json",
+    "noCache": false
+  },
+
+  "dpr": {
+    "min": 1,
+    "max": 2
+  },
+
+  "boot": {
+    "gameObjects": {
+      "setup": "Manager",
+      "game": "Manager",
+      "pause": null
+    },
+    "setupMethod": "SetData",
+    "sceneMethod": null,
+    "loadMethod": "LoadGame",
+    "startMethod": null,
+    "defaultScene": null,
+    "note": "Single Manager GameObject handles all initialization"
+  },
+
+  "data": {
+    "environment": true,
+    "muted": false,
+    "translations": false,
+    "custom": {
+      "difficulty": "string",
+      "lives": "number"
+    }
+  },
+
+  "events": {
+    "listens": ["ready", "start", "end", "sendEvent"],
+    "end": {
+      "score": "number",
+      "playTime": "number"
+    }
+  },
+
+  "translations": {
+    "note": "Will add game-specific keys here"
+  },
+
+  "env": {
+    "NEXT_PUBLIC_UNITY_BASE_URL": "https://test-cdn.example.com/simple-game",
+    "NEXT_PUBLIC_UNITY_GAME_NAME": "Game",
+    "NEXT_PUBLIC_UNITY_VERSION": "V1",
+    "NEXT_PUBLIC_UNITY_COMPRESSION": "none",
+    "NEXT_PUBLIC_UNITY_DEVICE_FILTER": "false",
+    "NEXT_PUBLIC_UNITY_NO_CACHE": "false",
+    "NEXT_PUBLIC_UNITY_MIN_DPR": "1",
+    "NEXT_PUBLIC_UNITY_MAX_DPR": "2"
+  },
+
+  "notes": [
+    "This is a minimal test game for scaffolder validation",
+    "Replace CDN URLs with actual URLs when deploying",
+    "Add custom data fields and translations as needed"
+  ]
+}

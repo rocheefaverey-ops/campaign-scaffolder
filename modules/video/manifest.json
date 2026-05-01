@@ -1,0 +1,23 @@
+{
+  "id": "video",
+  "name": "Video Interlude",
+  "description": "Full-screen video playback page. Navigates to the next route when the video ends or when the user taps skip.",
+  "files": [
+    {
+      "src": "components/VideoIntro/VideoIntro.tsx",
+      "dest": "components/_modules/VideoIntro/VideoIntro.tsx"
+    },
+    {
+      "src": "app/(campaign)/video/page.tsx",
+      "dest": "app/(campaign)/video/page.tsx"
+    }
+  ],
+  "envVars": [],
+  "packages": [],
+  "notes": [
+    "Video src is read from CAPE path: general.video.introVideo (assetSelector field).",
+    "Add an assetSelector field at model=general.video.introVideo to the campaign format.",
+    "If the field is missing from CAPE, the page auto-skips straight to {{NEXT_AFTER_VIDEO}}.",
+    "The page auto-navigates to {{NEXT_AFTER_VIDEO}} when the video ends or the user taps Skip."
+  ]
+}

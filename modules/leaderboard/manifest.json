@@ -1,0 +1,30 @@
+{
+  "id": "leaderboard",
+  "name": "Leaderboard",
+  "description": "Ranked score table with daily/weekly/all-time tabs, personal best row, and infinite-scroll pagination.",
+  "files": [
+    {
+      "src": "components/Leaderboard/Leaderboard.tsx",
+      "dest": "components/_modules/Leaderboard/Leaderboard.tsx"
+    },
+    {
+      "src": "components/Leaderboard/LeaderboardRow.tsx",
+      "dest": "components/_modules/Leaderboard/LeaderboardRow.tsx"
+    },
+    {
+      "src": "components/Leaderboard/LeaderboardTabs.tsx",
+      "dest": "components/_modules/Leaderboard/LeaderboardTabs.tsx"
+    },
+    {
+      "src": "actions/get-leaderboard/action.ts",
+      "dest": "app/actions/get-leaderboard/action.ts"
+    },
+    {
+      "src": "app/(campaign)/leaderboard/page.tsx",
+      "dest": "app/(campaign)/leaderboard/page.tsx"
+    }
+  ],
+  "envVars": [],
+  "packages": [],
+  "implies": ["scoring"]
+}

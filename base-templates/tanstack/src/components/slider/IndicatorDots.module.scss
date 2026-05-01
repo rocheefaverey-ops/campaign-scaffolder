@@ -1,0 +1,29 @@
+.indicatorDots {
+  margin: 0 auto;
+  padding: 32px;
+
+  .container {
+    text-align: center;
+
+    .dot {
+      display: inline-block;
+      border-radius: 50%;
+      width: 8px;
+      height: 8px;
+      margin: 0 3px;
+      transition: all 200ms;
+      background-color: rgba($blackColor, 0.5);
+
+      &.passed {
+        border: none;
+      }
+
+      &.active {
+        border: none;
+        background-color: $blackColor;
+        border-radius: 32px;
+        width: 16px;
+      }
+    }
+  }
+}

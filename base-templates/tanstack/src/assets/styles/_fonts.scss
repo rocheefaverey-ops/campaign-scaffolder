@@ -1,0 +1,51 @@
+// Livewall house font: Inter (loaded via Google Fonts)
+// The @font-face declarations below are kept as a self-hosted fallback for
+// the NHL-Crush reference fonts — harmless to keep, and any brand-specific
+// campaign can swap them out by overwriting this file.
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@font-face {
+  font-family: 'Scala Sans';
+  src: url('~/assets/fonts/ScalaSans-Regular.woff2') format('woff2'),
+  url('~/assets/fonts/ScalaSans-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Scala Sans';
+  src: url('~/assets/fonts/ScalaSansOT-Bold.woff2') format('woff2'),
+  url('~/assets/fonts/ScalaSansOT-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Scala Sans';
+  src: url('~/assets/fonts/ScalaSansPro-Light.woff2') format('woff2'),
+  url('~/assets/fonts/ScalaSansPro-Light.woff') format('woff');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ClassGarmnd BT';
+  src: url('~/assets/fonts/ClassicalGaramondBT-Roman.woff2') format('woff2'),
+  url('~/assets/fonts/ClassicalGaramondBT-Roman.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ClassGarmnd BT';
+  src: url('~/assets/fonts/ClassicalGaramondBT-Italic.woff2') format('woff2'),
+  url('~/assets/fonts/ClassicalGaramondBT-Italic.woff') format('woff');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}

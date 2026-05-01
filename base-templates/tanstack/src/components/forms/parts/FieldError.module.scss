@@ -1,0 +1,9 @@
+.fieldError {
+  font-size: 12px;
+  margin-top: 8px;
+  height: 0;
+
+  .message {
+    color: $formErrorColor;
+  }
+}

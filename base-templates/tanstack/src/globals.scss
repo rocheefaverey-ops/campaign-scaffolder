@@ -1,0 +1,79 @@
+@use 'assets/styles/variables' as v;
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Livewall TanStack base — CSS custom properties match the Next base template
+ * so DesignTokenInjector and module styles work identically across stacks.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --color-primary:   #{v.$primaryColor};
+  --color-secondary: #{v.$secondaryColor};
+  --color-tertiary:  #{v.$tertiaryColor};
+  --color-statusRed: #{v.$formErrorColor};
+
+  --default-font-family: #{v.$fontInter};
+  --display-font-family: #{v.$fontDisplay};
+
+  --surface-base:     #{v.$tertiaryColor};
+  --surface-elevated: rgba(255, 255, 255, 0.80);
+  --surface-strong:   rgba(255, 255, 255, 0.96);
+  --surface-ink:      #{v.$secondaryColor};
+  --surface-lime:     var(--color-primary);
+
+  --line-soft:   rgba(14, 14, 14, 0.08);
+  --line-strong: rgba(14, 14, 14, 0.18);
+
+  --text-primary:   #{v.$primaryTextColor};
+  --text-secondary: #{v.$secondaryTextColor};
+  --text-inverse:   #{v.$inverseTextColor};
+
+  --shadow-soft: 0 18px 48px rgba(14, 14, 14, 0.10);
+  --shadow-card: 0 10px 30px rgba(14, 14, 14, 0.08);
+  --shadow-lime: 0 14px 38px color-mix(in srgb, var(--color-primary) 45%, transparent);
+
+  --campaign-ambient:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 32%, transparent), transparent 38%),
+    radial-gradient(circle at 85% 15%, rgba(14, 14, 14, 0.06), transparent 32%),
+    linear-gradient(180deg, #FAFAFA 0%, #F2F2F2 100%);
+}
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  box-sizing: border-box;
+
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  font: inherit;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: var(--surface-base);
+  color: var(--text-primary);
+  font-family: var(--default-font-family);
+  user-select: none;
+}
+
+#app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}

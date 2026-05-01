@@ -1,0 +1,74 @@
+{
+  "id": "old-captain-rum-toss",
+  "name": "Old Captain Rum Toss",
+  "description": "Rum bottle tossing game — fill glasses, track play time. Voucher reward on completion.",
+  "engine": "unity",
+
+  "cdn": {
+    "baseUrl": "https://placeholder-unity-acc.lwdev.nl",
+    "gameName": "Game",
+    "platforms": ["desktop", "mobile"],
+    "compression": "br",
+    "versionFile": "version.json",
+    "noCache": true
+  },
+
+  "dpr": {
+    "min": 1.5,
+    "max": 3
+  },
+
+  "boot": {
+    "gameObjects": {
+      "setup": "Manager",
+      "game":  "Manager",
+      "pause": null
+    },
+    "setupMethod":  "LoadScene",
+    "sceneMethod":  null,
+    "loadMethod":   null,
+    "startMethod":  null,
+    "defaultScene": null,
+    "note": "Same simplified boot as La Roche-Posay — Manager.LoadScene with gameConfig in one call."
+  },
+
+  "data": {
+    "environment":  true,
+    "muted":        false,
+    "translations": false,
+    "custom": {
+      "lives": "number"
+    }
+  },
+
+  "events": {
+    "listens": ["ready", "start", "end", "sendEvent"],
+    "end": {
+      "score":         "number",
+      "filledGlasses": "number",
+      "playTime":      "number",
+      "payload":       "string"
+    }
+  },
+
+  "translations": {},
+
+  "env": {
+    "NEXT_PUBLIC_UNITY_BASE_URL":      "https://placeholder-unity-acc.lwdev.nl",
+    "NEXT_PUBLIC_UNITY_GAME_NAME":     "Game",
+    "NEXT_PUBLIC_UNITY_VERSION":       "V2",
+    "NEXT_PUBLIC_UNITY_COMPRESSION":   "br",
+    "NEXT_PUBLIC_UNITY_DEVICE_FILTER": "true",
+    "NEXT_PUBLIC_UNITY_NO_CACHE":      "true",
+    "NEXT_PUBLIC_UNITY_MIN_DPR":       "1.5",
+    "NEXT_PUBLIC_UNITY_MAX_DPR":       "3"
+  },
+
+  "notes": [
+    "CDN baseUrl is a placeholder — update when real CDN is assigned.",
+    "Boot is simplified — one SendMessage to Manager.LoadScene with {environment, muted, translations:{}, files:{}, lives:3}.",
+    "lives is sent as a config value (default 3), not a result field.",
+    "Includes voucher module — QR code reward shown on result page.",
+    "sendEvent is generic — check Unity .jslib for specifics."
+  ]
+}

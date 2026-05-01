@@ -1,0 +1,23 @@
+{
+  "name": "lw-scaffold",
+  "version": "1.0.0",
+  "description": "Livewall Campaign Scaffolder CLI",
+  "type": "module",
+  "bin": {
+    "lw-scaffold": "./cli/scaffold.js"
+  },
+  "scripts": {
+    "scaffold": "node cli/scaffold.js",
+    "update": "node cli/scaffold.js --update",
+    "teardown": "node cli/teardown.js",
+    "teardown:all": "node cli/teardown.js --all",
+    "teardown:list": "node cli/teardown.js --list",
+    "preview-message": "node cli/post-scaffold-message.js",
+    "wizard": "node cli/wizard.js",
+    "wizard:install": "npm --prefix cli/wizard-server install && npm --prefix cli/wizard-ui install",
+    "wizard:build": "npm --prefix cli/wizard-ui run build"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

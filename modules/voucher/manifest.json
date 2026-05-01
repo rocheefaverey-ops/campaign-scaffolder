@@ -1,0 +1,29 @@
+{
+  "id": "voucher",
+  "name": "Voucher / Reward",
+  "description": "Reward screen with a unique code. QR code rendered via api.qrserver.com out of the box; swap for a self-hosted lib in production.",
+  "files": [
+    {
+      "src": "components/Voucher/Voucher.tsx",
+      "dest": "components/_modules/Voucher/Voucher.tsx"
+    },
+    {
+      "src": "components/Voucher/QRCode.tsx",
+      "dest": "components/_modules/Voucher/QRCode.tsx"
+    },
+    {
+      "src": "app/(campaign)/voucher/page.tsx",
+      "dest": "app/(campaign)/voucher/page.tsx"
+    }
+  ],
+  "envVars": [],
+  "packages": [],
+  "cspPatch": {
+    "img-src": ["https://api.qrserver.com"]
+  },
+  "notes": [
+    "Voucher code comes from GameContext.voucherCode — set it in the end-session action response.",
+    "QR rendering uses api.qrserver.com by default. Swap the <img> in Voucher.tsx for a self-hosted generator (e.g. `qrcode` package) for production resilience.",
+    "Toggle via CAPE: settings.pages.voucher.showQr (boolean) and settings.pages.voucher.codeLength (number)."
+  ]
+}

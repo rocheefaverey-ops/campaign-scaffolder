@@ -1,0 +1,78 @@
+{
+  "id": "haas-f1",
+  "name": "Haas F1 Racing",
+  "description": "Top-down F1 racing game with boost, obstacles, and token collection.",
+  "engine": "unity",
+
+  "cdn": {
+    "baseUrl": "https://lw-wave-haasf1-unity-test.lwcf5.nl",
+    "gameName": "Game",
+    "platforms": ["desktop", "mobile"],
+    "compression": null,
+    "versionFile": "version.json",
+    "noCache": false
+  },
+
+  "dpr": {
+    "min": 1,
+    "max": 1.5
+  },
+
+  "boot": {
+    "gameObjects": {
+      "setup": "WebService",
+      "game":  "GameService",
+      "pause": "PauseService"
+    },
+    "setupMethod": "SetData",
+    "sceneMethod": "SetScene",
+    "loadMethod":  "LoadScene",
+    "startMethod": "StartGame",
+    "defaultScene": "Racing"
+  },
+
+  "data": {
+    "environment":  true,
+    "muted":        true,
+    "translations": true,
+    "custom": {
+      "playTutorial": "boolean"
+    }
+  },
+
+  "events": {
+    "listens": ["ready", "start", "end", "navigation", "tracking", "onTutorialPlayed"],
+    "end": {
+      "score":           "number",
+      "playTime":        "number",
+      "distance":        "number",
+      "collectedTokens": "number",
+      "payload":         "string"
+    }
+  },
+
+  "translations": {
+    "gameplay.goText":          "general.gameplay.goText",
+    "gameplay.scoreLabel":      "general.gameplay.scoreLabel",
+    "result.finalScoreLabel":   "general.result.scoreLabel",
+    "result.distance":          "general.result.distanceLabel",
+    "result.time":              "general.result.timeLabel",
+    "result.tokens":            "general.result.tokensLabel",
+    "tutorial.step1Steer":      "general.tutorial.step1",
+    "tutorial.step2Obstacles":  "general.tutorial.step2",
+    "tutorial.step3Boost":      "general.tutorial.step3"
+  },
+
+  "env": {
+    "NEXT_PUBLIC_UNITY_BASE_URL":  "https://lw-wave-haasf1-unity-test.lwcf5.nl",
+    "NEXT_PUBLIC_UNITY_GAME_NAME": "Game",
+    "NEXT_PUBLIC_UNITY_MIN_DPR":   "1",
+    "NEXT_PUBLIC_UNITY_MAX_DPR":   "1.5"
+  },
+
+  "notes": [
+    "Pre-boot on video/intro page: initializeUnity() → preloadScene() during intro video.",
+    "Tutorial is shown on first session only — toggle via CAPE general.gameplay.showTutorial.",
+    "distance is in metres, playTime is in seconds."
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "r3f",
+  "name": "React Three Fiber",
+  "description": "React Three Fiber canvas with Drei helpers and optional Rapier physics. Uses a simple EventEmitter-based bridge instead of Unity SendMessage.",
+  "files": [
+    {
+      "src": "lib/r3f-adapter.ts",
+      "dest": "lib/game-bridge/r3f-adapter.ts"
+    },
+    {
+      "src": "components/R3FCanvas/R3FCanvas.tsx",
+      "dest": "components/_modules/R3FCanvas/R3FCanvas.tsx"
+    },
+    {
+      "src": "components/R3FCanvas/Scene.tsx",
+      "dest": "components/_modules/R3FCanvas/Scene.tsx"
+    },
+    {
+      "src": "app/(campaign)/gameplay/page.tsx",
+      "dest": "app/(campaign)/gameplay/page.tsx",
+      "strategy": "replace"
+    }
+  ],
+  "envVars": [],
+  "packages": [
+    "three",
+    "@react-three/fiber",
+    "@react-three/drei",
+    "@react-three/rapier"
+  ],
+  "devPackages": ["@types/three"],
+  "notes": [
+    "Install packages: npm install three @react-three/fiber @react-three/drei @react-three/rapier",
+    "R3F bridge uses EventEmitter — call bridge.emit('end', result) from inside the Scene to trigger game end.",
+    "setData() on the R3F adapter stores data accessible via useR3FData() inside the canvas."
+  ]
+}

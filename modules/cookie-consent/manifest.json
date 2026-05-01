@@ -1,0 +1,21 @@
+{
+  "id": "cookie-consent",
+  "name": "Cookie Consent (Cookiebot)",
+  "description": "Injects the Cookiebot consent banner. Adds consent.cookiebot.com to CSP script-src.",
+  "files": [
+    {
+      "src": "components/CookieConsent/CookieConsent.tsx",
+      "dest": "components/_modules/CookieConsent/CookieConsent.tsx"
+    }
+  ],
+  "envVars": ["NEXT_PUBLIC_COOKIEBOT_CBID"],
+  "packages": [],
+  "cspPatch": {
+    "script-src": ["https://consent.cookiebot.com"],
+    "connect-src": ["https://consentcdn.cookiebot.com"]
+  },
+  "injectInto": {
+    "file": "app/layout.tsx",
+    "instruction": "Mount <CookieConsent cbid={process.env.NEXT_PUBLIC_COOKIEBOT_CBID} /> in <head>."
+  }
+}

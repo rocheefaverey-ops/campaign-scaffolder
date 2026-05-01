@@ -1,0 +1,29 @@
+{
+  "id": "memory",
+  "name": "Memory Card Game",
+  "description": "Hunkemoller-pattern card-matching game. Cards are loaded from CAPE (files.game.card1–card6). Pure React — no external game engine.",
+  "files": [
+    {
+      "src": "components/MemoryGame/MemoryGame.tsx",
+      "dest": "components/_modules/MemoryGame/MemoryGame.tsx"
+    },
+    {
+      "src": "components/MemoryGame/MemoryCard.tsx",
+      "dest": "components/_modules/MemoryGame/MemoryCard.tsx"
+    },
+    {
+      "src": "app/(campaign)/gameplay/page.tsx",
+      "dest": "app/(campaign)/gameplay/page.tsx",
+      "strategy": "replace"
+    }
+  ],
+  "envVars": [],
+  "packages": [],
+  "devPackages": [],
+  "cspPatch": {},
+  "notes": [
+    "Add card images to CAPE under files.game.card1 through files.game.card6.",
+    "Without CAPE images, the game renders colored placeholder tiles.",
+    "Win navigates to {{NEXT_AFTER_GAME}}. Add a timer by setting GAME_DURATION in MemoryGame.tsx."
+  ]
+}
