@@ -2,6 +2,27 @@
 
 CLI and wizard that generate ready-to-run campaign frontends for Livewall. It can scaffold a Next.js 15 App Router app (CAPE-heavy flows) or a TanStack Start + Vite app (Unity-focused).
 
+## Remote Configuration
+
+This project is configured with two remotes:
+
+### GitHub (primary)
+```bash
+git remote -v
+# origin  https://github.com/rocheefaverey-ops/campaign-scaffolder.git
+```
+
+### LWService GitLab
+```bash
+# Add remote (if not already added)
+git remote add lwservice https://git.lwservice.nl/lwhq/stages/stage-rochee/stage-rochee-frontend
+
+# Push to LWService
+git push lwservice master:main
+```
+
+> **Note:** The LWService remote protects the `master` branch, so push to `main` instead.
+
 ## What it does
 - Asks (or reads flags for) project name, CAPE campaign id + market, stack, game engine, pages, registration mode, modules, GTM id, iframe mode, and output path.
 - Copies the base template (`base-templates/next` or `base-templates/tanstack`) depending on the selected stack.
