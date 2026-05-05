@@ -26,6 +26,7 @@ const defaultState: GameState = {
   loading: false,
   gameIsReady: false,
   onboardingCompleted: false,
+  hasPlayed: false,
   campaignStatus: null,
   platform: 'desktop',
   isMuted: false,
@@ -51,6 +52,7 @@ export function GameProvider({ children, platform }: GameProviderProps) {
       userName: stored?.userName ?? '',
       alreadyRegistered: stored?.alreadyRegistered ?? false,
       onboardingCompleted: stored?.onboardingCompleted ?? false,
+      hasPlayed: stored?.hasPlayed ?? false,
       highscore: stored?.highscore ?? 0,
       isMuted: stored?.isMuted ?? false,
     };
@@ -64,6 +66,7 @@ export function GameProvider({ children, platform }: GameProviderProps) {
       userName: state.userName,
       alreadyRegistered: state.alreadyRegistered,
       onboardingCompleted: state.onboardingCompleted,
+      hasPlayed: state.hasPlayed,
       highscore: state.highscore,
       isMuted: state.isMuted,
     });
@@ -73,6 +76,7 @@ export function GameProvider({ children, platform }: GameProviderProps) {
     state.userName,
     state.alreadyRegistered,
     state.onboardingCompleted,
+    state.hasPlayed,
     state.highscore,
     state.isMuted,
   ]);
@@ -102,6 +106,7 @@ export function GameProvider({ children, platform }: GameProviderProps) {
       setLoading: (v: boolean) => set('loading', v),
       setGameIsReady: (v: boolean) => set('gameIsReady', v),
       setOnboardingCompleted: (v: boolean) => set('onboardingCompleted', v),
+      setHasPlayed: (v: boolean) => set('hasPlayed', v),
       setCampaignStatus: (v: CampaignStatus) => set('campaignStatus', v),
       setIsMuted: (v: boolean) => set('isMuted', v),
       reset,
