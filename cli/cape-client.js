@@ -26,9 +26,6 @@ const AUTH_FILE  = `${homedir()}/.cape/tokens.json`;
 /** Base format all new scaffolded campaigns are created from. */
 export const DEFAULT_FORMAT_PATH = 'livewall_scaffolder_test';
 
-/** Bundled interfaceSetup + publishProfiles for scaffolded campaigns. */
-export const SCAFFOLDER_FORMAT_FILE = resolve(SCAFFOLDER_ROOT, 'formats', 'scaffolder-format.json');
-
 // ── Token store ───────────────────────────────────────────────────────────────
 
 async function loadTokens() {

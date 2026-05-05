@@ -26,12 +26,13 @@ import { randomBytes } from 'crypto';
 import { existsSync, mkdirSync, cpSync, rmSync, renameSync, readdirSync, statSync, readFileSync, writeFileSync } from 'fs';
 import { join, resolve, dirname, relative } from 'path';
 import { fileURLToPath } from 'url';
+import { networkInterfaces } from 'os';
 import { execSync, spawn } from 'child_process';
 import { printPostScaffoldMessage } from './post-scaffold-message.js';
 import { PAGE_ELEMENTS, PAGE_DEFAULTS, ELEMENT_CATALOGUE, buildPage } from './page-builder.js';
 import { TS_PAGE_ELEMENTS, TS_PAGE_DEFAULTS, TS_ELEMENT_CATALOGUE, TS_ALL_PAGES, TS_PAGE_ROUTES, buildTsPage } from './tanstack-page-builder.js';
 import { getGamesByEngine, getGame, gameEnvLines, gameLabel } from './game-registry.js';
-import { checkAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, publishCampaign, SCAFFOLDER_FORMAT_FILE } from './cape-client.js';
+import { checkAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, publishCampaign } from './cape-client.js';
 import { buildTanStackCapeFormat, buildNextCapeFormat } from './cape-format-builder.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -399,8 +400,12 @@ function computeFlowTokens(pages, regMode = 'none', flowExits = {}, flowEntry = 
 
   const tokens = {};
   const inFlow = (id) => sequence.includes(id);
-  /** Route of an instance — always /{id}. */
-  const routeOf = (id) => id ? `/${id}` : '/';
+  /** Route of an instance. Canonical singleton pages keep their real app route. */
+  const routeOf = (id) => {
+    if (!id) return '/';
+    const type = typeOf(id);
+    return id === type ? (PAGE_ROUTES[type] ?? `/${id}`) : `/${id}`;
+  };
   /** Find first instance whose TYPE matches (for default-target heuristics). */
   const firstOfType = (type) => sequence.find(id => typeOf(id) === type);
 
@@ -1525,7 +1530,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   printPostScaffoldMessage({ projectName: name, capeId, market, modules: [], outputDir: _tsFinalFrontendDir, stack: 'tanstack', capeAutoPublished, capePublishedUrl });
 }
 
-async function scaffoldNext({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, flowExits = {}, flowEntry = '', pageTypes = {}, _wizardMeta = null }) {
+async function scaffoldNext({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, menuItemsEnabled = {}, pageTypes = {}, _wizardMeta = null }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -1879,7 +1884,19 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
   // Generate complete CAPE format (with all modules + pages) and write to disk.
   // Always written — for new campaigns the initial push during creation lacked module fields;
   // for existing campaigns it was never pushed at all.
-  const capeFormatSpec = buildNextCapeFormat({ pages, pageElementSelections, modules });
+  // Format builder iterates instances so duplicates (video-intro,
+  // video-outro) each get their own CAPE tab with copy keyed by instance id.
+  // Pass relevance flags so the generated format only contains fields the
+  // user can actually fill in.
+  const capeFormatSpec = buildNextCapeFormat({
+    instances:            pages.map(id => ({ id, type: pageTypes[id] ?? id })),
+    pageTypes,
+    pageElementSelections,
+    modules,
+    flowEnabledExits,
+    menuItemsEnabled,
+    iframe,
+  });
   const capeFormatFile = join(outputDir, 'cape-format.json');
   writeFileSync(capeFormatFile, JSON.stringify(capeFormatSpec, null, 2), 'utf8');
   ok('cape-format.json written');
@@ -2152,8 +2169,30 @@ function createDevEnv(outputDir) {
   const srcPath     = existsSync(distPath) ? distPath : examplePath;
   const envPath     = join(outputDir, '.env');
   if (!existsSync(srcPath) || existsSync(envPath)) return;
-  const content = readFileSync(srcPath, 'utf8');
+  let content = readFileSync(srcPath, 'utf8');
+  const devOrigin = getLanDevOrigin();
+  if (devOrigin) {
+    content = content.replace(/^NEXT_PUBLIC_DEV_ORIGIN=.*$/m, `NEXT_PUBLIC_DEV_ORIGIN=${devOrigin}`);
+    if (!/^NEXT_PUBLIC_DEV_ORIGIN=/m.test(content)) {
+      content = content.replace(/\s*$/, '') + `\nNEXT_PUBLIC_DEV_ORIGIN=${devOrigin}\n`;
+    }
+  }
   writeFileSync(envPath, content, 'utf8');
+}
+
+function getLanDevOrigin() {
+  const nets = networkInterfaces();
+  const preferred = [];
+  const fallback = [];
+  for (const entries of Object.values(nets)) {
+    for (const entry of entries ?? []) {
+      if (entry.family !== 'IPv4' || entry.internal) continue;
+      if (/^(10|172\.(1[6-9]|2\d|3[01])|192\.168)\./.test(entry.address)) preferred.push(entry.address);
+      else fallback.push(entry.address);
+    }
+  }
+  const ip = preferred[0] ?? fallback[0];
+  return ip ? `http://${ip}:3000` : '';
 }
 
 // ─── Checklist file ──────────────────────────────────────────────────────────
@@ -2923,6 +2962,10 @@ async function main() {
     //   pageIds:    ['landing', 'video-intro', 'game', 'video-outro'] — ordered route slugs
     //   pageTypes:  { 'video-intro': 'video', 'video-outro': 'video' } — id→type for non-singleton instances
     const game           = cfg.game ?? 'unity';
+    const selectedGame   = cfg.gameId ? getGame(cfg.gameId) : null;
+    if (cfg.gameId && !selectedGame) {
+      throw new Error(`Unknown gameId "${cfg.gameId}". Expected a games/{id}/game.json manifest.`);
+    }
     const rawPages       = Array.isArray(cfg.pages) ? cfg.pages : [];
     const pageIds        = [];
     const pageTypes      = {};
@@ -2956,6 +2999,7 @@ async function main() {
       outputDir:               cfg.outputDir ? resolve(cfg.outputDir) : resolve(SCAFFOLDER_ROOT, '..', cfg.name),
       pageElementSelections:   cfg.pageElementSelections   ?? {},
       tsPageElementSelections: cfg.tsPageElementSelections ?? {},
+      selectedGame,
       unityCdnUrl:             cfg.unityCdnUrl ?? '',
       capeAutoPublished,
       capePublishedUrl,
@@ -2963,6 +3007,9 @@ async function main() {
       flowExits:               (cfg.flowExits && typeof cfg.flowExits === 'object') ? cfg.flowExits : {},
       flowEntry:               typeof cfg.flowEntry === 'string' ? cfg.flowEntry : '',
       flowEnabledExits:        (cfg.flowEnabledExits && typeof cfg.flowEnabledExits === 'object') ? cfg.flowEnabledExits : {},
+      // Menu visibility — drives which menu copy keys make it into the
+      // generated CAPE format. The /menu route reads the matching CAPE flags.
+      menuItemsEnabled:        (cfg.menuItemsEnabled && typeof cfg.menuItemsEnabled === 'object') ? cfg.menuItemsEnabled : {},
       // Multi-instance support: id→type for instances whose id ≠ type
       // (e.g. {'video-intro': 'video'}). Singletons have id === type and
       // don't appear in this map.
@@ -2981,6 +3028,7 @@ async function main() {
         department:         cfg.department         || undefined,
         capeTitle:          cfg.capeTitle          || undefined,
         createCape:         cfg.createCape ?? undefined,
+        gameId:             cfg.gameId || undefined,
       },
     };
 
