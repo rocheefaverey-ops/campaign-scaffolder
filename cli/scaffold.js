@@ -56,7 +56,7 @@ const MODULES_DIR        = join(SCAFFOLDER_ROOT, 'modules');
  * @param {string}        market        e.g. 'NL'
  * @param {string|null}   autoTitle     skip title prompt when provided
  * @param {boolean}       forceNewLogin clear cached tokens before login
- * @param {object|null}   formatOverride  dynamically generated format; falls back to static scaffolder-format.json
+ * @param {object|null}   formatOverride  dynamically generated format; uses empty format if omitted
  */
 async function runCapeCreateFlow(ask, projectName, market, autoTitle = null, forceNewLogin = false, formatOverride = null) {
   // 1. Auth — with retry logic (up to 3 attempts)
