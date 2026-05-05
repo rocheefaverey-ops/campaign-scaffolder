@@ -78,14 +78,9 @@ export default function LandingPage() {
           <Button className="w-full" size="lg" onClick={handlePlay}>
             {showReturnPlayerButtons && hasPlayed ? ctaReturning : cta}
           </Button>
-          {showLeaderboard && (
+          {(showLeaderboard || (showReturnPlayerButtons && hasPlayed)) && (
             <Button variant="secondary" className="w-full" size="lg" onClick={() => navigate('{{LANDING_LEADERBOARD_ROUTE}}')}>
-              {leaderboardLabel}
-            </Button>
-          )}
-          {showReturnPlayerButtons && hasPlayed && (
-            <Button variant="secondary" className="w-full" size="lg" onClick={() => navigate('{{LANDING_LEADERBOARD_ROUTE}}')}>
-              {leaderboardReturnCta}
+              {showReturnPlayerButtons && hasPlayed ? leaderboardReturnCta : leaderboardLabel}
             </Button>
           )}
         </div>

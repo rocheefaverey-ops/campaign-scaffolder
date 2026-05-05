@@ -26,7 +26,7 @@ import { randomBytes } from 'crypto';
 import { existsSync, mkdirSync, cpSync, rmSync, renameSync, readdirSync, statSync, readFileSync, writeFileSync } from 'fs';
 import { join, resolve, dirname, relative } from 'path';
 import { fileURLToPath } from 'url';
-import { networkInterfaces } from 'os';
+import { networkInterfaces, tmpdir } from 'os';
 import { execSync, spawn } from 'child_process';
 import { printPostScaffoldMessage } from './post-scaffold-message.js';
 import { PAGE_ELEMENTS, PAGE_DEFAULTS, ELEMENT_CATALOGUE, buildPage } from './page-builder.js';
@@ -122,11 +122,42 @@ async function runCapeCreateFlow(ask, projectName, market, autoTitle = null, for
   }
 
   // 4. Push format — dynamic format built from scaffold selections
-  process.stdout.write(`  ${c.dim('Pushing format...')} `);
   let formatFile = formatOverride ?? { interfaceSetup: { pages: [] }, publishProfiles: {} };
+
+  // Sanity-check the format BEFORE pushing. If the per-page tabs collapse to
+  // just the always-on shell (Header + Desktop & Loading + Menu = 3 tabs),
+  // it means the format builder didn't recognise any of the page instances —
+  // the campaign would be scaffolded with no editable pages in CAPE.
+  // Surface this loudly so the user sees it in the wizard log instead of
+  // discovering it only after opening CAPE.
+  const pagesPage = formatFile.interfaceSetup?.pages?.find((p) => p.path === 'pages');
+  const pageTabCount = pagesPage?.tabs?.length ?? 0;
+  if (pageTabCount === 0) {
+    console.log(`  ${c.red('✘')} Generated CAPE format has NO page tabs at all. Campaign will be empty in CAPE.`);
+  } else if (pageTabCount <= 3) {
+    // 3 = Header + Desktop & Loading + Menu (the always-on shell). Anything
+    // less than that means we built only the shell, no per-page tabs.
+    console.log(`  ${c.yellow('⚠')}  Generated CAPE format only has ${pageTabCount} page tab(s) — looks like the shell only.`);
+    console.log(`  ${c.dim('   Check that your wizard pages map to known types (video, landing, onboarding, result, leaderboard, register, voucher, game).')}`);
+  }
+
+  // Persist the exact format we're about to push to a stable temp file. If
+  // CAPE looks wrong later, this is the artifact to diff against. Path is
+  // logged so the user can find it. Best-effort — never fails the scaffold.
+  let debugFormatPath = null;
+  try {
+    debugFormatPath = join(tmpdir(), `lw-cape-format-${campaignId}-${Date.now()}.json`);
+    writeFileSync(debugFormatPath, JSON.stringify(formatFile, null, 2), 'utf8');
+  } catch { /* ignore — debug artifact, not load-bearing */ }
+
+  process.stdout.write(`  ${c.dim('Pushing format...')} `);
   try {
     await pushFormat(tokens, campaignId, formatFile);
-    console.log(`${c.green('✓')}`);
+    const tabSummary = pagesPage?.tabs?.map((t) => t.title).join(', ') ?? '(none)';
+    console.log(`${c.green('✓')}  ${pageTabCount} tab${pageTabCount === 1 ? '' : 's'}: ${c.dim(tabSummary)}`);
+    if (debugFormatPath) {
+      console.log(`  ${c.dim('Format snapshot:')} ${c.dim(debugFormatPath)}`);
+    }
   } catch (err) {
     console.log(`${c.yellow('⚠')}  ${err.message} (continuing)`);
   }
@@ -1679,7 +1710,8 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
     '{{CAPE_ID}}':            capeId,
     '{{MARKET}}':             market,
     '{{GTM_ID}}':             gtmId || 'GTM-XXXXXXX',
-    '{{UNITY_DEFAULT_SCENE}}': selectedGame?.boot?.defaultScene ?? selectedGame?.defaultScene ?? 'game',
+    '{{UNITY_DEFAULT_SCENE}}':    selectedGame?.boot?.defaultScene ?? selectedGame?.defaultScene ?? 'game',
+    '{{RETURN_PLAYER_BUTTONS}}': 'false',
     ...flowTokens,
   };
   const replacedCount = tokenReplaceDir(frontendDir, tokens);
@@ -2908,21 +2940,20 @@ async function main() {
       const autoTitle = (cfg.capeTitle && cfg.capeTitle.trim())
         ? cfg.capeTitle.trim()
         : cfg.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      const cfgStack = cfg.stack ?? 'next';
-      const cfgFormat = cfgStack === 'tanstack'
-        ? buildTanStackCapeFormat({
-            pages:                   pageIds,
-            tsPageElementSelections: cfg.tsPageElementSelections ?? {},
-          })
-        : buildNextCapeFormat({
-            instances:             pageIds.map(id => ({ id, type: pageTypes[id] ?? id })),
-            pageTypes,
-            pageElementSelections: cfg.pageElementSelections ?? {},
-            modules:               cfg.modules ?? [],
-            flowEnabledExits:      cfg.flowEnabledExits ?? {},
-            menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
-            iframe:                cfg.iframe ?? false,
-          });
+      // The wizard sends Next-style page ids (landing, onboarding, result, …)
+      // for BOTH stacks — TanStack's legacy launch/tutorial/score vocabulary
+      // is only used by the interactive CLI path. So both stacks route to
+      // buildNextCapeFormat here; the CAPE schema for these pages is
+      // stack-agnostic (only the file-system routes differ).
+      const cfgFormat = buildNextCapeFormat({
+        instances:             pageIds.map(id => ({ id, type: pageTypes[id] ?? id })),
+        pageTypes,
+        pageElementSelections: cfg.pageElementSelections ?? {},
+        modules:               cfg.modules ?? [],
+        flowEnabledExits:      cfg.flowEnabledExits ?? {},
+        menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
+        iframe:                cfg.iframe ?? false,
+      });
       console.log(`\n  ${c.bold('Creating CAPE campaign...')}`);
       const created = await runCapeCreateFlow(null, cfg.name, market, autoTitle, false, cfgFormat);
       capeId            = created.campaignId;
@@ -3158,16 +3189,17 @@ async function main() {
         ? args.pages
         : (stack === 'tanstack' ? ['launch', 'tutorial', 'game', 'score'] : buildDefaultPages(args.game || ''));
 
-      const argsFormat = stack === 'tanstack'
-        ? buildTanStackCapeFormat({ pages: formatPages, tsPageElementSelections: {} })
-        : buildNextCapeFormat({
-            pages:                formatPages,
-            modules:              allModules,
-            pageElementSelections: {},
-            flowEnabledExits:     {},
-            menuItemsEnabled:     {},
-            iframe:               args.iframe || false,
-          });
+      // Both stacks share the Next-style page vocabulary at the wizard /
+      // non-interactive level; TanStack's launch/tutorial/score legacy
+      // vocabulary is only used inside the interactive CLI flow above.
+      const argsFormat = buildNextCapeFormat({
+        pages:                formatPages,
+        modules:              allModules,
+        pageElementSelections: {},
+        flowEnabledExits:     {},
+        menuItemsEnabled:     {},
+        iframe:               args.iframe || false,
+      });
 
       console.log(`\n  ${c.bold('Creating CAPE campaign...')}`);
       const createdCape = await runCapeCreateFlow(null, args.name, args.market || 'NL', autoTitle, false, argsFormat);
