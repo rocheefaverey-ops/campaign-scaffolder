@@ -1,17 +1,17 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useCapeData } from '@hooks/useCapeData';
+import { useSafeNavigation } from '@hooks/useSafeNavigation';
 import { getCapeBoolean, getCapeNumber } from '@utils/getCapeData';
 import { useGameContext } from '@hooks/useGameContext';
 import Button from '@components/_core/Button/Button';
 import GameTimer from '@components/_core/GameTimer/GameTimer';
 
 export default function GameplayPage() {
-  const router       = useRouter();
+  const navigate     = useSafeNavigation();
   const { capeData } = useCapeData();
-  const { setScore, setGameIsReady } = useGameContext();
+  const { setScore, setGameIsReady, setHasPlayed } = useGameContext();
 
   const timerEnabled = getCapeBoolean(capeData, 'settings.pages.game.timerEnabled', true);
   const timerSec     = getCapeNumber (capeData, 'settings.pages.game.timerSec',     60);
@@ -23,7 +23,8 @@ export default function GameplayPage() {
 
   const handleGameEnd = (nextScore: number) => {
     setScore(nextScore);
-    router.push('{{NEXT_AFTER_GAME}}');
+    setHasPlayed(true);
+    navigate('{{NEXT_AFTER_GAME}}');
   };
 
   // When the countdown expires we end the game with whatever score is in
