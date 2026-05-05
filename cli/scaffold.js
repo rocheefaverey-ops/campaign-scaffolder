@@ -3153,8 +3153,24 @@ async function main() {
     let capeId = args.capeId;
     if (!capeId && args.createCape) {
       const autoTitle = args.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+      const formatPages = args.pages.length > 0
+        ? args.pages
+        : (stack === 'tanstack' ? ['launch', 'tutorial', 'game', 'score'] : buildDefaultPages(args.game || ''));
+
+      const argsFormat = stack === 'tanstack'
+        ? buildTanStackCapeFormat({ pages: formatPages, tsPageElementSelections: {} })
+        : buildNextCapeFormat({
+            pages:                formatPages,
+            modules:              allModules,
+            pageElementSelections: {},
+            flowEnabledExits:     {},
+            menuItemsEnabled:     {},
+            iframe:               args.iframe || false,
+          });
+
       console.log(`\n  ${c.bold('Creating CAPE campaign...')}`);
-      const createdCape = await runCapeCreateFlow(null, args.name, args.market || 'NL', autoTitle);
+      const createdCape = await runCapeCreateFlow(null, args.name, args.market || 'NL', autoTitle, false, argsFormat);
       capeId = createdCape.campaignId;
       capeAutoPublished = true;
       capePublishedUrl = createdCape.publishedUrl || '';
