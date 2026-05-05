@@ -23,6 +23,7 @@ export interface GameState {
   loading: boolean;
   gameIsReady: boolean;
   onboardingCompleted: boolean;
+  hasPlayed: boolean;
   campaignStatus: CampaignStatus | null;
 
   // Device
@@ -42,6 +43,7 @@ export interface GameActions {
   setLoading: (v: boolean) => void;
   setGameIsReady: (v: boolean) => void;
   setOnboardingCompleted: (v: boolean) => void;
+  setHasPlayed: (v: boolean) => void;
   setCampaignStatus: (status: CampaignStatus) => void;
   setIsMuted: (v: boolean) => void;
   reset: () => void;
