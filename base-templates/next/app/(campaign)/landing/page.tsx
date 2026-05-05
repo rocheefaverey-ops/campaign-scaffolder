@@ -33,7 +33,7 @@ export default function LandingPage() {
 
   // Return-player copy — falls back to primary CTA label if not set in CAPE
   const ctaReturning         = t('ctaReturning', cta);
-  const leaderboardReturnCta = t('leaderboardCta', 'Leaderboard');
+  const leaderboardReturnCta = t('leaderboardCta', leaderboardLabel);
 
   // Scaffold-time feature gate — toggled in the web wizard
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -41,7 +41,7 @@ export default function LandingPage() {
 
   // Skip onboarding for returning players
   const handlePlay = () =>
-    navigate(onboardingCompleted ? '/gameplay' : '{{NEXT_AFTER_LANDING}}');
+    navigate(showReturnPlayerButtons && onboardingCompleted ? '/gameplay' : '{{NEXT_AFTER_LANDING}}');
 
   return (
     <div className="campaign-screen campaign-screen--hero">
