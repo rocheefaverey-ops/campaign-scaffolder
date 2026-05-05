@@ -2778,54 +2778,6 @@ async function runUpdateWizard(existing, args) {
 async function main() {
   const args = parseArgs(process.argv);
 
-  // ── Repush format mode: push scaffolder format + publishProfiles to existing campaign ──
-  if (args.repushFormat) {
-    const campaignId = args.repushFormat;
-    if (!/^\d+$/.test(campaignId)) {
-      throw new Error(`--repush-format expects a numeric campaign ID (e.g. --repush-format=54031)`);
-    }
-
-    console.log(`\n  ${c.bold('Repushing format to CAPE campaign')} ${c.cyan(campaignId)}…\n`);
-
-    let tokens = await checkAuth();
-    if (!tokens) {
-      const email    = (await promptOnce(`  ${c.cyan('CAPE email')}: `)).trim();
-      const password = (await promptOnce(`  ${c.cyan('CAPE password')}: `)).trim();
-      tokens = await login(email, password);
-      console.log(`  ${c.green('✓')}  Logged in.\n`);
-    }
-
-    const formatFile = JSON.parse(readFileSync(SCAFFOLDER_FORMAT_FILE, 'utf8'));
-
-    process.stdout.write(`  ${c.dim('Pushing format (interfaceSetup + publishProfiles)...')} `);
-    try {
-      await pushFormat(tokens, campaignId, formatFile);
-      console.log(`${c.green('✓')}`);
-    } catch (err) {
-      console.log(`${c.red('✗')}  ${err.message}`);
-      process.exit(1);
-    }
-
-    process.stdout.write(`  ${c.dim('Populating defaults...')} `);
-    try {
-      const count = await populateDefaults(tokens, campaignId, formatFile.interfaceSetup);
-      console.log(`${c.green('✓')}  ${count} fields`);
-    } catch (err) {
-      console.log(`${c.yellow('⚠')}  ${err.message} (continuing)`);
-    }
-
-    process.stdout.write(`  ${c.dim('Publishing campaign...')} `);
-    try {
-      const publishedUrl = await publishCampaign(tokens, campaignId);
-      console.log(`${c.green('✓')}${publishedUrl ? `  ${c.dim(publishedUrl)}` : ''}`);
-    } catch (err) {
-      console.log(`${c.yellow('⚠')}  ${err.message} (continuing)`);
-    }
-
-    console.log(`\n  ${c.green('✓')}  Done. Open the campaign in CAPE and verify the Publish tab is visible.\n`);
-    return;
-  }
-
   // ── Recreate mode: delete + re-scaffold from .scaffolded ─────────────────────
   if (args.recreate) {
     const targetDir  = args.output ? resolve(args.output) : process.cwd();
