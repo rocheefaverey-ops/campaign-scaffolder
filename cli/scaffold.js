@@ -121,16 +121,14 @@ async function runCapeCreateFlow(ask, projectName, market, autoTitle = null, for
     throw new Error(`Campaign creation failed: ${err.message}`);
   }
 
-  // 4. Push format — use dynamic override if provided, else static scaffolder-format.json
+  // 4. Push format — dynamic format built from scaffold selections
   process.stdout.write(`  ${c.dim('Pushing format...')} `);
-  let formatFile;
+  let formatFile = formatOverride ?? { interfaceSetup: { pages: [] }, publishProfiles: {} };
   try {
-    formatFile = formatOverride ?? JSON.parse(readFileSync(SCAFFOLDER_FORMAT_FILE, 'utf8'));
     await pushFormat(tokens, campaignId, formatFile);
     console.log(`${c.green('✓')}`);
   } catch (err) {
     console.log(`${c.yellow('⚠')}  ${err.message} (continuing)`);
-    if (!formatFile) formatFile = { interfaceSetup: { pages: [] } };
   }
 
   // 5. Populate defaults
