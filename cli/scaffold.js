@@ -2872,6 +2872,24 @@ async function main() {
 
     const market = cfg.market ?? 'NL';
 
+    // The wizard now sends `pages` as PageInstance[] = [{id, type}]. The
+    // legacy CLI / older configs pass plain strings. We normalize to two
+    // parallel structures the rest of scaffold.js consumes:
+    //   pageIds:    ['landing', 'video-intro', 'game', 'video-outro'] — ordered route slugs
+    //   pageTypes:  { 'video-intro': 'video', 'video-outro': 'video' } — id→type for non-singleton instances
+    const rawPages       = Array.isArray(cfg.pages) ? cfg.pages : [];
+    const pageIds        = [];
+    const pageTypes      = {};
+    for (const entry of rawPages) {
+      if (typeof entry === 'string') {
+        pageIds.push(entry);
+        // type === id by convention; no entry needed in pageTypes.
+      } else if (entry && typeof entry === 'object' && entry.id) {
+        pageIds.push(entry.id);
+        if (entry.type && entry.type !== entry.id) pageTypes[entry.id] = entry.type;
+      }
+    }
+
     // ── Auto-create CAPE campaign when requested ──────────────────────────────
     let capeId            = cfg.capeId ?? '';
     let capeAutoPublished = cfg.capeAutoPublished ?? false;
@@ -2890,8 +2908,23 @@ async function main() {
       const autoTitle = (cfg.capeTitle && cfg.capeTitle.trim())
         ? cfg.capeTitle.trim()
         : cfg.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      const cfgStack = cfg.stack ?? 'next';
+      const cfgFormat = cfgStack === 'tanstack'
+        ? buildTanStackCapeFormat({
+            pages:                   pageIds,
+            tsPageElementSelections: cfg.tsPageElementSelections ?? {},
+          })
+        : buildNextCapeFormat({
+            instances:             pageIds.map(id => ({ id, type: pageTypes[id] ?? id })),
+            pageTypes,
+            pageElementSelections: cfg.pageElementSelections ?? {},
+            modules:               cfg.modules ?? [],
+            flowEnabledExits:      cfg.flowEnabledExits ?? {},
+            menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
+            iframe:                cfg.iframe ?? false,
+          });
       console.log(`\n  ${c.bold('Creating CAPE campaign...')}`);
-      const created = await runCapeCreateFlow(null, cfg.name, market, autoTitle);
+      const created = await runCapeCreateFlow(null, cfg.name, market, autoTitle, false, cfgFormat);
       capeId            = created.campaignId;
       capeAutoPublished = true;
       capePublishedUrl  = created.publishedUrl || '';
@@ -2904,28 +2937,10 @@ async function main() {
     // Without this, picking `game: phaser` in the wizard would leave the
     // gameplay placeholder in place because the phaser module never gets
     // copied.
-    //
-    // The wizard now sends `pages` as PageInstance[] = [{id, type}]. The
-    // legacy CLI / older configs pass plain strings. We normalize to two
-    // parallel structures the rest of scaffold.js consumes:
-    //   pageIds:    ['landing', 'video-intro', 'game', 'video-outro'] — ordered route slugs
-    //   pageTypes:  { 'video-intro': 'video', 'video-outro': 'video' } — id→type for non-singleton instances
     const game           = cfg.game ?? 'unity';
     const selectedGame   = cfg.gameId ? getGame(cfg.gameId) : null;
     if (cfg.gameId && !selectedGame) {
       throw new Error(`Unknown gameId "${cfg.gameId}". Expected a games/{id}/game.json manifest.`);
-    }
-    const rawPages       = Array.isArray(cfg.pages) ? cfg.pages : [];
-    const pageIds        = [];
-    const pageTypes      = {};
-    for (const entry of rawPages) {
-      if (typeof entry === 'string') {
-        pageIds.push(entry);
-        // type === id by convention; no entry needed in pageTypes.
-      } else if (entry && typeof entry === 'object' && entry.id) {
-        pageIds.push(entry.id);
-        if (entry.type && entry.type !== entry.id) pageTypes[entry.id] = entry.type;
-      }
     }
     const pages          = pageIds; // alias for the existing variable name
     const extraModules   = cfg.modules ?? [];
