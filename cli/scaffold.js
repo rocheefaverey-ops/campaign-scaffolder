@@ -331,7 +331,6 @@ function parseArgs(argv) {
     else if (key === 'yes' || key === 'y') args.yes = true;
     else if (key === 'create-cape') args.createCape = true;
     else if (key === 'recreate' || key === 'rebuild') args.recreate = true;
-    else if (key === 'repush-format') args.repushFormat = val;
   }
   return args;
 }
