@@ -42,7 +42,7 @@ Five categories, in workstream order:
 
 ## Architecture
 
-No new modules, no new game definitions, no new wizard UI changes. Exactly one new file (the verification harness in workstream 5c). All other work lands inside files that already exist:
+No new modules, no new game definitions. New files: the verification harness (workstream 5c) and one new wizard-UI step component (workstream 6g). All other work lands inside files that already exist:
 
 ```
 campaign-scaffolder/
@@ -50,9 +50,11 @@ campaign-scaffolder/
 ├── modules/unity/                         (workstream 2a: copy-back, 2 files)
 ├── modules/video/                         (workstream 2b: copy-back, 2 files)
 └── cli/
-    ├── scaffold.js                        (workstreams 3, 5a, 5b — page-instance helpers, route gen, .scaffolded writer, checklist writer)
+    ├── scaffold.js                        (workstreams 3, 5a, 5b, 6a–6f — helpers, route gen, writers, prompt copy, validation, back-nav)
     ├── page-builder.js                    (workstream 3 — basePageType lookup)
-    └── cape-format-builder.js             (workstreams 3, 4 — instance tabs + 551-line field gap)
+    ├── cape-format-builder.js             (workstreams 3, 4 — instance tabs + 551-line field gap)
+    ├── wizard-server/                     (workstream 6 — schema validation, terminology rename)
+    └── wizard-ui/                         (workstream 6 — copy fixes, new StepModules, validation hints)
 ```
 
 ## Workstream details
@@ -191,6 +193,92 @@ Optional flag additions (nice-to-have, not required for byte-diff):
 - `--skip-install` — bypass `npm install` (saves ~1 min on Windows).
 - `--skip-git` — bypass `git init` (avoids spurious husky warning).
 
+### 6 — Wizard UX upgrades
+
+The wizard (web + CLI) drives the `.scaffolded` shape that the parity work depends on. Seven targeted improvements, ordered by dependency. They are landed *after* parity (workstreams 1–5) is green, so the byte-diff verification harness already exists and protects against accidental regression.
+
+**6a — Standardise user-facing terminology**
+
+The persisted shape in `.scaffolded` (`game: "unity"` for engine, `selectedGame.id` / `wizard.gameId` for the game pick) is locked by workstream 5a and stays as-is. Only *user-facing labels* change so the spoken/UI vocabulary is unambiguous:
+
+- **"engine"** in all prompts and UI labels = `unity` | `r3f` | `phaser` | `pure-react` | `none`
+- **"game"** in all prompts and UI labels = the pre-built game definition (Haas F1, NHL Crush, …)
+
+Touch points:
+
+- `cli/scaffold.js` — prompt heading "Pick game" → "Pick engine"; summary panel field "Engine" already says "Engine" (good, no change). The `--game` CLI flag is renamed in *help text* to `--engine` while continuing to accept `--game` as an alias (no deprecation warning — `antigravfix/SCAFFOLD_DEBUG.json`'s recreate command uses `--game=unity` and must keep working).
+- `cli/wizard-ui/` — rename the engine sub-step heading inside `StepStack` from "Game" to "Engine"; keep the existing `StepGames` step (game pick) and tighten its heading to make the distinction obvious. Internal config keys (`game`, `gameId`) **do not change** — they map cleanly to `.scaffolded`'s persisted shape.
+- `cli/wizard-server/` — no schema changes; only any user-visible error strings get the new wording.
+
+Net effect: **no config-key renames, no `.scaffolded` shape change** — purely a copy / label cleanup so users stop conflating engine with game.
+
+**6b — Surface module implications inline**
+
+`cli/scaffold.js` modules prompt: append `(adds: scoring)` to any module that implies others. Final summary shows:
+
+```
+Modules: leaderboard, registration, scoring (auto: implied by leaderboard, registration)
+```
+
+Web wizard's new `StepModules` (workstream 6g) shows the same info as a badge under each pre-checked auto-implied card.
+
+**6c — Live route preview in the page picker (CLI)**
+
+After each addition/removal in the page picker, reprint the current selection as a route table:
+
+```
+Selected pages so far:
+  1. /video       (instance: video)
+  2. /landing     (instance: landing)
+  …
+```
+
+The summary panel at the end of the wizard replaces the bare comma-separated `Pages:` line with the same table. Web wizard already does this; this brings CLI to parity.
+
+**6d — Validation gates**
+
+Three rules, enforced in `cli/scaffold.js` (CLI + `--yes` mode) and in `cli/wizard-server/` schema validation (web):
+
+1. `engine === 'none'` AND a `game` page is in `pages` → reject: *"`game` page requires an engine. Add `--engine=unity|r3f|phaser` or remove the `game` page."*
+2. `pageId` matches `/^[a-z]+-\d+$/` AND base type isn't in `pages` → reject: *"`<pageId>` is a duplicate instance and requires a `<base>` page first."*
+3. `engine !== 'none'` AND no `game` page in `pages` → warn (don't block): *"Engine `<engine>` selected but no `game` page is in the flow. The runtime won't render. Continue anyway? [y/N]"*
+
+Rules 1 + 2 also ship as web-form-level field validators so the user sees the error at edit time, not on submit.
+
+**6e — Helper text for cryptic fields**
+
+One-line clarifier under each prompt (CLI) / under each form field (web):
+
+- **Market** — *"Two-letter country code. Drives default language, GDPR copy, and CAPE locale. Example: `NL`"*
+- **Output directory** — *"Where to scaffold the project. Default `../{name}` resolves to: `<absolute-path>`"* (CLI computes and shows the resolved absolute path so Windows users see what `..` means)
+- **CAPE ID** — *"Existing campaign to bind to. Leave blank to create a new one in the next step."*
+
+Web wizard reuses its existing helper-text component pattern.
+
+**6f — CLI back-navigation parity**
+
+Refactor each prompt in `runWizard()` (`cli/scaffold.js`) into a callable `promptXxx(state)` function returning the updated state. Extend the post-summary edit menu from the current 6 fields to: `name, capeId, market, engine, game, pages, modules, regMode, gtmId, iframe, output`. Each menu choice re-invokes the matching `promptXxx`.
+
+This is the largest mechanical change in workstream 6 — moves prompt logic from inlined scripts to small functions. **No behaviour change for `--yes` mode** (which skips prompts entirely).
+
+**6g — Add the missing Modules step to the web wizard**
+
+Insert `StepModules` between `StepGames` and `StepCape` in `cli/wizard-ui/App.tsx`. Implementation pattern mirrors `StepGames`:
+
+- Renders one card per module from a static catalog (sourced from `modules/*/manifest.json` — server-side list endpoint, e.g. `/api/modules`, returning `{ id, name, description, implies, packages }`).
+- Auto-implied modules (from page picks) are pre-checked and disabled, with a "added by `<page>`" badge.
+- Modules with implications show an "implies: X" badge.
+- The `gtm` card expands inline to capture `gtmId` (no separate step). Helper text under the input from workstream 6e.
+- Validation: nothing required — modules are all optional.
+
+New files:
+
+- `cli/wizard-ui/src/steps/StepModules.tsx`
+- `cli/wizard-ui/src/steps/StepModules.module.css` (or whichever styling pattern the existing steps use)
+- New endpoint in `cli/wizard-server/`: `GET /api/modules` reads `modules/*/manifest.json` once at startup and returns the catalog.
+
+State plumbing: the existing `ScaffoldConfig` already has `modules: string[]` and `gtmId?: string` — no schema changes needed beyond exposing them in the UI.
+
 ## Execution order
 
 ```
@@ -198,18 +286,29 @@ Optional flag additions (nice-to-have, not required for byte-diff):
 2. Workstream 3 (page-instance support)      [enables 4 + 5b]
 3. Workstream 4 (cape-format field gap)      [depends on 3]
 4. Workstreams 5a + 5b (writer parity)       [depends on 1–3]
-5. Workstream 5c (verification harness)      [depends on all above; gates merge]
+5. Workstream 5c (verification harness)      [depends on all above; gates merge of 1–5]
+6. Workstream 6 (UX upgrades)                [lands after 5c is green]
+   ├── 6a (terminology)                      [foundation; touches every later step]
+   ├── 6b, 6c, 6e (CLI polish)               [parallelisable after 6a]
+   ├── 6d (validation gates)                 [parallelisable after 6a]
+   ├── 6f (CLI back-nav refactor)            [touches the same prompt code; land after 6b/6c/6e]
+   └── 6g (web Modules step)                 [parallelisable with 6b–6f]
 ```
 
 ## Out of scope (explicit YAGNI)
 
 - Generic page-instance support for non-video pages.
-- Refactoring `scaffold.js` beyond the helpers and call sites that need to change.
+- Refactoring `scaffold.js` beyond the helpers, call sites, and prompt extraction needed for workstreams 3 and 6f.
 - Backporting changes to `tanstack` template or `tanstack-page-builder.js` — antigravfix is Next.js only.
-- Wizard UI changes — wizard already emits the correct `.scaffolded` per the antigravfix snapshot.
 - New module types or new game definitions.
 - Replacing the static `mock-cape.json` with dynamic generation.
+- Auto-deriving project names from brand+market.
+- Adding timezone / language prompts to the CLI (web wizard handles these; CLI users can edit `.env`).
+- ASCII flow diagram in the CLI summary — workstream 6c's route table covers the same need with less terminal noise.
 
 ## Success criterion
 
-`node scripts/verify-antigravfix.js` exits 0 — i.e. running the recreate command into a temp dir produces output byte-identical to `antigravfix/` after the documented exclusions.
+Two checkpoints, both required:
+
+1. **Parity** — `node scripts/verify-antigravfix.js` exits 0: the recreate command produces output byte-identical to `antigravfix/` after the documented exclusions.
+2. **UX** — Manual smoke of the wizard (web + CLI) confirms each of the seven 6a–6g changes is in place. No automated test for the UX work; the parity test from checkpoint 1 guards against regression of the underlying scaffold output.
