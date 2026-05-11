@@ -15,7 +15,11 @@
     "preview-message": "node cli/post-scaffold-message.js",
     "wizard": "node cli/wizard.js",
     "wizard:install": "npm --prefix cli/wizard-server install && npm --prefix cli/wizard-ui install",
-    "wizard:build": "npm --prefix cli/wizard-ui run build"
+    "wizard:build": "npm --prefix cli/wizard-ui run build",
+    "verify:antigravfix": "node scripts/verify-antigravfix.js",
+    "test": "node cli/cape-format-builder.test.js && node cli/scaffold.test.js && node --test cli/tests/game-registry.test.js",
+    "prewizard:build": "npm test",
+    "prewizard": "npm test"
   },
   "engines": {
     "node": ">=18.0.0"
