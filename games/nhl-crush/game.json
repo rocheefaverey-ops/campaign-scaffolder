@@ -3,6 +3,7 @@
   "name": "NHL Crush",
   "description": "Hockey shooting game — score goals, track stages, lives and time left.",
   "engine": "unity",
+  "stack": "tanstack",
 
   "cdn": {
     "baseUrl": "https://lw-someone-something-unity-test.lwcf4.nl",

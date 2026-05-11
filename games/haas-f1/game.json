@@ -3,6 +3,7 @@
   "name": "Haas F1 Racing",
   "description": "Top-down F1 racing game with boost, obstacles, and token collection.",
   "engine": "unity",
+  "stack": "next",
 
   "cdn": {
     "baseUrl": "https://lw-wave-haasf1-unity-test.lwcf5.nl",
