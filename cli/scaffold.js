@@ -25,13 +25,13 @@ import { createInterface } from 'readline';
 import { randomBytes } from 'crypto';
 import { existsSync, mkdirSync, cpSync, rmSync, renameSync, readdirSync, statSync, readFileSync, writeFileSync } from 'fs';
 import { join, resolve, dirname, relative } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { networkInterfaces, tmpdir } from 'os';
 import { execSync, spawn } from 'child_process';
 import { printPostScaffoldMessage } from './post-scaffold-message.js';
 import { PAGE_ELEMENTS, PAGE_DEFAULTS, ELEMENT_CATALOGUE, buildPage } from './page-builder.js';
 import { TS_PAGE_ELEMENTS, TS_PAGE_DEFAULTS, TS_ELEMENT_CATALOGUE, TS_ALL_PAGES, TS_PAGE_ROUTES, buildTsPage } from './tanstack-page-builder.js';
-import { getGamesByEngine, getGame, gameEnvLines, gameLabel } from './game-registry.js';
+import { getGamesByEngine, getGamesByStack, getGame, gameEnvLines, gameLabel } from './game-registry.js';
 import { checkAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, publishCampaign } from './cape-client.js';
 import { buildTanStackCapeFormat, buildNextCapeFormat } from './cape-format-builder.js';
 
@@ -126,7 +126,7 @@ async function runCapeCreateFlow(ask, projectName, market, autoTitle = null, for
 
   // Sanity-check the format BEFORE pushing. If the per-page tabs collapse to
   // just the always-on shell (Header + Desktop & Loading + Menu = 3 tabs),
-  // it means the format builder didn't recognise any of the page instances —
+  // it means the format builder didn't recognise any of the page pages —
   // the campaign would be scaffolded with no editable pages in CAPE.
   // Surface this loudly so the user sees it in the wizard log instead of
   // discovering it only after opening CAPE.
@@ -159,7 +159,8 @@ async function runCapeCreateFlow(ask, projectName, market, autoTitle = null, for
       console.log(`  ${c.dim('Format snapshot:')} ${c.dim(debugFormatPath)}`);
     }
   } catch (err) {
-    console.log(`${c.yellow('⚠')}  ${err.message} (continuing)`);
+    const snapshotHint = debugFormatPath ? `\n  Format snapshot: ${debugFormatPath}` : '';
+    throw new Error(`Failed to push CAPE format: ${err.message}${snapshotHint}`);
   }
 
   // 5. Populate defaults
@@ -228,7 +229,9 @@ const c = {
 
 const GAME_ENGINES = ['unity', 'r3f', 'phaser', 'memory', 'video', 'pure-react'];
 
-const ALL_PAGES = ['landing', 'video', 'onboarding', 'register', 'game', 'result', 'leaderboard', 'voucher'];
+const ALL_PAGES = ['landing', 'intro-video', 'onboarding', 'loading-video', 'game', 'result', 'ad-video', 'register', 'leaderboard', 'voucher'];
+const VIDEO_PAGE_IDS = new Set(['video', 'intro-video', 'loading-video', 'ad-video']);
+const EXPLICIT_VIDEO_PAGES = ['intro-video', 'loading-video', 'ad-video'];
 
 const VALID_MARKETS = new Set(['NL', 'BE', 'FR', 'DE', 'UK', 'ES', 'IT', 'PL', 'AT', 'CH', 'LU', 'DK', 'SE', 'NO', 'FI']);
 
@@ -259,9 +262,12 @@ function buildLanguagesMap(codes) {
 /** Names that would conflict with framework directories or reserved paths */
 const RESERVED_NAMES = new Set(['next', 'app', 'api', 'src', 'public', 'node_modules', 'build', 'dist', 'test', 'tests', 'frontend', 'backend', 'scaffolder', 'campaign-scaffolder', 'livewall']);
 
-const PAGE_ROUTES = {
+export const PAGE_ROUTES = {
   landing:     '/landing',
   video:       '/video',
+  'intro-video':   '/intro-video',
+  'loading-video': '/loading-video',
+  'ad-video':      '/ad-video',
   onboarding:  '/onboarding',
   register:    '/register',
   game:        '/gameplay',
@@ -270,6 +276,22 @@ const PAGE_ROUTES = {
   voucher:     '/voucher',
 };
 
+export function basePageType(pageId) {
+  return String(pageId);
+}
+
+function pageModuleType(pageId) {
+  return VIDEO_PAGE_IDS.has(pageId) ? 'video' : String(pageId);
+}
+
+export function routeFor(pageId) {
+  return PAGE_ROUTES[pageId] ?? `/${pageId}`;
+}
+
+function inferPageTypes(pages) {
+  return {};
+}
+
 /** Pages that require a specific module to be present */
 const PAGE_REQUIRES_MODULE = {
   register:    'registration',
@@ -277,6 +299,28 @@ const PAGE_REQUIRES_MODULE = {
   voucher:     'voucher',
   video:       'video',
 };
+
+const OPTIONAL_MODULE_IDS = ['leaderboard', 'registration', 'scoring', 'audio', 'cookie-consent', 'gtm'];
+const GLOBAL_OPTIONAL_MODULES = new Set(['audio', 'cookie-consent', 'gtm']);
+const MODULE_PAGE_SUPPORT = {
+  leaderboard: new Set(['leaderboard']),
+  registration: new Set(['register']),
+  scoring: new Set(['game', 'result', 'register', 'leaderboard']),
+  voucher: new Set(['voucher']),
+  video: new Set(['video']),
+};
+const LOCAL_WIZARD_PAGE_SETTINGS = new Set(['onboardingFirstRunOnly']);
+
+function moduleSupportedByPages(moduleId, pages) {
+  if (GLOBAL_OPTIONAL_MODULES.has(moduleId)) return true;
+  const supportedTypes = MODULE_PAGE_SUPPORT[moduleId];
+  if (!supportedTypes) return false;
+  const pageTypes = new Set((pages ?? []).map((p) => pageModuleType(p)));
+  for (const type of supportedTypes) {
+    if (pageTypes.has(type)) return true;
+  }
+  return false;
+}
 
 /** Modules that imply other modules */
 function resolveImplied(selectedModules) {
@@ -349,7 +393,7 @@ function parseArgs(argv) {
     else if (key === 'name')     args.name     = val;
     else if (key === 'cape-id')  args.capeId   = val;
     else if (key === 'market')   args.market   = val;
-    else if (key === 'game')     args.game     = val;
+    else if (key === 'game' || key === 'engine') args.game = val;
     else if (key === 'stack')    args.stack    = val;
     else if (key === 'reg-mode') args.regMode  = val;
     else if (key === 'gtm-id')   args.gtmId    = val;
@@ -360,6 +404,8 @@ function parseArgs(argv) {
     else if (key === 'yes' || key === 'y') args.yes = true;
     else if (key === 'create-cape') args.createCape = true;
     else if (key === 'recreate' || key === 'rebuild') args.recreate = true;
+    else if (key === 'skip-install') args.skipInstall = true;
+    else if (key === 'skip-git') args.skipGit = true;
   }
   return args;
 }
@@ -386,24 +432,54 @@ function validateArgs(args) {
   }
 }
 
+export function validateConfig({ game = 'none', pages = [], pageTypes = {}, modules = [] }) {
+  const errors = [];
+  const warnings = [];
+  const engine = game || 'none';
+  const pageIds = (pages ?? []).map((p) => typeof p === 'string' ? p : p?.id).filter(Boolean);
+  const typeOf = (id) => pageTypes[id] ?? basePageType(id);
+
+  let hasGamePage = false;
+  for (const pageId of pageIds) {
+    let pageType;
+    try {
+      pageType = typeOf(pageId);
+    } catch (err) {
+      errors.push(err instanceof Error ? err.message : String(err));
+      continue;
+    }
+    if (pageType === 'game') hasGamePage = true;
+  }
+
+  if (engine === 'none' && hasGamePage) {
+    errors.push('`game` page requires an engine. Add --engine=unity|r3f|phaser or remove the `game` page.');
+  }
+  if (engine !== 'none' && !hasGamePage) {
+    warnings.push(`Engine "${engine}" selected but no \`game\` page is in the flow. The runtime won't render.`);
+  }
+
+  const policy = moduleSelectionPolicy(pageIds, engine);
+  const allowedExtras = new Set([...policy.required, ...policy.selectable]);
+  for (const moduleId of modules ?? []) {
+    if (GAME_ENGINES.includes(moduleId)) continue;
+    if (allowedExtras.has(moduleId)) continue;
+    warnings.push(`Ignoring module "${moduleId}" because no selected page supports it.`);
+  }
+
+  return { errors, warnings };
+}
+
 // ─── Flow computation ─────────────────────────────────────────────────────────
 
 /**
- * Given the ordered flow (instance ids), registration mode, and per-exit
+ * Given the ordered flow page ids, registration mode, and per-exit
  * overrides, compute the navigation token map.
  *
- * `pages` is an ordered list of INSTANCE IDS. For singleton instances id === type
- * (e.g. 'video', 'game'). For duplicates the id includes a suffix
- * (e.g. 'video-intro', 'video-2').
- *
- * `pageTypes` (optional) maps `id → type` for non-singleton instances:
- *     { 'video-intro': 'video', 'video-outro': 'video' }
- *
- * `flowExits` keys are `{instanceId}.{exitKey}` → target instance id.
+ * `flowExits` keys are `{pageId}.{exitKey}` -> target page id.
  *
  * Tokens emitted:
- *   {{FLOW_ENTRY}}                   route of the first instance
- *   {{NEXT_AFTER_<INSTANCE_ID>}}     "next" exit per instance, uppercased id
+ *   {{FLOW_ENTRY}}                   route of the first page
+ *   {{NEXT_AFTER_<PAGE_ID>}}         "next" exit per page, uppercased id
  *   {{PLAY_AGAIN_ROUTE}}             result.playAgain destination
  *   {{LANDING_LEADERBOARD_ROUTE}}    landing.leaderboard destination
  *   {{RESULT_LEADERBOARD_ROUTE}}     result.leaderboard destination
@@ -413,8 +489,8 @@ function computeFlowTokens(pages, regMode = 'none', flowExits = {}, flowEntry = 
 
   const typeOf = (id) => pageTypes[id] ?? id;
 
-  // regMode: 'after' moves the FIRST register-typed instance past the FIRST
-  // result-typed instance. Drag-to-reorder in the wizard makes this rarely
+  // regMode: 'after' moves the FIRST register-typed page past the FIRST
+  // result-typed page. Drag-to-reorder in the wizard makes this rarely
   // needed; preserved for legacy --reg-mode=after callers.
   if (regMode === 'after') {
     const regIdx    = sequence.findIndex(id => typeOf(id) === 'register');
@@ -428,20 +504,19 @@ function computeFlowTokens(pages, regMode = 'none', flowExits = {}, flowEntry = 
 
   const tokens = {};
   const inFlow = (id) => sequence.includes(id);
-  /** Route of an instance. Canonical singleton pages keep their real app route. */
+  /** Route of an page. Canonical singleton pages keep their real app route. */
   const routeOf = (id) => {
     if (!id) return '/';
-    const type = typeOf(id);
-    return id === type ? (PAGE_ROUTES[type] ?? `/${id}`) : `/${id}`;
+    return routeFor(id);
   };
-  /** Find first instance whose TYPE matches (for default-target heuristics). */
+  /** Find first page whose TYPE matches (for default-target heuristics). */
   const firstOfType = (type) => sequence.find(id => typeOf(id) === type);
 
-  // FLOW_ENTRY → user override if it's still in the flow, otherwise first instance.
+  // FLOW_ENTRY → user override if it's still in the flow, otherwise first page.
   const entry = flowEntry && inFlow(flowEntry) ? flowEntry : sequence[0];
   tokens['{{FLOW_ENTRY}}'] = entry ? routeOf(entry) : '/';
 
-  // NEXT_AFTER_* per instance — token uses the INSTANCE ID (uppercased).
+  // NEXT_AFTER_* per page — token uses the page ID (uppercased).
   // The wizard does the same when emitting source code via token rename.
   for (let i = 0; i < sequence.length; i++) {
     const id       = sequence[i];
@@ -455,16 +530,16 @@ function computeFlowTokens(pages, regMode = 'none', flowExits = {}, flowEntry = 
     }
   }
 
-  // PLAY_AGAIN_ROUTE — caller override (keyed by RESULT instance id), then
-  // first onboarding / first game / first instance.
+  // PLAY_AGAIN_ROUTE — caller override (keyed by RESULT page id), then
+  // first game / first onboarding / first page.
   const resultId          = firstOfType('result');
   const playAgainOverride = resultId ? flowExits[`${resultId}.playAgain`] : null;
   if (playAgainOverride && inFlow(playAgainOverride)) {
     tokens['{{PLAY_AGAIN_ROUTE}}'] = routeOf(playAgainOverride);
   } else {
     tokens['{{PLAY_AGAIN_ROUTE}}'] =
-      routeOf(firstOfType('onboarding')) ||
       routeOf(firstOfType('game')) ||
+      routeOf(firstOfType('onboarding')) ||
       routeOf(sequence[0]);
   }
 
@@ -497,6 +572,214 @@ function promptOnce(question) {
   });
 }
 
+function printRouteTable(pages, pageTypes = {}) {
+  console.log(`  ${c.bold('Selected pages so far:')}`);
+  pages.forEach((pageId, index) => {
+    const route = routeFor(pageId);
+    console.log(`    ${index + 1}. ${c.cyan(route.padEnd(16))} ${c.dim(`page: ${pageId}`)}`);
+  });
+}
+
+async function promptName(state, ask = promptOnce) {
+  let next;
+  do {
+    if (next !== undefined) console.log(`  ${c.red('x')} Invalid - use lowercase letters, numbers and hyphens`);
+    next = (await ask(`  ${c.cyan('Project name')}: `)).trim();
+  } while (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(next));
+  state.name = next;
+  return state;
+}
+
+async function promptCapeId(state, ask = promptOnce) {
+  console.log(c.dim('  Existing campaign to bind to. Leave blank to create a new one in the next step.'));
+  let next;
+  do {
+    if (next !== undefined) console.log(`  ${c.red('x')} CAPE ID must be numeric`);
+    next = (await ask(`  ${c.cyan('CAPE ID')}: `)).trim();
+  } while (next && !/^\d+$/.test(next));
+  state.capeId = next;
+  return state;
+}
+
+async function promptMarket(state, ask = promptOnce) {
+  console.log(c.dim('  Two-letter country code. Drives default language, GDPR copy, and CAPE locale. Example: NL'));
+  const raw = (await ask(`  ${c.cyan('Market')} ${c.dim(`(options: ${[...VALID_MARKETS].join('/')})`)} : `)).trim().toUpperCase();
+  if (!raw) return state;
+  if (VALID_MARKETS.has(raw)) state.market = raw;
+  else console.log(`  ${c.yellow('!')} Unknown market - keeping ${state.market}`);
+  return state;
+}
+
+async function promptEngine(state, ask = promptOnce) {
+  const raw = (await ask(`  ${c.cyan('Engine')} ${c.dim('(unity/r3f/phaser/pure-react/none)')}: `)).trim();
+  if (!raw) return state;
+  if (['unity', 'r3f', 'phaser', 'pure-react', 'none'].includes(raw)) {
+    state.game = raw;
+    if (raw !== 'unity') state.selectedGame = null;
+  } else {
+    console.log(`  ${c.yellow('!')} Unknown engine - keeping ${state.game || 'none'}`);
+  }
+  return state;
+}
+
+async function promptGame(state, ask = promptOnce, stack = 'next') {
+  const unityGames = getGamesByStack('unity', stack);
+  console.log('');
+  console.log(`  ${c.bold('Unity game:')}`);
+  unityGames.forEach((g, i) => {
+    console.log(`    ${c.dim(`${i + 1})`)} ${c.cyan(g.name)}  ${c.dim(`- ${g.description}`)}`);
+  });
+  const customIdx = unityGames.length + 1;
+  const newIdx    = unityGames.length + 2;
+  console.log(`    ${c.dim(`${customIdx})`)} Existing/custom game  ${c.dim('<- paste CDN URL, game name & scene key')}`);
+  console.log(`    ${c.dim(`${newIdx})`)} New game              ${c.dim('<- leave vars empty - fill in later')}`);
+  const raw = (await ask(`  ${c.cyan('Select')} ${c.dim('[1-' + newIdx + ', default: 1]')}: `)).trim();
+  const choice = parseInt(raw, 10) || 1;
+  if (choice >= 1 && choice <= unityGames.length) {
+    state.selectedGame = unityGames[choice - 1];
+    state.game = 'unity';
+    console.log(`      ${c.green('ok')} Template: ${state.selectedGame.name}`);
+  } else if (choice === customIdx) {
+    const cdnUrl   = (await ask(`  ${c.cyan('CDN URL')} ${c.dim('(e.g. https://cdn.example.com/Build)')}: `)).trim();
+    const gameName = (await ask(`  ${c.cyan('Game name')} ${c.dim('(Unity build file prefix, e.g. Game)')}: `)).trim() || 'Game';
+    const scene    = (await ask(`  ${c.cyan('Default scene')} ${c.dim('(scene key Unity expects, e.g. Racing)')}: `)).trim() || 'Game';
+    state.selectedGame = {
+      name: gameName,
+      description: 'Custom game',
+      engine: 'unity',
+      boot: { defaultScene: scene },
+      env: {
+        NEXT_PUBLIC_UNITY_BASE_URL:  cdnUrl,
+        NEXT_PUBLIC_UNITY_GAME_NAME: gameName,
+        NEXT_PUBLIC_UNITY_MIN_DPR:   '1',
+        NEXT_PUBLIC_UNITY_MAX_DPR:   '1.5',
+      },
+    };
+    state.game = 'unity';
+    console.log(`      ${c.green('ok')} CDN: ${c.dim(cdnUrl)}  Game: ${c.dim(gameName)}  Scene: ${c.dim(scene)}`);
+  } else {
+    state.selectedGame = null;
+  }
+  return state;
+}
+
+async function promptPages(state, ask = promptOnce) {
+  const defaults = state.pages?.length ? state.pages : buildDefaultPages(state.game);
+  console.log('');
+  console.log(`  ${c.bold('Campaign pages')} ${c.dim('(comma-separated numbers or ids):')}`);
+  ALL_PAGES.forEach((p, i) => {
+    const on = defaults.includes(p) ? c.green('*') : c.dim(' ');
+    console.log(`    ${on} ${c.dim(`${i + 1})`)} ${p}${routeFor(p) !== '/' ? c.dim(` (${routeFor(p)})`) : ''}`);
+  });
+  const raw = (await ask(`  ${c.cyan('Select')} ${c.dim(`[default: ${defaults.map((p) => ALL_PAGES.indexOf(p) + 1).filter((n) => n > 0).join(',')}]`)}: `)).trim();
+  let next = defaults;
+  if (raw) {
+    const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+    const numeric = parts.every((part) => /^\d+$/.test(part));
+    next = numeric
+      ? parts.map((part) => {
+        const n = parseInt(part, 10);
+        return (n >= 1 && n <= ALL_PAGES.length) ? ALL_PAGES[n - 1] : null;
+      }).filter(Boolean)
+      : parts;
+  }
+  if (state.game && state.game !== 'pure-react' && state.game !== 'none' && !next.includes('game')) next = [...next, 'game'];
+  state.pages = next;
+  printRouteTable(state.pages);
+  return state;
+}
+
+async function promptModules(state, ask = promptOnce) {
+  const policy = moduleSelectionPolicy(state.pages ?? [], state.game);
+  const optional = policy.selectable;
+  const suggested = policy.suggested;
+  const defaults = state.extraModules?.length
+    ? state.extraModules.filter((id) => optional.includes(id))
+    : suggested;
+  console.log('');
+  console.log(`  ${c.bold('Modules')} ${c.dim('(comma-separated numbers or ids):')}`);
+  if (policy.required.length > 0) {
+    console.log(`  ${c.dim(`Locked by selected pages: ${policy.required.join(', ')}`)}`);
+  }
+  if (optional.length === 0) {
+    console.log(`  ${c.dim('No additional modules available for the current page flow.')}`);
+    state.extraModules = [];
+    return state;
+  }
+  if (suggested.length > 0) {
+    console.log(`  ${c.dim(`Smart defaults: ${suggested.join(', ')} - pre-selected based on your pages`)}`);
+  }
+  optional.forEach((id, i) => {
+    const on = defaults.includes(id) ? c.green('*') : c.dim(' ');
+    const m = (() => { try { return loadManifest(id); } catch { return null; } })();
+    const desc = m ? c.dim(` - ${m.description.split('.')[0]}`) : '';
+    const adds = m?.implies?.length ? c.dim(` (adds: ${m.implies.join(', ')})`) : '';
+    console.log(`    ${on} ${c.dim(`${i + 1})`)} ${id}${adds}${desc}`);
+  });
+  const raw = (await ask(`  ${c.cyan('Select')} ${c.dim(`[default: ${defaults.map((id) => optional.indexOf(id) + 1).filter((n) => n > 0).join(',')}]`)}: `)).trim();
+  if (raw) {
+    state.extraModules = raw.split(',').map((s) => {
+      const token = s.trim();
+      const n = parseInt(token, 10);
+      return (n >= 1 && n <= optional.length) ? optional[n - 1] : token;
+    }).filter((id) => optional.includes(id));
+  } else {
+    state.extraModules = defaults;
+  }
+  return state;
+}
+
+async function promptRegMode(state, ask = promptOnce) {
+  console.log('');
+  console.log(`  ${c.bold('Registration mode:')}`);
+  console.log(`    ${c.dim('0)')} Gate - player must register before playing`);
+  console.log(`    ${c.dim('1)')} After - register to save score after the game`);
+  console.log(`    ${c.dim('2)')} Optional - link from result page, not required`);
+  const raw = (await ask(`  ${c.cyan('Select')} ${c.dim('[0-2, default: 1]')}: `)).trim();
+  state.regMode = raw === '0' ? 'gate' : raw === '2' ? 'optional' : 'after';
+  return state;
+}
+
+async function promptGtmId(state, ask = promptOnce) {
+  state.gtmId = (await ask(`  ${c.cyan('GTM ID')} ${c.dim('(leave blank to clear)')}: `)).trim();
+  return state;
+}
+
+async function promptIframe(state, ask = promptOnce) {
+  const raw = (await ask(`  ${c.cyan('Iframe mode?')} ${c.dim('[y/N]')}: `)).trim().toLowerCase();
+  state.iframe = raw === 'y' || raw === 'yes';
+  return state;
+}
+
+async function promptOutput(state, ask = promptOnce) {
+  const def = resolve(SCAFFOLDER_ROOT, '..', state.name);
+  console.log(c.dim(`  Where to scaffold the project. Default ../${state.name} resolves to: ${def}`));
+  const raw = (await ask(`  ${c.cyan('Output directory')} ${c.dim(`(default: ${def})`)}: `)).trim();
+  state.outputDir = resolve(raw || def);
+  return state;
+}
+
+const EDIT_OPTIONS = [
+  { key: '1',  label: 'Project name',      value: (state) => state.name,                         fn: promptName },
+  { key: '2',  label: 'CAPE ID',           value: (state) => state.capeId || 'new/blank',          fn: promptCapeId },
+  { key: '3',  label: 'Market',            value: (state) => state.market,                       fn: promptMarket },
+  { key: '4',  label: 'Engine',            value: (state) => state.game || 'none',                fn: promptEngine },
+  { key: '5',  label: 'Game pick',         value: (state) => state.selectedGame?.name || 'none',  fn: promptGame },
+  { key: '6',  label: 'Pages',             value: (state) => (state.pages ?? []).join(', '),      fn: promptPages },
+  { key: '7',  label: 'Registration mode', value: (state) => state.regMode,                      fn: promptRegMode },
+  { key: '8',  label: 'GTM ID',            value: (state) => state.gtmId || 'none',               fn: promptGtmId },
+  { key: '9',  label: 'Iframe',            value: (state) => state.iframe ? 'enabled' : 'disabled', fn: promptIframe },
+  { key: '10', label: 'Output dir',        value: (state) => state.outputDir,                    fn: promptOutput },
+];
+
+function printEditOptions(state, options = EDIT_OPTIONS) {
+  console.log('');
+  console.log(`  ${c.bold('Edit field:')}`);
+  for (const option of options) {
+    console.log(`    ${c.dim(`${option.key})`)} ${option.label.padEnd(18)} ${c.dim(`(${option.value(state)})`)}`);
+  }
+}
+
 async function runWizard(pre) {
   const rl  = createInterface({ input: process.stdin, output: process.stdout });
   const ask = (q) => new Promise((res) => rl.question(q, res));
@@ -516,12 +799,12 @@ async function runWizard(pre) {
   }
   console.log('');
 
-  // 0. Stack + experience type — combined into one prompt
+  // 0. Stack + engine — combined into one prompt
   let stack = pre.stack ?? null;
   let game  = pre.game  ?? null;
   let selectedGame = null;
   if (stack === null) {
-    console.log(`  ${c.bold('Experience type:')}`);
+    console.log(`  ${c.bold('Pick engine:')}`);
     console.log(`    ${c.dim('1)')} ${c.cyan('Next.js + Unity')}   ${c.dim('← Next.js 16 + Unity WebGL (HaasF1, custom…)')}`);
     console.log(`    ${c.dim('2)')} ${c.cyan('TanStack + Unity')}  ${c.dim('← TanStack Start + Unity WebGL (NHL-Crush, custom…)')}`);
     console.log(`    ${c.dim('3)')} ${c.cyan('React Three Fiber')} ${c.dim('← 3D — R3F / ThreeJS')}`);
@@ -567,6 +850,7 @@ async function runWizard(pre) {
   // 3. Market
   let market = pre.market || 'NL';
   if (!pre.market) {
+    console.log(c.dim('  Two-letter country code. Drives default language, GDPR copy, and CAPE locale. Example: NL'));
     let mv = (await ask(`  ${c.cyan('Market')} ${c.dim(`(default: ${market} — options: ${[...VALID_MARKETS].join('/')})`)} : `)).trim();
     if (mv) {
       mv = mv.toUpperCase();
@@ -619,6 +903,7 @@ async function runWizard(pre) {
     }
     // game is always included
     if (!tsPages.includes('game')) tsPages.push('game');
+    printRouteTable(tsPages);
 
     // 5. Page builder — element selection per page
     const BUILDABLE_TS = ['launch', 'tutorial', 'score', 'register'];
@@ -743,6 +1028,7 @@ async function runWizard(pre) {
         }
         console.log('');
       } else if (capeOpt === 'e' || capeOpt === 'existing') {
+        console.log(c.dim('  Existing campaign to bind to. Leave blank to create a new one in the next step.'));
         while (!capeId || !/^\d+$/.test(capeId)) {
           if (capeId) console.log(`  ${c.red('✘')} CAPE ID must be numeric (e.g. 54031)`);
           capeId = (await ask(`  ${c.cyan('CAPE campaign ID')}: `)).trim();
@@ -764,6 +1050,7 @@ async function runWizard(pre) {
     let outputDir = pre.output;
     if (!outputDir) {
       const def = resolve(SCAFFOLDER_ROOT, '..', name);
+      console.log(c.dim(`  Where to scaffold the project. Default ../${name} resolves to: ${def}`));
       outputDir = (await ask(`  ${c.cyan('Output directory')} ${c.dim(`(default: ${def})`)}: `)).trim();
       if (!outputDir) outputDir = def;
     }
@@ -834,7 +1121,7 @@ async function runWizard(pre) {
 
   // 4b. Game picker — shown when Unity is chosen but no specific game was pre-selected
   if (game === 'unity' && selectedGame === null) {
-    const unityGames = getGamesByEngine('unity');
+    const unityGames = getGamesByStack('unity', 'next');
     console.log('');
     console.log(`  ${c.bold('Unity game:')}`);
     unityGames.forEach((g, i) => {
@@ -878,7 +1165,7 @@ async function runWizard(pre) {
     console.log(`  ${c.bold('Campaign pages')} ${c.dim('(comma-separated numbers — current defaults pre-selected):')}`);
     ALL_PAGES.forEach((p, i) => {
       const on = defaultPages.includes(p) ? c.green('●') : c.dim('○');
-      console.log(`    ${on} ${c.dim(`${i + 1})`)} ${p}${PAGE_ROUTES[p] !== '/' ? c.dim(` (${PAGE_ROUTES[p]})`) : ''}`);
+      console.log(`    ${on} ${c.dim(`${i + 1})`)} ${p}${routeFor(p) !== '/' ? c.dim(` (${routeFor(p)})`) : ''}`);
     });
     const v = (await ask(`  ${c.cyan('Select')} ${c.dim(`[default: ${defaultPages.map((p) => ALL_PAGES.indexOf(p) + 1).join(',')}]`)}: `)).trim();
     if (v) {
@@ -890,9 +1177,9 @@ async function runWizard(pre) {
       pages = defaultPages;
     }
   }
-
   // Ensure engine-required pages are present
   if (game && game !== 'pure-react' && game !== 'none' && !pages.includes('game')) pages.push('game');
+  printRouteTable(pages);
 
   // 5b. Page builder — ask what elements each page should have
   const BUILDABLE = ['landing', 'onboarding', 'result', 'menu'];
@@ -908,7 +1195,7 @@ async function runWizard(pre) {
     const defaults = PAGE_DEFAULTS[page] ?? available;
 
     console.log('');
-    console.log(`  ${c.bold(`Page builder — `)}${c.cyan(page)} ${c.dim(`(${PAGE_ROUTES[page] ?? '/menu'})`)}`);
+    console.log(`  ${c.bold(`Page builder — `)}${c.cyan(page)} ${c.dim(`(${routeFor(page) ?? '/menu'})`)}`);
     console.log(`  ${c.dim('Toggle elements on/off (comma-separated numbers):')}`);
 
     available.forEach((id, i) => {
@@ -943,7 +1230,8 @@ async function runWizard(pre) {
 
   // 5c. CAPE — now that page/element selections are known, build a project-specific format
   if (!capeId) {
-    const generatedFormat = buildNextCapeFormat({ pages, pageElementSelections });
+    const formatModules = resolveModules(game, pages, []);
+    const generatedFormat = buildNextCapeFormat({ pages, pageElementSelections, modules: formatModules });
     console.log('');
     const capeOpt = (await ask(`  ${c.cyan('CAPE campaign')}  ${c.dim('[n=create new / e=use existing ID / s=skip]')} ${c.dim('(default: n)')}: `)).trim().toLowerCase();
     if (capeOpt === '' || capeOpt === 'n' || capeOpt === 'new') {
@@ -1030,6 +1318,7 @@ async function runWizard(pre) {
       }
       console.log('');
     } else if (capeOpt === 'e' || capeOpt === 'existing') {
+      console.log(c.dim('  Existing campaign to bind to. Leave blank to create a new one in the next step.'));
       while (!capeId || !/^\d+$/.test(capeId)) {
         if (capeId) console.log(`  ${c.red('✘')} CAPE ID must be numeric (e.g. 54031)`);
         capeId = (await ask(`  ${c.cyan('CAPE campaign ID')}: `)).trim();
@@ -1055,13 +1344,27 @@ async function runWizard(pre) {
   regMode = regMode ?? 'none';
 
   // 7. Optional modules
-  const OPTIONAL = ['leaderboard', 'registration', 'scoring', 'audio', 'cookie-consent', 'gtm'];
-  let extraModules = pre.modules.length > 0 ? pre.modules : null;
+  const policy = moduleSelectionPolicy(pages, game);
+  const OPTIONAL = policy.selectable;
+  let extraModules = (pre.modules ?? []).filter((id) => policy.selectable.includes(id));
+  if (policy.required.length > 0) {
+    console.log('');
+    console.log(`  ${c.dim(`Auto modules from pages: ${policy.required.join(', ')}`)}`);
+  }
+  if (extraModules) {
+    extraModules = extraModules.filter((id) => OPTIONAL.includes(id));
+  }
   if (!extraModules) {
-    // Smart defaults: pre-select modules based on chosen pages + engine
-    const suggested = autoModulesForPages(pages, game);
+    const suggested = policy.suggested;
     console.log('');
     console.log(`  ${c.bold('Modules')} ${c.dim('(comma-separated numbers):')}`);
+    if (policy.required.length > 0) {
+      console.log(`  ${c.dim(`Locked by selected pages: ${policy.required.join(', ')}`)}`);
+    }
+    if (OPTIONAL.length === 0) {
+      console.log(`  ${c.dim('No additional modules available for the current page flow.')}`);
+      extraModules = [];
+    } else {
     if (suggested.length > 0) {
       console.log(`  ${c.dim(`Smart defaults: ${suggested.join(', ')} — pre-selected based on your pages`)}`);
     }
@@ -1069,16 +1372,18 @@ async function runWizard(pre) {
       const on = suggested.includes(id) ? c.green('●') : c.dim('○');
       const m  = (() => { try { return loadManifest(id); } catch { return null; } })();
       const desc = m ? c.dim(` — ${m.description.split('.')[0]}`) : '';
-      console.log(`    ${on} ${c.dim(`${i + 1})`)} ${id}${desc}`);
+      const adds = m?.implies?.length ? c.dim(` (adds: ${m.implies.join(', ')})`) : '';
+      console.log(`    ${on} ${c.dim(`${i + 1})`)} ${id}${adds}${desc}`);
     });
     const v = (await ask(`  ${c.cyan('Select')} ${c.dim(`[default: ${suggested.map(id => OPTIONAL.indexOf(id) + 1).filter(n => n > 0).join(',')}]`)}: `)).trim();
     if (v) {
       extraModules = v.split(',').map(s => {
         const n = parseInt(s.trim(), 10);
         return (n >= 1 && n <= OPTIONAL.length) ? OPTIONAL[n - 1] : s.trim();
-      }).filter(Boolean);
+      }).filter((id) => OPTIONAL.includes(id));
     } else {
       extraModules = suggested;
+    }
     }
   }
 
@@ -1099,6 +1404,7 @@ async function runWizard(pre) {
   let outputDir = pre.output;
   if (!outputDir) {
     const def = resolve(SCAFFOLDER_ROOT, '..', name);
+    console.log(c.dim(`  Where to scaffold the project. Default ../${name} resolves to: ${def}`));
     outputDir = (await ask(`  ${c.cyan('Output directory')} ${c.dim(`(default: ${def})`)}: `)).trim();
     if (!outputDir) outputDir = def;
   }
@@ -1107,7 +1413,18 @@ async function runWizard(pre) {
   rl.close();
 
   // Resolve all modules including engine + page-implied + implies chains
-  const allModules = resolveModules(game, pages, extraModules);
+  let allModules = resolveModules(game, pages, extraModules);
+
+  const impliedModuleSummary = () => {
+    const implied = new Set();
+    for (const id of extraModules) {
+      try {
+        for (const dep of loadManifest(id).implies ?? []) implied.add(dep);
+      } catch { /* ignore missing optional manifests */ }
+    }
+    const visible = [...implied].filter((id) => allModules.includes(id));
+    return visible.length ? ` ${c.dim(`(auto: implied ${visible.join(', ')})`)}` : '';
+  };
 
   // Confirm
   const printNextSummary = () => {
@@ -1117,9 +1434,9 @@ async function runWizard(pre) {
     console.log(`  ${c.bold('Project:')}  ${c.cyan(name)}`);
     console.log(`  ${c.bold('CAPE ID:')}  ${c.cyan(capeId)}  ${c.dim(`(market: ${market})`)}`);
     console.log(`  ${c.bold('Engine:')}   ${game ? c.cyan(game) : c.dim('none')}${selectedGame ? c.dim(` (${selectedGame.name})`) : ''}`);
-    console.log(`  ${c.bold('Pages:')}    ${pages.map(p => c.cyan(p)).join(' → ')}`);
+    printRouteTable(pages);
     if (pages.includes('register')) console.log(`  ${c.bold('Reg mode:')} ${c.cyan(regMode)}`);
-    console.log(`  ${c.bold('Modules:')} ${allModules.filter(id => !GAME_ENGINES.includes(id)).join(', ') || c.dim('none')}`);
+    console.log(`  ${c.bold('Modules:')} ${allModules.filter(id => !GAME_ENGINES.includes(id)).join(', ') || c.dim('none')}${impliedModuleSummary()}`);
     if (gtmId) console.log(`  ${c.bold('GTM:')}      ${c.cyan(gtmId)}`);
     if (iframe) console.log(`  ${c.yellow('Iframe:    embedded mode enabled')}`);
     console.log(`  ${c.bold('Flow:')}     ${ft['{{FLOW_ENTRY}}']}`);
@@ -1135,14 +1452,56 @@ async function runWizard(pre) {
       if (ans === '' || ans === 'y') { done = true; }
       else if (ans === 'n') { console.log('\n  Aborted.\n'); process.exit(0); }
       else if (ans === 'e' || ans === 'edit') {
+        {
+        const state = {
+          pre,
+          stack: 'next',
+          name,
+          capeId,
+          market,
+          game,
+          selectedGame,
+          pages,
+          extraModules,
+          regMode,
+          gtmId,
+          iframe,
+          outputDir,
+        };
+        printEditOptions(state);
+        const field = (await promptOnce(`  ${c.cyan('Field')}: `)).trim();
+        const option = EDIT_OPTIONS.find((entry) => entry.key === field);
+        if (option) {
+          await option.fn(state, promptOnce);
+          name = state.name;
+          capeId = state.capeId;
+          market = state.market;
+          game = state.game;
+          selectedGame = state.selectedGame;
+          pages = state.pages;
+          extraModules = state.extraModules;
+          regMode = state.regMode;
+          gtmId = state.gtmId;
+          iframe = state.iframe;
+          outputDir = state.outputDir;
+          allModules = resolveModules(game, pages, extraModules);
+        }
+        printNextSummary();
+        }
+        continue;
         console.log('');
         console.log(`  ${c.bold('Edit field:')}`);
-        console.log(`    ${c.dim('1)')} Project name  ${c.dim(`(${name})`)}`);
-        console.log(`    ${c.dim('2)')} CAPE ID        ${c.dim(`(${capeId})`)}`);
-        console.log(`    ${c.dim('3)')} Market         ${c.dim(`(${market})`)}`);
-        console.log(`    ${c.dim('4)')} GTM ID         ${c.dim(`(${gtmId || 'none'})`)}`);
-        console.log(`    ${c.dim('5)')} Iframe mode    ${c.dim(`(${iframe ? 'enabled' : 'disabled'})`)}`);
-        console.log(`    ${c.dim('6)')} Output dir     ${c.dim(`(${outputDir})`)}`);
+        console.log(`    ${c.dim('1)')} Project name       ${c.dim(`(${name})`)}`);
+        console.log(`    ${c.dim('2)')} CAPE ID            ${c.dim(`(${capeId})`)}`);
+        console.log(`    ${c.dim('3)')} Market             ${c.dim(`(${market})`)}`);
+        console.log(`    ${c.dim('4)')} Engine             ${c.dim(`(${game || 'none'})`)}`);
+        console.log(`    ${c.dim('5)')} Game pick          ${c.dim(`(${selectedGame?.name || 'none'})`)}`);
+        console.log(`    ${c.dim('6)')} Pages              ${c.dim(`(${pages.join(', ')})`)}`);
+        console.log(`    ${c.dim('7)')} Modules            ${c.dim(`(${extraModules.join(', ') || 'none'})`)}`);
+        console.log(`    ${c.dim('8)')} Registration mode  ${c.dim(`(${regMode})`)}`);
+        console.log(`    ${c.dim('9)')} GTM ID             ${c.dim(`(${gtmId || 'none'})`)}`);
+        console.log(`    ${c.dim('10)')} Iframe mode       ${c.dim(`(${iframe ? 'enabled' : 'disabled'})`)}`);
+        console.log(`    ${c.dim('11)')} Output dir        ${c.dim(`(${outputDir})`)}`);
         const field = (await promptOnce(`  ${c.cyan('Field')}: `)).trim();
         if (field === '1') {
           let n;
@@ -1163,58 +1522,127 @@ async function runWizard(pre) {
           if (VALID_MARKETS.has(mv)) market = mv;
           else console.log(`  ${c.yellow('⚠')} Unknown market — keeping ${market}`);
         } else if (field === '4') {
-          gtmId = (await promptOnce(`  ${c.cyan('GTM ID')} ${c.dim('(leave blank to clear)')}: `)).trim();
+          const v = (await promptOnce(`  ${c.cyan('Engine')} ${c.dim('(unity/r3f/phaser/memory/pure-react/none)')}: `)).trim();
+          if (['unity', 'r3f', 'phaser', 'memory', 'pure-react', 'none', ''].includes(v)) {
+            game = v === '' ? game : v;
+            if (game !== 'unity') selectedGame = null;
+          }
         } else if (field === '5') {
+          const unityGames = getGamesByStack('unity', 'next');
+          unityGames.forEach((g, i) => console.log(`    ${c.dim(`${i + 1})`)} ${g.name}`));
+          const v = parseInt((await promptOnce(`  ${c.cyan('Game')} ${c.dim('[number, blank = none]')}: `)).trim(), 10);
+          selectedGame = Number.isFinite(v) && v >= 1 && v <= unityGames.length ? unityGames[v - 1] : null;
+          if (selectedGame) game = 'unity';
+        } else if (field === '6') {
+          const v = (await promptOnce(`  ${c.cyan('Pages')} ${c.dim('(comma-separated ids, e.g. landing,intro-video,onboarding,loading-video,game,result,ad-video)')}: `)).trim();
+          if (v) pages = v.split(',').map((p) => p.trim()).filter(Boolean);
+        } else if (field === '7') {
+          const v = (await promptOnce(`  ${c.cyan('Modules')} ${c.dim('(comma-separated ids, blank = none)')}: `)).trim();
+          extraModules = v ? v.split(',').map((m) => m.trim()).filter(Boolean) : [];
+        } else if (field === '8') {
+          const v = (await promptOnce(`  ${c.cyan('Registration mode')} ${c.dim('(none/gate/after/optional)')}: `)).trim();
+          if (['none', 'gate', 'after', 'optional'].includes(v)) regMode = v;
+        } else if (field === '9') {
+          gtmId = (await promptOnce(`  ${c.cyan('GTM ID')} ${c.dim('(leave blank to clear)')}: `)).trim();
+        } else if (field === '10') {
           const v = (await promptOnce(`  ${c.cyan('Iframe mode?')} ${c.dim('[y/N]')}: `)).trim().toLowerCase();
           iframe = v === 'y' || v === 'yes';
-        } else if (field === '6') {
+        } else if (field === '11') {
           const d = (await promptOnce(`  ${c.cyan('Output directory')}: `)).trim();
           if (d) outputDir = resolve(d);
         }
+        allModules = resolveModules(game, pages, extraModules);
         printNextSummary();
       }
     }
   }
 
-  return { stack: 'next', name, capeId, market, game, pages, regMode, modules: allModules, gtmId, iframe, outputDir, pageElementSelections, selectedGame, capeAutoPublished, capePublishedUrl, isUpdate: pre.isUpdate ?? false };
+  return { stack: 'next', name, capeId, market, game, pages, regMode, modules: allModules, gtmId, iframe, outputDir, pageElementSelections, selectedGame, capeAutoPublished, capePublishedUrl, isUpdate: pre.isUpdate ?? false, pageTypes: inferPageTypes(pages) };
 }
 
 function buildDefaultPages(game) {
   const pages = ['landing', 'onboarding'];
   if (game && game !== 'video') pages.push('game', 'result');
-  if (game === 'video') pages.push('video');
+  if (game === 'video') pages.push('intro-video');
   return pages;
 }
 
 function autoModulesForPages(pages, game = '') {
   const mods = new Set();
+  const pageTypes = (pages ?? []).map((p) => pageModuleType(p));
   // Page-driven hard requirements
-  if (pages.includes('register'))    mods.add('registration');
-  if (pages.includes('voucher'))     mods.add('voucher');
-  if (pages.includes('video'))       mods.add('video');
+  if (pageTypes.includes('register'))    mods.add('registration');
+  if (pageTypes.includes('voucher'))     mods.add('voucher');
+  if (pageTypes.includes('video'))       mods.add('video');
   // Smart defaults: leaderboard page → leaderboard + scoring
-  if (pages.includes('leaderboard')) { mods.add('leaderboard'); mods.add('scoring'); }
+  if (pageTypes.includes('leaderboard')) { mods.add('leaderboard'); mods.add('scoring'); }
   // Smart defaults: game/result flow → scoring
-  if (pages.includes('game') || pages.includes('result')) mods.add('scoring');
-  // Smart defaults: GTM almost always useful for multi-page campaigns
-  if (pages.length >= 2) mods.add('gtm');
+  if (pageTypes.includes('game') || pageTypes.includes('result')) mods.add('scoring');
   return [...mods];
+}
+
+function moduleSelectionPolicy(pages, game = '') {
+  const required = new Set();
+  const pageTypes = (pages ?? []).map((p) => pageModuleType(p));
+  for (const [pageType, moduleId] of Object.entries(PAGE_REQUIRES_MODULE)) {
+    if (pageTypes.includes(pageType)) required.add(moduleId);
+  }
+  const selectable = OPTIONAL_MODULE_IDS
+    .filter((moduleId) => moduleSupportedByPages(moduleId, pages))
+    .filter((moduleId) => !required.has(moduleId));
+  const suggested = autoModulesForPages(pages, game).filter((moduleId) => selectable.includes(moduleId));
+  return {
+    required: [...required],
+    selectable,
+    suggested,
+  };
 }
 
 function resolveModules(game, pages, extraModules) {
   const all = new Set();
+  const pageTypes = (pages ?? []).map((p) => pageModuleType(p));
   // Game engine module
   if (game && GAME_ENGINES.includes(game) && game !== 'pure-react' && game !== 'video' && game !== 'none') {
     all.add(game);
   }
   // Page-required modules
   for (const [page, mod] of Object.entries(PAGE_REQUIRES_MODULE)) {
-    if (pages.includes(page)) all.add(mod);
+    if (pageTypes.includes(page)) all.add(mod);
+  }
+  // Auto-required modules inferred from page flow (e.g. game/result -> scoring)
+  for (const moduleId of autoModulesForPages(pages, game)) {
+    all.add(moduleId);
   }
   // User-selected extra modules
-  for (const m of extraModules) all.add(m);
+  const policy = moduleSelectionPolicy(pages, game);
+  const allowedExtras = new Set([...policy.required, ...policy.selectable]);
+  for (const m of (extraModules ?? [])) {
+    if (allowedExtras.has(m)) all.add(m);
+  }
   // Resolve implies chains
   return resolveImplied([...all]);
+}
+
+function landingOnboardingFirstRunOnly(wizardMeta) {
+  const raw = wizardMeta?.pageSettings?.landing?.onboardingFirstRunOnly;
+  return typeof raw === 'boolean' ? raw : true;
+}
+
+async function enforceConfigValidation(options, { yes = false } = {}) {
+  const { errors, warnings } = validateConfig(options);
+  if (errors.length) {
+    throw new Error(errors.join('\n'));
+  }
+  if (!warnings.length) return;
+  for (const warning of warnings) {
+    console.log(`  ${c.yellow('⚠')} ${warning}`);
+  }
+  if (yes) return;
+  const answer = (await promptOnce(`  ${c.cyan('Continue anyway?')} ${c.dim('[y/N]')}: `)).trim().toLowerCase();
+  if (answer !== 'y' && answer !== 'yes') {
+    console.log('\n  Aborted.\n');
+    process.exit(0);
+  }
 }
 
 // ─── Core scaffolding engine ──────────────────────────────────────────────────
@@ -1287,7 +1715,7 @@ async function scaffold(options) {
 
     // 4b. Git init — runs on the final directory so no .git handles are
     //     open during the rename above.
-    if (!options.isUpdate) {
+    if (!options.isUpdate && !options.skipGit) {
       console.log(`\n  ${c.cyan('[git]')} ${c.bold('Initialising git repository…')}`);
       if (gitInit(outputDir, options.name)) {
         console.log(`      ${c.green('✔')} git init + initial commit`);
@@ -1312,7 +1740,7 @@ async function scaffold(options) {
   releaseLock(lockPath);
 }
 
-async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], gtmId = '', tsPageElementSelections = {}, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false }) {
+async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], gtmId = '', tsPageElementSelections = {}, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -1473,6 +1901,11 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   }
 
   // 3b. Remove excluded pages + generate page builder output
+  // Non-interactive CLI uses Next.js-style names (landing/onboarding/result);
+  // TanStack internals use their own names (launch/tutorial/score). Normalize first.
+  const NEXT_TO_TS_PAGE = { landing: 'launch', onboarding: 'tutorial', result: 'score' };
+  const normalizedPages = pages.map(p => NEXT_TO_TS_PAGE[p] ?? p);
+
   const BUILDABLE_TS = ['launch', 'tutorial', 'score', 'register'];
   const ROUTE_FILES  = { launch: 'launch.tsx', tutorial: 'tutorial.tsx', game: 'game.tsx', register: 'register.tsx', score: 'score.tsx' };
   const LOADER_FILES = { launch: 'launchLoader.ts', tutorial: 'tutorialLoader.ts', register: 'registerLoader.ts', score: 'scoreLoader.ts' };
@@ -1484,7 +1917,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
     let removed = 0; let generated = 0;
 
     for (const page of BUILDABLE_TS) {
-      if (pages.includes(page)) continue;
+      if (normalizedPages.includes(page)) continue;
       for (const f of [join(routesDir, ROUTE_FILES[page]), join(loadersDir, LOADER_FILES[page])]) {
         if (existsSync(f)) { try { rmSync(f); removed++; } catch { /* non-fatal */ } }
       }
@@ -1496,7 +1929,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
       if (page.includes('__') || !BUILDABLE_TS.includes(page)) continue;
       const stepCount = tsPageElementSelections[`${page}__stepCount`] ?? 3;
       try {
-        const { route, loader } = buildTsPage(page, elements, { stepCount, pages });
+        const { route, loader } = buildTsPage(page, elements, { stepCount, pages: normalizedPages });
         writeFileSync(join(routesDir, ROUTE_FILES[page]), route, 'utf8');
         writeFileSync(join(loadersDir, LOADER_FILES[page]), loader, 'utf8');
         generated++;
@@ -1558,7 +1991,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   printPostScaffoldMessage({ projectName: name, capeId, market, modules: [], outputDir: _tsFinalFrontendDir, stack: 'tanstack', capeAutoPublished, capePublishedUrl });
 }
 
-async function scaffoldNext({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, menuItemsEnabled = {}, pageTypes = {}, _wizardMeta = null }) {
+async function scaffoldNext({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, menuItemsEnabled = {}, pageTypes = {}, _wizardMeta = null }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -1594,7 +2027,18 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
 
   if (modules.length > 0) {
     step(2, 'Copying module files…');
-    for (const moduleId of modules) {
+
+    // Sort modules so engine-specific modules (unity, phaser, r3f) run first.
+    // Flow modules can then provide route-specific overrides on top.
+    const sortedModules = [...modules].sort((a, b) => {
+      const mA = loadManifest(a);
+      const mB = loadManifest(b);
+      const scoreA = mA.engine ? -10 : 0;
+      const scoreB = mB.engine ? -10 : 0;
+      return scoreA - scoreB;
+    });
+
+    for (const moduleId of sortedModules) {
       try {
         const manifest  = loadManifest(moduleId);
         const moduleDir = join(MODULES_DIR, moduleId);
@@ -1657,8 +2101,8 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
           `import DesktopWrapper from '@components/_core/DesktopWrapper/DesktopWrapper';\nimport UnityContainer from '@components/_modules/unity/UnityContainer';`,
         );
         layoutSrc = layoutSrc.replace(
-          `          <DesktopWrapper>\n            {children}\n          </DesktopWrapper>`,
-          `          <DesktopWrapper>\n            <UnityContainer>\n              {children}\n            </UnityContainer>\n          </DesktopWrapper>`,
+          `          <DesktopWrapper>\n            <div className="desktop-wrapper__app-shell">\n              {children}\n            </div>\n          </DesktopWrapper>`,
+          `          <DesktopWrapper>\n            <div className="desktop-wrapper__app-shell">\n              <UnityContainer>\n                {children}\n              </UnityContainer>\n            </div>\n          </DesktopWrapper>`,
         );
         writeFileSync(layoutPath, layoutSrc, 'utf8');
         ok('UnityContainer injected into app/layout.tsx');
@@ -1666,45 +2110,40 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
     }
   }
 
-  // 2c. Extra-instance route copies. For pages with multiple instances of
-  // the same type (e.g. video-intro + video-outro, both type=video), copy
-  // the canonical type's page.tsx to each instance's route folder. We also
-  // rename the type's NEXT_AFTER token to the instance-specific token so
-  // each duplicate gets its own configured destination after step 3.
-  const extraInstances = [];
-  for (const id of pages) {
-    const type = pageTypes[id];
-    if (type && type !== id) extraInstances.push({ id, type });
-  }
-  if (extraInstances.length > 0) {
-    step('2c', `Copying ${extraInstances.length} extra-instance route(s)…`);
-    for (const { id, type } of extraInstances) {
-      const srcPagePath  = join(frontendDir, 'app', '(campaign)', type, 'page.tsx');
-      const destPagePath = join(frontendDir, 'app', '(campaign)', id,   'page.tsx');
+  // 2c. Explicit video route copies. loading-video, intro-video, and ad-video
+  // all use the same module template, with page-specific routing tokens.
+  const selectedVideoPages = EXPLICIT_VIDEO_PAGES.filter((id) => pages.includes(id));
+  if (selectedVideoPages.length > 0) {
+    step('2c', `Copying ${selectedVideoPages.length} explicit video route(s)...`);
+    const srcPagePath = join(MODULES_DIR, 'video', 'app', '(campaign)', 'video', 'page.tsx');
+    for (const id of selectedVideoPages) {
+      const destPagePath = join(frontendDir, 'app', '(campaign)', id, 'page.tsx');
       if (!existsSync(srcPagePath)) {
-        warn(`No source page found for type "${type}" — skipping extra instance "${id}".`);
+        warn(`No video module template found - skipping "${id}".`);
         continue;
       }
       try {
         let src = readFileSync(srcPagePath, 'utf8');
-        // Rename the type's primary "next" token to the instance's variant.
-        // Other tokens in the source (e.g. {{LANDING_LEADERBOARD_ROUTE}})
-        // remain global — duplicates share the same secondary destinations.
-        const typeTok = `{{NEXT_AFTER_${type.toUpperCase()}}}`;
-        const idTok   = `{{NEXT_AFTER_${id.toUpperCase()}}}`;
-        src = src.split(typeTok).join(idTok);
+        src = src.split('{{VIDEO_PAGE_ID}}').join(id);
+        src = src.split('{{NEXT_AFTER_VIDEO_PAGE}}').join(`{{NEXT_AFTER_${id.toUpperCase()}}}`);
         mkdirSync(dirname(destPagePath), { recursive: true });
         writeFileSync(destPagePath, src, 'utf8');
-        ok(`Extra instance "${id}" → ${c.dim(destPagePath)}`);
+        ok(`Video route "${id}" -> ${c.dim(destPagePath)}`);
       } catch (e) {
-        warn(`Failed to write extra instance "${id}": ${e.message}`);
+        warn(`Failed to write video route "${id}": ${e.message}`);
       }
+    }
+    const legacyVideoDir = join(frontendDir, 'app', '(campaign)', 'video');
+    if (!pages.includes('video') && existsSync(legacyVideoDir)) {
+      rmSync(legacyVideoDir, { recursive: true, force: true });
     }
   }
 
-  // 3. Token replacement (project metadata + flow routing)
-  step(3, 'Replacing tokens…');
+  // 3. Token replacement
+  step(3, 'Replacing tokens...');
   const flowTokens = computeFlowTokens(pages, regMode, flowExits, flowEntry, pageTypes);
+  const availableCampaignRoutes = pages.map((id) => routeFor(id));
+  const onboardingFirstRunOnly = landingOnboardingFirstRunOnly(_wizardMeta);
   const tokens = {
     '{{PROJECT_NAME}}':       name,
     '{{CAPE_ID}}':            capeId,
@@ -1712,13 +2151,18 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
     '{{GTM_ID}}':             gtmId || 'GTM-XXXXXXX',
     '{{UNITY_DEFAULT_SCENE}}':    selectedGame?.boot?.defaultScene ?? selectedGame?.defaultScene ?? 'game',
     '{{RETURN_PLAYER_BUTTONS}}': 'false',
+    '{{INSTANCE_ID}}':        'video',
+    '{{VIDEO_PAGE_ID}}':      'video',
+    '{{NEXT_AFTER_VIDEO_PAGE}}': flowTokens['{{NEXT_AFTER_VIDEO}}'] ?? '/landing',
+    '{{LANDING_ONBOARDING_FIRST_RUN_ONLY}}': onboardingFirstRunOnly ? 'true' : 'false',
+    '{{AVAILABLE_CAMPAIGN_ROUTES}}': availableCampaignRoutes.join('|'),
     ...flowTokens,
   };
   const replacedCount = tokenReplaceDir(frontendDir, tokens);
   ok(`${replacedCount} file(s) updated`);
 
   // Log the flow so the developer can see it
-  const flowSequence = pages.map(p => PAGE_ROUTES[p] ?? p);
+  const flowSequence = pages.map(p => routeFor(p));
   ok(`Flow: ${flowSequence.join(' → ')}`);
 
   // 3b. Generate pages from page builder (overwrites static template pages)
@@ -1792,7 +2236,7 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
 
   // Inject game-specific env vars from registry
   if (selectedGame) {
-    const lines = gameEnvLines(selectedGame);
+    const lines = gameEnvLines(selectedGame, 'next');
     if (lines.length > 0) {
       const envPath = join(frontendDir, '.env');
       const existing = existsSync(envPath) ? readFileSync(envPath, 'utf8') : '';
@@ -1828,22 +2272,26 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
 
   // 7. Install packages
   const { prod, dev } = collectPackages(modules);
-  step(7, 'Installing dependencies…');
-  try {
-    execSync('npm install', { cwd: frontendDir, stdio: 'inherit' });
-    ok('base dependencies installed');
-  } catch {
-    warn('npm install failed — run manually in the project directory');
-  }
-  if (prod.length > 0) {
-    console.log(`      ${c.dim('npm install ' + prod.join(' '))}`);
-    try { execSync(`npm install ${prod.join(' ')}`, { cwd: frontendDir, stdio: 'inherit' }); ok(`prod: ${prod.join(', ')}`); }
-    catch { warn(`run manually: npm install ${prod.join(' ')}`); }
-  }
-  if (dev.length > 0) {
-    console.log(`      ${c.dim('npm install --save-dev ' + dev.join(' '))}`);
-    try { execSync(`npm install --save-dev ${dev.join(' ')}`, { cwd: frontendDir, stdio: 'inherit' }); ok(`dev: ${dev.join(', ')}`); }
-    catch { warn(`run manually: npm install --save-dev ${dev.join(' ')}`); }
+  if (skipInstall) {
+    step(7, 'Skipping dependency install.');
+  } else {
+    step(7, 'Installing dependencies…');
+    try {
+      execSync('npm install', { cwd: frontendDir, stdio: 'inherit' });
+      ok('base dependencies installed');
+    } catch {
+      warn('npm install failed — run manually in the project directory');
+    }
+    if (prod.length > 0) {
+      console.log(`      ${c.dim('npm install ' + prod.join(' '))}`);
+      try { execSync(`npm install ${prod.join(' ')}`, { cwd: frontendDir, stdio: 'inherit' }); ok(`prod: ${prod.join(', ')}`); }
+      catch { warn(`run manually: npm install ${prod.join(' ')}`); }
+    }
+    if (dev.length > 0) {
+      console.log(`      ${c.dim('npm install --save-dev ' + dev.join(' '))}`);
+      try { execSync(`npm install --save-dev ${dev.join(' ')}`, { cwd: frontendDir, stdio: 'inherit' }); ok(`dev: ${dev.join(', ')}`); }
+      catch { warn(`run manually: npm install --save-dev ${dev.join(' ')}`); }
+    }
   }
 
   // 8. Git
@@ -1913,12 +2361,11 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
   // Generate complete CAPE format (with all modules + pages) and write to disk.
   // Always written — for new campaigns the initial push during creation lacked module fields;
   // for existing campaigns it was never pushed at all.
-  // Format builder iterates instances so duplicates (video-intro,
-  // video-outro) each get their own CAPE tab with copy keyed by instance id.
+  // Format builder emits one CAPE tab per selected page id.
   // Pass relevance flags so the generated format only contains fields the
   // user can actually fill in.
   const capeFormatSpec = buildNextCapeFormat({
-    instances:            pages.map(id => ({ id, type: pageTypes[id] ?? id })),
+    instances:        pages.map(id => ({ id, type: pageTypes[id] ?? id })),
     pageTypes,
     pageElementSelections,
     modules,
@@ -2285,6 +2732,36 @@ function writeChecklistFile(outputDir, cfg) {
     for (const page of cfg.pages) {
       const route = routeMap[page] ?? `/${page}`;
       ok(`**${page}** — \`${route}\``);
+    }
+    br();
+  }
+
+  if (cfg.wizard?.menuItemsEnabled) {
+    const menu = cfg.wizard.menuItemsEnabled;
+    h3('Menu items');
+    note('The menu only links to generated routes or configured external legal URLs.');
+    const menuRows = [
+      ['home', 'Home', '/landing'],
+      ['resume', 'Resume game', routeMap.game],
+      ['howToPlay', 'How to play', '/onboarding'],
+      ['leaderboard', 'Leaderboard', '/leaderboard'],
+      ['voucher', 'My voucher', '/voucher'],
+      ['terms', 'Terms', 'general.legal.termsUrl'],
+      ['privacy', 'Privacy', 'general.legal.privacyUrl'],
+      ['faq', 'FAQ', '/faq'],
+      ['leave', 'Leave campaign', '/'],
+    ];
+    const generatedRoutes = new Set((cfg.pages ?? []).map((page) => routeMap[page] ?? `/${page}`));
+    for (const [id, label, route] of menuRows) {
+      const enabled = Boolean(menu[id]);
+      if (!enabled) {
+        const reason = route && route.startsWith('/') && route !== '/' && !generatedRoutes.has(route)
+          ? `disabled; \`${route}\` was not generated`
+          : 'disabled';
+        lines.push(`- [ ] **${id}** — ${reason}`);
+      } else {
+        lines.push(`- [x] **${id}** — \`${route}\``);
+      }
     }
     br();
   }
@@ -2706,16 +3183,17 @@ async function runUpdateWizard(existing, args) {
   // ── 2. Add modules ────────────────────────────────────────────────────────────
   if (choice === '2') {
     const alreadyModules = existing.modules ?? [];
-    const OPTIONAL = ['leaderboard', 'registration', 'scoring', 'audio', 'cookie-consent', 'gtm'];
+    const policy = moduleSelectionPolicy(existing.pages ?? [], existing.game ?? '');
+    const OPTIONAL = policy.selectable;
     const available  = OPTIONAL.filter(m => !alreadyModules.includes(m));
 
     if (available.length === 0) {
-      console.log(`\n  ${c.yellow('All modules are already included.')}`);
+      console.log(`\n  ${c.yellow('No additional page-supported modules are available.')}`);
       rl.close(); return null;
     }
 
     // Smart defaults: which available modules are suggested based on existing pages
-    const smartSuggested = autoModulesForPages(existing.pages ?? [], existing.game ?? '').filter(m => available.includes(m));
+    const smartSuggested = policy.suggested.filter(m => available.includes(m));
 
     console.log('');
     console.log(`  ${c.bold('Select NEW modules')} ${c.dim('(comma-separated numbers):')}`);
@@ -2724,6 +3202,9 @@ async function runUpdateWizard(existing, args) {
     }
     if (smartSuggested.length > 0) {
       console.log(`  ${c.dim(`Smart defaults: ${smartSuggested.join(', ')} — based on current pages`)}`);
+    }
+    if (policy.required.length > 0) {
+      console.log(`  ${c.dim(`Locked by selected pages: ${policy.required.join(', ')}`)}`);
     }
     console.log('');
     available.forEach((id, i) => {
@@ -2857,8 +3338,11 @@ async function main() {
       pageElementSelections: existing.pageElementSelections ?? {},
       tsPageElementSelections: existing.tsPageElementSelections ?? {},
       unityCdnUrl:           existing.unityCdnUrl || '',
+      pageTypes:             existing.pageTypes ?? inferPageTypes(existing.pages ?? []),
+      flowExits:             existing.flowExits ?? {},
     };
 
+    await enforceConfigValidation(options, { yes: args.yes });
     await scaffold(options);
     return;
   }
@@ -2880,6 +3364,7 @@ async function main() {
 
     const options = await runUpdateWizard(existing, args);
     if (!options) { console.log('\n  Geen wijzigingen. Klaar.\n'); process.exit(0); }
+    await enforceConfigValidation(options, { yes: args.yes });
     await scaffold(options);
     return;
   }
@@ -2904,21 +3389,16 @@ async function main() {
 
     const market = cfg.market ?? 'NL';
 
-    // The wizard now sends `pages` as PageInstance[] = [{id, type}]. The
-    // legacy CLI / older configs pass plain strings. We normalize to two
-    // parallel structures the rest of scaffold.js consumes:
-    //   pageIds:    ['landing', 'video-intro', 'game', 'video-outro'] — ordered route slugs
-    //   pageTypes:  { 'video-intro': 'video', 'video-outro': 'video' } — id→type for non-singleton instances
+    // Wizard configs may pass strings or { id } objects. Page ids are now
+    // explicit route slugs; type-based page instancing is ignored.
     const rawPages       = Array.isArray(cfg.pages) ? cfg.pages : [];
     const pageIds        = [];
     const pageTypes      = {};
     for (const entry of rawPages) {
       if (typeof entry === 'string') {
         pageIds.push(entry);
-        // type === id by convention; no entry needed in pageTypes.
       } else if (entry && typeof entry === 'object' && entry.id) {
         pageIds.push(entry.id);
-        if (entry.type && entry.type !== entry.id) pageTypes[entry.id] = entry.type;
       }
     }
 
@@ -2946,10 +3426,10 @@ async function main() {
       // buildNextCapeFormat here; the CAPE schema for these pages is
       // stack-agnostic (only the file-system routes differ).
       const cfgFormat = buildNextCapeFormat({
-        instances:             pageIds.map(id => ({ id, type: pageTypes[id] ?? id })),
+        instances:         pageIds.map(id => ({ id, type: pageTypes[id] ?? id })),
         pageTypes,
         pageElementSelections: cfg.pageElementSelections ?? {},
-        modules:               cfg.modules ?? [],
+        modules:               resolveModules(cfg.game ?? 'unity', pageIds.map(id => pageTypes[id] ?? id), cfg.modules ?? []),
         flowEnabledExits:      cfg.flowEnabledExits ?? {},
         menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
         iframe:                cfg.iframe ?? false,
@@ -3005,8 +3485,8 @@ async function main() {
       // Menu visibility — drives which menu copy keys make it into the
       // generated CAPE format. The /menu route reads the matching CAPE flags.
       menuItemsEnabled:        (cfg.menuItemsEnabled && typeof cfg.menuItemsEnabled === 'object') ? cfg.menuItemsEnabled : {},
-      // Multi-instance support: id→type for instances whose id ≠ type
-      // (e.g. {'video-intro': 'video'}). Singletons have id === type and
+      // Multi-page support: id→type for pages whose id ≠ type
+      // (e.g. {'intro-video': 'video'}). Singletons have id === type and
       // don't appear in this map.
       pageTypes,
       // Wizard-only metadata: round-tripped through .scaffolded so the
@@ -3059,6 +3539,7 @@ async function main() {
       // when isUpdate is set, but only if .scaffolded is at the project root.
     }
 
+    await enforceConfigValidation(options, { yes: true });
     await scaffold(options);
 
     // ── Merge wizard-supplied settings into mock-cape ───────────────────────
@@ -3109,9 +3590,13 @@ async function main() {
           mock.settings.pages = mock.settings.pages ?? {};
           for (const [pageId, values] of Object.entries(cfg.pageSettings)) {
             if (!values || typeof values !== 'object') continue;
+            const sanitizedValues = Object.fromEntries(
+              Object.entries(values).filter(([settingKey]) => !LOCAL_WIZARD_PAGE_SETTINGS.has(settingKey)),
+            );
+            if (Object.keys(sanitizedValues).length === 0) continue;
             mock.settings.pages[pageId] = {
               ...(mock.settings.pages[pageId] ?? {}),
-              ...values,
+              ...sanitizedValues,
             };
           }
         }
@@ -3177,23 +3662,25 @@ async function main() {
   let options;
   if (isNonInteractive) {
     const stack = args.stack || 'next';
-    const allModules = resolveModules(args.game || (stack === 'tanstack' ? 'unity' : ''), args.pages, args.modules);
-    let capeAutoPublished = false;
+    const pages = args.pages.length > 0 ? args.pages : (stack === 'tanstack' ? ['launch', 'tutorial', 'game', 'score'] : buildDefaultPages(args.game || ''));
+    const pageTypes = inferPageTypes(pages);
+    const allModules = resolveModules(args.game || (stack === 'tanstack' ? 'unity' : ''), pages, args.modules);
+    const selectedGame = (args.game || 'unity') === 'unity' ? (getGamesByStack('unity', stack)[0] ?? null) : null;
+    let capeAutoPublished = Boolean(args.capeId);
     let capePublishedUrl = '';
 
     let capeId = args.capeId;
     if (!capeId && args.createCape) {
       const autoTitle = args.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-      const formatPages = args.pages.length > 0
-        ? args.pages
-        : (stack === 'tanstack' ? ['launch', 'tutorial', 'game', 'score'] : buildDefaultPages(args.game || ''));
+      const formatPages = pages;
 
       // Both stacks share the Next-style page vocabulary at the wizard /
       // non-interactive level; TanStack's launch/tutorial/score legacy
       // vocabulary is only used inside the interactive CLI flow above.
       const argsFormat = buildNextCapeFormat({
-        pages:                formatPages,
+        instances:        formatPages.map(id => ({ id, type: pageTypes[id] ?? id })),
+        pageTypes,
         modules:              allModules,
         pageElementSelections: {},
         flowEnabledExits:     {},
@@ -3215,23 +3702,53 @@ async function main() {
       capeId,
       market:    args.market,
       game:      args.game || 'unity',
-      pages:     args.pages.length > 0 ? args.pages : (stack === 'tanstack' ? ['launch', 'tutorial', 'game', 'score'] : buildDefaultPages(args.game || '')),
+      pages,
       regMode:   args.regMode || 'none',
       modules:   allModules,
       gtmId:     args.gtmId || '',
       iframe:    args.iframe || false,
       capeAutoPublished,
       capePublishedUrl,
+      selectedGame,
       outputDir: args.output ? resolve(args.output) : resolve(SCAFFOLDER_ROOT, '..', args.name),
+      skipInstall: Boolean(args.skipInstall),
+      skipGit: Boolean(args.skipGit),
+      pageTypes,
+      flowExits: pages.includes('result') && pages.includes('landing') ? { 'result.next': 'landing' } : {},
+      flowEnabledExits: { 'landing.leaderboard': false, 'result.playAgain': true, 'result.leaderboard': false },
+      menuItemsEnabled: { home: true, resume: false, howToPlay: true, leaderboard: false, voucher: false, terms: true, privacy: true, faq: false, leave: true },
+      _wizardMeta: {
+        pageSettings: {
+          landing: { onboardingFirstRunOnly: true },
+          'intro-video': { skipAfterSeconds: 3 },
+          'loading-video': {},
+          'ad-video': { skipAfterSeconds: 3 },
+          onboarding: { allowSkip: false },
+          register: { showInfix: true, requireOptIns: true },
+          game: { timerEnabled: true, timerSec: 60 },
+          result: { autoNavSec: 0 },
+          voucher: { showQr: true, codeLength: 8 },
+        },
+        flowEnabledExits: { 'landing.leaderboard': false, 'result.playAgain': true, 'result.leaderboard': false },
+        menuItemsEnabled: { home: true, resume: false, howToPlay: true, leaderboard: false, voucher: false, terms: true, privacy: true, faq: false, leave: true },
+        defaultLanguage: 'EN',
+        supportedLanguages: ['EN'],
+        timezone: 'Europe/Brussels',
+        createCape: true,
+        gameId: 'haas-f1',
+      },
     };
   } else {
     options = await runWizard(args);
   }
 
+  await enforceConfigValidation(options, { yes: args.yes });
   await scaffold(options);
 }
 
-main().catch((err) => {
-  console.error(`\n  ${c.red('Error:')} ${err.message}\n`);
-  process.exit(1);
-});
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  main().catch((err) => {
+    console.error(`\n  ${c.red('Error:')} ${err.message}\n`);
+    process.exit(1);
+  });
+}
