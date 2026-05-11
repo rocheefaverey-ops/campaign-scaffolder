@@ -21,6 +21,38 @@ export interface BuildHandle {
   cancel: () => void;
 }
 
+export interface GameInfo {
+  id:          string;
+  name:        string;
+  description: string;
+  engine:      string;
+  cdn?: {
+    baseUrl?:     string;
+    gameName?:    string;
+    compression?: string | null;
+  };
+  dpr?: {
+    min?: number;
+    max?: number;
+  };
+  boot?: {
+    defaultScene?: string;
+    setupMethod?:  string;
+    loadMethod?:   string;
+    startMethod?:  string;
+  };
+  env?: Record<string, string>;
+}
+
+export interface ModuleInfo {
+  id:          string;
+  name:        string;
+  description: string;
+  implies:     string[];
+  packages:    string[];
+  engine?:     string;
+}
+
 /**
  * Kicks off a scaffold on the server and streams logs back via SSE.
  * Returns immediately with a handle; resolve `done` for completion.
@@ -83,6 +115,29 @@ export async function ping(): Promise<boolean> {
     return res.ok;
   } catch {
     return false;
+  }
+}
+
+export async function listGames(stack?: string): Promise<GameInfo[]> {
+  try {
+    const url = stack ? `/api/games?stack=${encodeURIComponent(stack)}` : '/api/games';
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => ({}));
+    return Array.isArray(data?.games) ? data.games as GameInfo[] : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function listModules(): Promise<ModuleInfo[]> {
+  try {
+    const res = await fetch('/api/modules');
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => ({}));
+    return Array.isArray(data?.modules) ? data.modules as ModuleInfo[] : [];
+  } catch {
+    return [];
   }
 }
 
