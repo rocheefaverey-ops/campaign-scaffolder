@@ -61,6 +61,17 @@ export function getGamesByEngine(engine) {
 }
 
 /**
+ * Get all games for a specific engine AND stack.
+ * Games that have no `stack` field are excluded (not yet assigned).
+ *
+ * engine: 'unity' | 'phaser' | 'r3f'
+ * stack:  'next'  | 'tanstack'
+ */
+export function getGamesByStack(engine, stack) {
+  return loadGameRegistry().filter(g => g.engine === engine && g.stack === stack);
+}
+
+/**
  * Get a single game by id.
  */
 export function getGame(id) {
@@ -69,9 +80,25 @@ export function getGame(id) {
 
 /**
  * Returns env var lines to append to .env from a game manifest.
- * e.g. { "NEXT_PUBLIC_UNITY_BASE_URL": "https://..." } → "NEXT_PUBLIC_UNITY_BASE_URL=https://..."
+ * For TanStack projects, derives vars from structured cdn/dpr fields instead
+ * of the NEXT_PUBLIC_-prefixed env block (which is Next.js-specific).
+ *
+ * @param {object} game
+ * @param {'next'|'tanstack'} template
  */
-export function gameEnvLines(game) {
+export function gameEnvLines(game, template = 'next') {
+  if (!game) return [];
+  if (template === 'tanstack') {
+    const lines = [];
+    if (game.cdn?.baseUrl)      lines.push(`UNITY_BASE_URL=${game.cdn.baseUrl}`);
+    if (game.cdn?.gameName)     lines.push(`UNITY_GAME_NAME=${game.cdn.gameName}`);
+    // Use explicit version if CDN doesn't serve a version.json
+    const version = game.env?.['NEXT_PUBLIC_UNITY_VERSION'];
+    if (version)                lines.push(`UNITY_VERSION=${version}`);
+    if (game.dpr?.min != null)  lines.push(`VITE_UNITY_MIN_DPR=${game.dpr.min}`);
+    if (game.dpr?.max != null)  lines.push(`VITE_UNITY_MAX_DPR=${game.dpr.max}`);
+    return lines;
+  }
   if (!game?.env) return [];
   return Object.entries(game.env).map(([k, v]) => `${k}=${v}`);
 }
