@@ -18,12 +18,14 @@ import Fastify from 'fastify';
 import cors    from '@fastify/cors';
 import fstatic from '@fastify/static';
 import { spawn } from 'child_process';
-import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'fs';
+import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
 import { checkAuth, login as capeLogin, clearTokenCache } from '../cape-client.js';
+import { loadGameRegistry } from '../game-registry.js';
+import { KNOWN_PAGE_TYPES } from '../cape-format-builder.js';
 
 const __filename     = fileURLToPath(import.meta.url);
 const __dirname      = dirname(__filename);
@@ -32,6 +34,87 @@ const SCAFFOLD_JS    = join(SCAFFOLDER_ROOT, 'cli', 'scaffold.js');
 const UI_DIST        = join(SCAFFOLDER_ROOT, 'cli', 'wizard-ui', 'dist');
 
 const PORT = Number(process.env.WIZARD_PORT ?? 3737);
+
+const INSTANCE_RE = /^([a-z]+)-(\d+)$/;
+const INSTANCEABLE_PAGES = new Set([]);
+
+function basePageType(pageId) {
+  const m = String(pageId).match(INSTANCE_RE);
+  if (!m) return pageId;
+  const base = m[1];
+  if (!INSTANCEABLE_PAGES.has(base)) {
+    throw new Error(
+      `Page "${pageId}" is not an allowed duplicate. ` +
+      `Only these pages support multiple instances: ${[...INSTANCEABLE_PAGES].join(', ')}`
+    );
+  }
+  return base;
+}
+
+function validateWizardConfig(cfg) {
+  const errors = [];
+  const warnings = [];
+  const pages = Array.isArray(cfg.pages) ? cfg.pages : [];
+  const ids = pages.map((p) => typeof p === 'string' ? p : p.id).filter(Boolean);
+  const types = [];
+
+  for (const page of pages) {
+    try {
+      const type = typeof page === 'string' ? basePageType(page) : page.type;
+      types.push(type);
+      if (!KNOWN_PAGE_TYPES.has(type)) {
+        errors.push(`Unknown page type "${type}". Known types: ${[...KNOWN_PAGE_TYPES].join(', ')}.`);
+      }
+    } catch (err) {
+      errors.push(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  for (const id of ids) {
+    const m = String(id).match(INSTANCE_RE);
+    if (!m) continue;
+    if (!INSTANCEABLE_PAGES.has(m[1])) {
+      errors.push(`Page "${id}" is not an allowed duplicate. Only these pages support multiple instances: ${[...INSTANCEABLE_PAGES].join(', ')}.`);
+    }
+    if (!ids.includes(m[1])) {
+      errors.push(`\`${id}\` is a duplicate instance and requires a \`${m[1]}\` page first.`);
+    }
+  }
+
+  const engine = cfg.game || 'none';
+  const hasGamePage = types.includes('game');
+  if (engine === 'none' && hasGamePage) {
+    errors.push('`game` page requires an engine. Add --engine=unity|r3f|phaser or remove the `game` page.');
+  }
+  if (engine !== 'none' && !hasGamePage) {
+    warnings.push(`Engine "${engine}" selected but no \`game\` page is in the flow. The runtime won't render.`);
+  }
+
+  return { errors, warnings };
+}
+
+function loadModuleCatalog() {
+  const modulesDir = join(SCAFFOLDER_ROOT, 'modules');
+  const out = [];
+  for (const name of readdirSync(modulesDir)) {
+    const manifestPath = join(modulesDir, name, 'manifest.json');
+    if (!existsSync(manifestPath)) continue;
+    try {
+      const m = JSON.parse(readFileSync(manifestPath, 'utf8'));
+      out.push({
+        id:          m.id || name,
+        name:        m.name || name,
+        description: m.description || '',
+        implies:     Array.isArray(m.implies) ? m.implies : [],
+        packages:    Array.isArray(m.packages) ? m.packages : [],
+        engine:      m.engine,
+      });
+    } catch { /* skip malformed module manifests */ }
+  }
+  return out.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+const MODULE_CATALOG = loadModuleCatalog();
 
 // ─── In-memory job registry ──────────────────────────────────────────────────
 // Each scaffold run gets a job id. SSE clients connect by id and receive the
@@ -69,7 +152,14 @@ function finish(job, result) {
 
 // ─── Server bootstrap ────────────────────────────────────────────────────────
 
-const app = Fastify({ logger: false });
+// Disable ajv type coercion — by default Fastify coerces a string into a
+// single-element array (and various other surprises) which would let
+// malformed configs (e.g. `pages: "landing"`) sneak past the route schema.
+// We want the schema to mean what it says.
+const app = Fastify({
+  logger: false,
+  ajv: { customOptions: { coerceTypes: false, useDefaults: false } },
+});
 await app.register(cors, { origin: true });
 
 // Serve the built wizard UI when present; in dev Vite serves it on :5173 and
@@ -79,6 +169,27 @@ if (existsSync(UI_DIST)) {
 }
 
 app.get('/api/ping', async () => ({ ok: true, scaffolder: SCAFFOLDER_ROOT }));
+
+app.get('/api/games', async (req) => {
+  const stack = req.query?.stack?.toString() ?? '';
+  const games = stack
+    ? loadGameRegistry().filter(g => g.stack === stack)
+    : loadGameRegistry().filter(g => !!g.stack);
+  return {
+    games: games.map((game) => ({
+      id:          game.id,
+      name:        game.name,
+      description: game.description ?? '',
+      engine:      game.engine,
+      cdn:         game.cdn,
+      dpr:         game.dpr,
+      boot:        game.boot,
+      env:         game.env,
+    })),
+  };
+});
+
+app.get('/api/modules', async () => ({ modules: MODULE_CATALOG }));
 
 // ─── Load existing project ──────────────────────────────────────────────────
 // The wizard's "Open existing" flow pings this with a directory path. We
@@ -220,11 +331,72 @@ app.post('/api/auth/logout', async () => {
   return { ok: true };
 });
 
-app.post('/api/scaffold', async (req, reply) => {
-  const cfg = req.body ?? {};
-  if (!cfg.name) return reply.code(400).send({ error: 'Config missing required field: name' });
+// JSON Schema for the wizard's ScaffoldConfig. Fastify hands this to ajv and
+// returns 400 with a precise error path on any violation — so a malformed
+// config can never reach the scaffolder. Domain checks that depend on
+// runtime data (e.g. page type ∈ KNOWN_PAGE_TYPES) live in the handler
+// below; static-shape checks live here.
+const scaffoldConfigSchema = {
+  type: 'object',
+  required: ['name', 'pages'],
+  properties: {
+    name:               { type: 'string', minLength: 1, pattern: '^[a-z0-9][a-z0-9-]*[a-z0-9]$' },
+    stack:              { type: 'string', enum: ['next', 'tanstack'] },
+    game:               { type: 'string' },
+    gameId:             { type: 'string' },
+    createCape:         { type: 'boolean' },
+    capeTitle:          { type: 'string' },
+    capeId:             { type: 'string' },
+    market:             { type: 'string' },
+    defaultLanguage:    { type: 'string' },
+    supportedLanguages: { type: 'array', items: { type: 'string' } },
+    timezone:           { type: 'string' },
+    brand:              { type: 'string' },
+    department:         { type: 'string' },
+    pages: {
+      type: 'array',
+      items: {
+        oneOf: [
+          { type: 'string', minLength: 1 },
+          {
+            type: 'object',
+            required: ['id', 'type'],
+            properties: {
+              id:   { type: 'string', minLength: 1 },
+              type: { type: 'string', minLength: 1 },
+            },
+          },
+        ],
+      },
+    },
+    regMode:          { type: 'string' },
+    modules:          { type: 'array', items: { type: 'string' } },
+    gtmId:            { type: 'string' },
+    iframe:           { type: 'boolean' },
+    outputDir:        { type: 'string' },
+    pageSettings:     { type: 'object' },
+    flowExits:        { type: 'object' },
+    flowEntry:        { type: 'string' },
+    flowEnabledExits: { type: 'object' },
+    menuItemsEnabled: { type: 'object' },
+    buildMode:        { type: 'string', enum: ['create', 'update', 'recreate'] },
+    loadedProjectDir: { type: 'string' },
+    pageElementSelections:   { type: 'object' },
+    tsPageElementSelections: { type: 'object' },
+  },
+};
+
+app.post('/api/scaffold', { schema: { body: scaffoldConfigSchema } }, async (req, reply) => {
+  const cfg = req.body;
+
+  // Cross-field check Fastify schemas can't express: createCape OR capeId.
   if (!cfg.createCape && !cfg.capeId) {
     return reply.code(400).send({ error: 'Either createCape:true or an existing capeId is required.' });
+  }
+
+  const validation = validateWizardConfig(cfg);
+  if (validation.errors.length) {
+    return reply.code(400).send({ errors: validation.errors, error: validation.errors.join('\n') });
   }
 
   const jobId = randomBytes(8).toString('hex');
@@ -233,6 +405,9 @@ app.post('/api/scaffold', async (req, reply) => {
 
   const job = { id: jobId, buffered: [], clients: new Set(), done: false, result: null };
   jobs.set(jobId, job);
+  for (const warning of validation.warnings) {
+    emit(job, 'warn', warning);
+  }
 
   // Resolve outputDir up-front so we can return it on completion.
   const outputDir = cfg.outputDir
