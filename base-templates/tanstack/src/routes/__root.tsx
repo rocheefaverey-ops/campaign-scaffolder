@@ -38,9 +38,10 @@ export const Route = createRootRouteWithContext<RootContext>()({
       },
     ],
     scripts: [
-      {
-        src: `${loaderData?.unityEnvironment.url}Build/Build.loader.js`,
-      },
+      ...(loaderData?.unityEnvironment.url ? [{
+        nonce: loaderData.nonce,
+        children: `(function(){var s=document.createElement('script');s.src=${JSON.stringify(`${loaderData.unityEnvironment.url}Build/Build.loader.js`)};document.head.appendChild(s);})()`,
+      }] : []),
       {
         children: `
           (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':

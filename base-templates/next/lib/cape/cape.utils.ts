@@ -75,8 +75,13 @@ export function getCapeBoolean(
   const raw = getCapeValue(data, path);
   if (typeof raw === 'boolean') return raw;
   if (raw && typeof raw === 'object' && 'value' in (raw as object)) {
-    return Boolean((raw as { value: unknown }).value);
+    const value = (raw as { value: unknown }).value;
+    if (typeof value === 'boolean') return value;
+    if (value === 'true' || value === '1' || value === 1) return true;
+    if (value === 'false' || value === '0' || value === 0) return false;
   }
+  if (raw === 'true' || raw === '1' || raw === 1) return true;
+  if (raw === 'false' || raw === '0' || raw === 0) return false;
   return defaultValue;
 }
 

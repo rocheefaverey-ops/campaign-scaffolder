@@ -1,24 +1,25 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Header from '@components/_core/Header/Header';
 import Loading from '@components/_core/Loading/Loading';
 import DevTools from '@components/_core/DevTools/DevTools';
 import { useCapeData } from '@hooks/useCapeData';
-import { getCapeImage, getHeaderConfig } from '@utils/getCapeData';
+import { useSafeNavigation } from '@hooks/useSafeNavigation';
+import { getCapeImage, getHeaderConfig, isVideoUrl } from '@utils/getCapeData';
 
 // Pages that manage their own header / need full-bleed layout.
 // Hero-bg pages (landing, onboarding, result, voucher) embed the logo into
 // the hero via campaign-hero-header — adding the global header on top would
 // duplicate it and break the full-bleed atmosphere.
 const PAGES_WITHOUT_HEADER = [
-  '/gameplay', '/video', '/menu',
+  '/gameplay', '/video', '/intro-video', '/loading-video', '/ad-video', '/video-2', '/menu',
   '/landing', '/onboarding', '/result', '/voucher',
 ];
 
 export default function CampaignLayout({ children }: { children: React.ReactNode }) {
   const pathname            = usePathname();
-  const router              = useRouter();
+  const navigate            = useSafeNavigation();
   const { capeData }        = useCapeData();
   const headerConfig        = getHeaderConfig(capeData);
   const showHeader          = headerConfig.enabled && !PAGES_WITHOUT_HEADER.includes(pathname);
@@ -34,11 +35,13 @@ export default function CampaignLayout({ children }: { children: React.ReactNode
           variant={headerConfig.variant}
           showLogo={headerConfig.showLogo}
           showMenuButton={headerConfig.showMenuButton}
-          onMenuClick={() => router.push('/menu')}
+          onMenuClick={() => navigate('/menu')}
           logo={
             logoUrl
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={logoUrl} alt="Logo" className="h-10 w-[122px] object-contain" />
+              ? isVideoUrl(logoUrl)
+                ? <video src={logoUrl} autoPlay loop muted playsInline className="h-10 w-[122px] object-contain" />
+                // eslint-disable-next-line @next/next/no-img-element
+                : <img src={logoUrl} alt="Logo" className="h-10 w-[122px] object-contain" />
               : null
           }
           menuButton={

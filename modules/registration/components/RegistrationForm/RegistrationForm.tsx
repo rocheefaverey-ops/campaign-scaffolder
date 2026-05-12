@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import { register } from '@/app/actions/register/action';
 import { useGameContext } from '@hooks/useGameContext';
+import { useSafeNavigation } from '@hooks/useSafeNavigation';
 import FormInput from './FormInput';
 import Optin from './Optin';
 import Button from '@components/_core/Button/Button';
@@ -79,7 +79,7 @@ interface Props {
 }
 
 export default function RegistrationForm({ labels = {}, showInfix = true, requireOptIns = true, onSuccess }: Props) {
-  const router = useRouter();
+  const navigate = useSafeNavigation();
   const { token, setUserName, setAlreadyRegistered } = useGameContext();
 
   const [values, setValues] = useState<FormValues>(INITIAL);
@@ -124,7 +124,7 @@ export default function RegistrationForm({ labels = {}, showInfix = true, requir
     setUserName(`${values.firstName} ${values.lastName}`.trim());
     setAlreadyRegistered(true);
     if (onSuccess) onSuccess();
-    else router.push('{{NEXT_AFTER_REGISTER}}');
+    else navigate('{{NEXT_AFTER_REGISTER}}');
   };
 
   return (

@@ -1,29 +1,32 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useCapeData } from '@hooks/useCapeData';
 import { useInstanceId } from '@hooks/useInstanceId';
-import { getCapeText, getCapeImage, getCapeBoolean, getCapeNumber } from '@utils/getCapeData';
+import { useSafeNavigation } from '@hooks/useSafeNavigation';
+import { getCapeImage, getCapeBoolean, getCapeNumber, buildCopyResolver, buildImageResolver } from '@utils/getCapeData';
 import Voucher from '@components/_modules/Voucher/Voucher';
 import Button from '@components/_core/Button/Button';
 
 export default function VoucherPage() {
-  const router       = useRouter();
+  const navigate     = useSafeNavigation();
   const { capeData } = useCapeData();
+  const instanceId   = useInstanceId('voucher');
+  const t   = buildCopyResolver(capeData, 'voucher', instanceId);
+  const img = buildImageResolver(capeData, 'voucher', instanceId);
 
-  const bgUrl    = getCapeImage(capeData, 'general.voucher.background')
+  const bgUrl    = img('background')
                || getCapeImage(capeData, 'general.landing.background')
                || '/assets/hero-mobile.png';
-  const logoUrl  = getCapeImage(capeData, 'general.landing.logo')
+  const logoUrl  = img('logo')
+               || getCapeImage(capeData, 'general.landing.logo')
                || getCapeImage(capeData, 'general.header.logo')
                || '/assets/logo-livewall-wordmark.svg';
   const menuIcon = getCapeImage(capeData, 'general.header.menuIcon');
 
-  const kicker     = getCapeText(capeData, 'copy.voucher.kicker',   'Reward');
-  const headline   = getCapeText(capeData, 'copy.voucher.headline', 'Your voucher');
-  const subline    = getCapeText(capeData, 'copy.voucher.subline',  '');
-  const cta        = getCapeText(capeData, 'copy.voucher.cta',      'Done');
-  const instanceId = useInstanceId('voucher');
+  const kicker     = t('kicker',   'Reward');
+  const headline   = t('headline', 'Your voucher');
+  const subline    = t('subline',  '');
+  const cta        = t('cta',      'Done');
   const showQr     = getCapeBoolean(capeData, `settings.pages.${instanceId}.showQr`,     true);
   const codeLength = getCapeNumber (capeData, `settings.pages.${instanceId}.codeLength`, 0);
 
@@ -41,7 +44,7 @@ export default function VoucherPage() {
             type="button"
             className="campaign-menu-btn"
             aria-label="Menu"
-            onClick={() => router.push('/menu')}
+            onClick={() => navigate('/menu')}
           >
             {menuIcon
               // eslint-disable-next-line @next/next/no-img-element
@@ -64,7 +67,7 @@ export default function VoucherPage() {
         </div>
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.5s 0.32s ease both' }}>
-          <Button className="w-full" size="lg" onClick={() => router.push('{{NEXT_AFTER_VOUCHER}}')}>
+          <Button className="w-full" size="lg" onClick={() => navigate('{{NEXT_AFTER_VOUCHER}}')}>
             {cta}
           </Button>
         </div>

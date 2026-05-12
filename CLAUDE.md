@@ -80,9 +80,130 @@ node cli/scaffold.js \
 node cli/post-scaffold-message.js
 ```
 
-## Development
+## Module Development
 
-Validate the base template compiles:
+### Creating a new module
+
+1. Create a directory in `modules/{module-name}/`
+2. Add `manifest.json`:
+```json
+{
+  "name": "{module-name}",
+  "files": [
+    { "src": "app/...", "dest": "app/..." },
+    { "src": "components/...", "dest": "components/_modules/{module-name}/..." }
+  ],
+  "packages": ["package-name"],
+  "env": [
+    { "key": "MODULE_VAR", "description": "What this does" }
+  ],
+  "cspPatch": {
+    "script-src": ["https://cdn.example.com"]
+  },
+  "implies": ["other-module"]
+}
+```
+3. Organize code in `app/`, `components/`, `lib/` directories
+4. Use `{{PROJECT_NAME}}`, `{{CAPE_ID}}`, `{{MARKET}}` tokens for dynamic replacements
+5. Test with: `node cli/scaffold.js --module={module-name} --yes`
+
+### Common module gotchas
+
+- **CSP conflicts**: Check `middleware.ts` if adding external scripts — duplicate directives cause issues
+- **Import paths**: Always use relative imports from `_modules/{module-name}/`, not absolute aliases
+- **Env vars**: Document required vars in manifest; missing ones cause runtime errors
+- **Implies chains**: Test transitive dependencies (if A implies B and B implies C, verify C installs)
+
+## Testing
+
+### Validate the base template
 ```bash
 cd base-template && npm install && npm run ts-compile
 ```
+
+### Test a scaffolded project locally
+```bash
+node cli/scaffold.js --name=test-campaign --cape-id=99999 --market=NL --yes
+cd ../test-campaign
+npm install && npm run dev
+# Test CAPE integration, DesignTokenInjector, and any selected modules
+```
+
+### Test module inclusion
+```bash
+node cli/scaffold.js \
+  --name=test-with-modules \
+  --cape-id=99999 \
+  --market=NL \
+  --module=leaderboard \
+  --module=registration \
+  --yes
+cd ../test-with-modules
+npm install && npm run dev
+# Verify leaderboard, registration, and their implied dependencies load
+```
+
+## Architecture Decisions
+
+**Why manifest.json?**
+- Single source of truth for module metadata (files, packages, env vars, CSP)
+- Enables CLI to compose modules declaratively without hardcoding paths
+- Makes module dependencies explicit via `implies` chains
+
+**Why token replacement?**
+- Avoids template engines or build-time config files
+- Works across all text files (JS, CSS, env, etc.) consistently
+- Simple to understand and debug; no hidden transformations
+
+**Why DesignTokenInjector is built-in?**
+- CAPE branding is non-negotiable for all campaigns
+- Prevents opt-out mistakes that break visual identity
+- Centralizes color/spacing logic for consistency
+
+## Contribution Guidelines
+
+### Adding a feature to base-template or a module
+1. Make changes in the source directory
+2. Run tests: `npm run ts-compile` in affected directory
+3. Test a full scaffold: `node cli/scaffold.js ... --yes` and verify the output
+4. Commit with clear message: "feat: ...", "fix: ...", "docs: ..."
+
+### Creating a new module (checklist)
+- [ ] `manifest.json` is valid JSON (test with `node -e "require('./modules/{name}/manifest.json')"`)
+- [ ] All paths in `files` exist and target correct destinations
+- [ ] Token replacements `{{PROJECT_NAME}}`, `{{CAPE_ID}}`, `{{MARKET}}` are placed correctly
+- [ ] Implied modules exist in `modules/`
+- [ ] CSP patches are specific and non-conflicting
+- [ ] README or inline comments explain module purpose and setup
+- [ ] Tested with `node cli/scaffold.js --module={name} --yes`
+
+### Code style
+- Use TypeScript in base-template and modules
+- Follow existing naming: camelCase for JS, kebab-case for filenames
+- Keep components small and focused
+- Document non-obvious dependencies in comments
+
+## Troubleshooting
+
+**"Cannot find module 'manifest.json'"**
+- Ensure `manifest.json` exists in `modules/{module-name}/`
+- Check JSON syntax with `node -e "require('./path/to/manifest.json')"`
+
+**"Token `{{PROJECT_NAME}}` not replaced in generated file"**
+- Verify file is listed in module's `manifest.json` `files` array
+- Check file encoding is UTF-8 (some text editors default to UTF-16)
+
+**"CSP violation for script" after scaffolding**
+- Check `middleware.ts` for duplicate `script-src` directives
+- Module's `cspPatch` may conflict with base-template defaults
+- Use `--yes` to bypass, inspect output before adding to CSP
+
+**"npm install fails with peer dependency warnings"**
+- Peer deps from different modules may conflict
+- Update manifest to match `base-template/package.json` versions
+- Or add `--legacy-peer-deps` to `package.json` after scaffold
+
+**Scaffold output is missing files**
+- Verify `files[].src` paths exist relative to module root
+- Check `files[].dest` paths don't collide with existing files
+- Run with explicit `--module=name` rather than relying on `implies` chains

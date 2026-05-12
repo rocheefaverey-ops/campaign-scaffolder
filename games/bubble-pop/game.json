@@ -1,0 +1,7 @@
+{
+  "id": "bubble-pop",
+  "name": "Bubble Pop",
+  "description": "3D bubble popping game built with React Three Fiber.",
+  "engine": "r3f",
+  "stack": "next"
+}

@@ -32,7 +32,7 @@ import { printPostScaffoldMessage } from './post-scaffold-message.js';
 import { PAGE_ELEMENTS, PAGE_DEFAULTS, ELEMENT_CATALOGUE, buildPage } from './page-builder.js';
 import { TS_PAGE_ELEMENTS, TS_PAGE_DEFAULTS, TS_ELEMENT_CATALOGUE, TS_ALL_PAGES, TS_PAGE_ROUTES, buildTsPage } from './tanstack-page-builder.js';
 import { getGamesByEngine, getGamesByStack, getGame, gameEnvLines, gameLabel } from './game-registry.js';
-import { checkAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, publishCampaign } from './cape-client.js';
+import { checkAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, seedTemplateAssets, publishCampaign } from './cape-client.js';
 import { buildTanStackCapeFormat, buildNextCapeFormat } from './cape-format-builder.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -168,6 +168,15 @@ async function runCapeCreateFlow(ask, projectName, market, autoTitle = null, for
   try {
     const count = await populateDefaults(tokens, campaignId, formatFile.interfaceSetup);
     console.log(`${c.green('✓')}  ${count} fields`);
+  } catch (err) {
+    console.log(`${c.yellow('⚠')}  ${err.message} (continuing)`);
+  }
+
+  // 5b. Seed template placeholder assets (logos, backgrounds, video)
+  process.stdout.write(`  ${c.dim('Seeding template assets...')} `);
+  try {
+    const { seeded } = await seedTemplateAssets(tokens, campaignId);
+    console.log(`${c.green('✓')}  ${seeded} fields seeded`);
   } catch (err) {
     console.log(`${c.yellow('⚠')}  ${err.message} (continuing)`);
   }
@@ -1489,70 +1498,6 @@ async function runWizard(pre) {
         printNextSummary();
         }
         continue;
-        console.log('');
-        console.log(`  ${c.bold('Edit field:')}`);
-        console.log(`    ${c.dim('1)')} Project name       ${c.dim(`(${name})`)}`);
-        console.log(`    ${c.dim('2)')} CAPE ID            ${c.dim(`(${capeId})`)}`);
-        console.log(`    ${c.dim('3)')} Market             ${c.dim(`(${market})`)}`);
-        console.log(`    ${c.dim('4)')} Engine             ${c.dim(`(${game || 'none'})`)}`);
-        console.log(`    ${c.dim('5)')} Game pick          ${c.dim(`(${selectedGame?.name || 'none'})`)}`);
-        console.log(`    ${c.dim('6)')} Pages              ${c.dim(`(${pages.join(', ')})`)}`);
-        console.log(`    ${c.dim('7)')} Modules            ${c.dim(`(${extraModules.join(', ') || 'none'})`)}`);
-        console.log(`    ${c.dim('8)')} Registration mode  ${c.dim(`(${regMode})`)}`);
-        console.log(`    ${c.dim('9)')} GTM ID             ${c.dim(`(${gtmId || 'none'})`)}`);
-        console.log(`    ${c.dim('10)')} Iframe mode       ${c.dim(`(${iframe ? 'enabled' : 'disabled'})`)}`);
-        console.log(`    ${c.dim('11)')} Output dir        ${c.dim(`(${outputDir})`)}`);
-        const field = (await promptOnce(`  ${c.cyan('Field')}: `)).trim();
-        if (field === '1') {
-          let n;
-          do {
-            if (n !== undefined) console.log(`  ${c.red('✘')} Invalid — use lowercase letters, numbers and hyphens`);
-            n = (await promptOnce(`  ${c.cyan('Project name')}: `)).trim();
-          } while (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(n));
-          name = n;
-        } else if (field === '2') {
-          let id;
-          do {
-            if (id !== undefined) console.log(`  ${c.red('✘')} CAPE ID must be numeric`);
-            id = (await promptOnce(`  ${c.cyan('CAPE ID')}: `)).trim();
-          } while (!/^\d+$/.test(id));
-          capeId = id;
-        } else if (field === '3') {
-          const mv = (await promptOnce(`  ${c.cyan('Market')} ${c.dim(`(options: ${[...VALID_MARKETS].join('/')})`)} : `)).trim().toUpperCase();
-          if (VALID_MARKETS.has(mv)) market = mv;
-          else console.log(`  ${c.yellow('⚠')} Unknown market — keeping ${market}`);
-        } else if (field === '4') {
-          const v = (await promptOnce(`  ${c.cyan('Engine')} ${c.dim('(unity/r3f/phaser/memory/pure-react/none)')}: `)).trim();
-          if (['unity', 'r3f', 'phaser', 'memory', 'pure-react', 'none', ''].includes(v)) {
-            game = v === '' ? game : v;
-            if (game !== 'unity') selectedGame = null;
-          }
-        } else if (field === '5') {
-          const unityGames = getGamesByStack('unity', 'next');
-          unityGames.forEach((g, i) => console.log(`    ${c.dim(`${i + 1})`)} ${g.name}`));
-          const v = parseInt((await promptOnce(`  ${c.cyan('Game')} ${c.dim('[number, blank = none]')}: `)).trim(), 10);
-          selectedGame = Number.isFinite(v) && v >= 1 && v <= unityGames.length ? unityGames[v - 1] : null;
-          if (selectedGame) game = 'unity';
-        } else if (field === '6') {
-          const v = (await promptOnce(`  ${c.cyan('Pages')} ${c.dim('(comma-separated ids, e.g. landing,intro-video,onboarding,loading-video,game,result,ad-video)')}: `)).trim();
-          if (v) pages = v.split(',').map((p) => p.trim()).filter(Boolean);
-        } else if (field === '7') {
-          const v = (await promptOnce(`  ${c.cyan('Modules')} ${c.dim('(comma-separated ids, blank = none)')}: `)).trim();
-          extraModules = v ? v.split(',').map((m) => m.trim()).filter(Boolean) : [];
-        } else if (field === '8') {
-          const v = (await promptOnce(`  ${c.cyan('Registration mode')} ${c.dim('(none/gate/after/optional)')}: `)).trim();
-          if (['none', 'gate', 'after', 'optional'].includes(v)) regMode = v;
-        } else if (field === '9') {
-          gtmId = (await promptOnce(`  ${c.cyan('GTM ID')} ${c.dim('(leave blank to clear)')}: `)).trim();
-        } else if (field === '10') {
-          const v = (await promptOnce(`  ${c.cyan('Iframe mode?')} ${c.dim('[y/N]')}: `)).trim().toLowerCase();
-          iframe = v === 'y' || v === 'yes';
-        } else if (field === '11') {
-          const d = (await promptOnce(`  ${c.cyan('Output directory')}: `)).trim();
-          if (d) outputDir = resolve(d);
-        }
-        allModules = resolveModules(game, pages, extraModules);
-        printNextSummary();
       }
     }
   }
@@ -1795,7 +1740,6 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
 
   // Patch boilerplate file references from logo.png → svg variants + brand fixes
   const logoPatchMap = {
-    [join(frontendDir, 'src', 'routes', '-loaders', 'rootLoader.ts')]: (c) => c.replace(/logo\.png/g, 'logo.svg'),
     [join(frontendDir, 'src', 'components', 'containers', 'ViewContainer.tsx')]: (c) => c.replace(/logo\.png/g, 'logo-icon.svg'),
     // Add data URI passthrough so inlined SVGs don't produce warnings
     [join(frontendDir, 'src', 'server', 'ImageBlurUri.ts')]: (c) => c.replace(
@@ -1826,8 +1770,9 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
       .replace(`background-color: $whiteColor;`, `background-color: var(--lw-bg, #{$whiteColor});`),
     [join(frontendDir, 'src', 'routes', 'voucher.module.scss')]: (c) => c
       .replace(`background-color: $whiteColor;`, `background-color: var(--lw-bg, #{$whiteColor});`),
-    // rootLoader — add branding color fetch from Cape settings
+    // rootLoader — rename logo.png → logo.svg + add branding color fetch from Cape settings
     [join(frontendDir, 'src', 'routes', '-loaders', 'rootLoader.ts')]: (c) => {
+      c = c.replace(/logo\.png/g, 'logo.svg');
       if (c.includes('branding')) return c; // idempotent
       return c
         .replace(
@@ -2106,6 +2051,46 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
         );
         writeFileSync(layoutPath, layoutSrc, 'utf8');
         ok('UnityContainer injected into app/layout.tsx');
+      }
+    }
+  }
+
+  // 2b-ii. GTM layout patch — mount <GTMScript> as first child of <body>
+  if (modules.includes('gtm')) {
+    const layoutPath = join(frontendDir, 'app', 'layout.tsx');
+    if (existsSync(layoutPath)) {
+      let layoutSrc = readFileSync(layoutPath, 'utf8');
+      if (!layoutSrc.includes('GTMScript')) {
+        layoutSrc = layoutSrc.replace(
+          `import DesktopWrapper from '@components/_core/DesktopWrapper/DesktopWrapper';`,
+          `import DesktopWrapper from '@components/_core/DesktopWrapper/DesktopWrapper';\nimport GTMScript from '@components/_modules/GTMScript/GTMScript';`,
+        );
+        layoutSrc = layoutSrc.replace(
+          `      <body className="antialiased bg-[var(--surface-base)] text-[var(--text-primary)]">`,
+          `      <body className="antialiased bg-[var(--surface-base)] text-[var(--text-primary)]">\n        <GTMScript gtmId={process.env.NEXT_PUBLIC_GTM_ID} nonce={nonce} />`,
+        );
+        writeFileSync(layoutPath, layoutSrc, 'utf8');
+        ok('GTMScript injected into app/layout.tsx');
+      }
+    }
+  }
+
+  // 2b-iii. Cookie-consent layout patch — mount <CookieConsent> as first child of <body>
+  if (modules.includes('cookie-consent')) {
+    const layoutPath = join(frontendDir, 'app', 'layout.tsx');
+    if (existsSync(layoutPath)) {
+      let layoutSrc = readFileSync(layoutPath, 'utf8');
+      if (!layoutSrc.includes('CookieConsent')) {
+        layoutSrc = layoutSrc.replace(
+          `import DesktopWrapper from '@components/_core/DesktopWrapper/DesktopWrapper';`,
+          `import DesktopWrapper from '@components/_core/DesktopWrapper/DesktopWrapper';\nimport CookieConsent from '@components/_modules/CookieConsent/CookieConsent';`,
+        );
+        layoutSrc = layoutSrc.replace(
+          `      <body className="antialiased bg-[var(--surface-base)] text-[var(--text-primary)]">`,
+          `      <body className="antialiased bg-[var(--surface-base)] text-[var(--text-primary)]">\n        <CookieConsent cbid={process.env.NEXT_PUBLIC_COOKIEBOT_CBID} />`,
+        );
+        writeFileSync(layoutPath, layoutSrc, 'utf8');
+        ok('CookieConsent injected into app/layout.tsx');
       }
     }
   }
@@ -2817,7 +2802,7 @@ function writeChecklistFile(outputDir, cfg) {
           chk('[unity] Test: Unity canvas loads and `sendMessage` triggers game events');
           break;
         case 'r3f':
-          chk('[r3f] Run: `npm install three @react-three/fiber @react-three/drei`');
+          ok('[r3f] Packages installed: `three` `@react-three/fiber` `@react-three/drei` `@react-three/rapier` `@types/three`');
           chk('[r3f] Uncomment `<Canvas>` in `components/_modules/R3FCanvas/R3FCanvas.tsx`');
           chk('[r3f] Test: canvas renders without console errors');
           break;
@@ -2838,22 +2823,22 @@ function writeChecklistFile(outputDir, cfg) {
           chk('[scoring] Test: `end-session` action fires on game end with correct score');
           break;
         case 'voucher':
-          chk('[voucher] Run: `npm install next-qrcode`');
-          chk('[voucher] Uncomment QR code in `components/_modules/Voucher/QRCode.tsx`');
-          chk('[voucher] Test: QR code renders and encodes the correct voucher URL');
+          chk('[voucher] Test: QR code renders via api.qrserver.com (no package needed by default)');
+          chk('[voucher] Optional: swap api.qrserver.com for a self-hosted `qrcode` package in production');
+          chk('[voucher] Test: QR code encodes the correct voucher URL');
           break;
         case 'audio':
-          chk('[audio] Run: `npm install howler @types/howler`');
-          chk('[audio] Uncomment Howler import in `components/_modules/AudioPlayer/AudioPlayer.tsx`');
+          ok('[audio] Packages installed: `howler` `@types/howler`');
           chk('[audio] Test: audio plays / pauses and respects browser autoplay policy');
           break;
         case 'cookie-consent':
+          ok('[cookie-consent] `<CookieConsent />` auto-injected into `app/layout.tsx`');
           chk('[cookie-consent] Set `NEXT_PUBLIC_COOKIEBOT_CBID` in `.env`');
-          chk('[cookie-consent] Mount `<CookieConsent />` in `app/layout.tsx`');
           chk('[cookie-consent] Test: banner appears on first visit and consent is stored');
           break;
         case 'gtm':
-          chk(`[gtm] Verify GTM ID is set: \`${cfg.gtmId || 'GTM-XXXXXXX'}\``);
+          ok('[gtm] `<GTMScript />` auto-injected into `app/layout.tsx`');
+          chk(`[gtm] Verify GTM ID is set: \`${cfg.gtmId || 'NEXT_PUBLIC_GTM_ID'}\``);
           chk('[gtm] Test: GTM container fires on page load (check Network tab)');
           chk('[gtm] Test: dataLayer events fire on key interactions');
           break;
@@ -2894,8 +2879,8 @@ function writeChecklistFile(outputDir, cfg) {
 
   // Always-required base vars
   h3('Always required');
-  chk(`Set \`NEXT_PUBLIC_CAPE_DEFAULT_ID\` = \`${cfg.capeId}\``);
-  chk(`Set \`NEXT_PUBLIC_CAPE_DEFAULT_MARKET\` = \`${cfg.market}\``);
+  ok(`\`NEXT_PUBLIC_CAPE_DEFAULT_ID\` pre-filled to \`${cfg.capeId}\``);
+  ok(`\`NEXT_PUBLIC_CAPE_DEFAULT_MARKET\` pre-filled to \`${cfg.market}\``);
   chk('Set `API_URL` to your backend base URL');
   chk('Set `SERVER_SECRET` to a random secret (32+ chars)');
   br();
@@ -2920,11 +2905,11 @@ function writeChecklistFile(outputDir, cfg) {
 
   if (cfg.gtmId) {
     h3('GTM (pre-filled)');
-    ok(`\`GTM_ID\` = \`${cfg.gtmId}\``);
+    ok(`\`NEXT_PUBLIC_GTM_ID\` pre-filled to \`${cfg.gtmId}\``);
     br();
   } else if (cfg.modules?.includes('gtm')) {
     h3('GTM');
-    chk('Set `GTM_ID` in `.env`');
+    chk('Set `NEXT_PUBLIC_GTM_ID` in `.env`');
     br();
   }
 

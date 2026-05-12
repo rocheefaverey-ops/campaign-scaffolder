@@ -1,0 +1,1211 @@
+{
+  "publishProfiles": {
+    "export": {
+      "title": "Publish campaign",
+      "tasks": [
+        {
+          "customerFunction": "publishGame",
+          "async": true
+        }
+      ]
+    }
+  },
+  "interfaceSetup": {
+    "pages": [
+      {
+        "path": "settings",
+        "title": "Settings",
+        "key": "settings-page",
+        "showLanguageSelector": false,
+        "tabs": [
+          {
+            "key": "settings-general-tab",
+            "title": "General",
+            "path": "",
+            "type": "page",
+            "multiLanguage": false,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Languages",
+                "opened": true,
+                "type": "general",
+                "key": "settings-languages-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "languageSelector",
+                    "model": "settings.languages",
+                    "label": "Languages",
+                    "key": "settings-languages",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "NL": "NL - Dutch",
+                      "EN": "EN - English"
+                    }
+                  }
+                ]
+              },
+              {
+                "title": "Branding",
+                "opened": true,
+                "type": "general",
+                "key": "settings-branding-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "settings.branding.favicon",
+                    "label": "Favicon",
+                    "key": "settings-branding-favicon",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "color",
+                    "model": "settings.branding.themeColor",
+                    "label": "Theme Color (browser UI)",
+                    "key": "settings-branding-themecolor",
+                    "itemType": "input",
+                    "picker": "picker",
+                    "defaultValue": "#CDFF00"
+                  },
+                  {
+                    "type": "color",
+                    "model": "settings.branding.primaryColor",
+                    "label": "Primary (CTAs, accents)",
+                    "key": "settings-branding-primarycolor",
+                    "itemType": "input",
+                    "picker": "picker",
+                    "defaultValue": "#CDFF00"
+                  },
+                  {
+                    "type": "color",
+                    "model": "settings.branding.secondaryColor",
+                    "label": "Secondary (ink / text)",
+                    "key": "settings-branding-secondarycolor",
+                    "itemType": "input",
+                    "picker": "picker",
+                    "defaultValue": "#0E0E0E"
+                  },
+                  {
+                    "type": "color",
+                    "model": "settings.branding.tertiaryColor",
+                    "label": "Tertiary (surface)",
+                    "key": "settings-branding-tertiarycolor",
+                    "itemType": "input",
+                    "picker": "picker",
+                    "defaultValue": "#FAFAFA"
+                  },
+                  {
+                    "type": "color",
+                    "model": "settings.branding.accentColor",
+                    "label": "Accent (highlights)",
+                    "key": "settings-branding-accentcolor",
+                    "itemType": "input",
+                    "picker": "picker",
+                    "defaultValue": "#CDFF00"
+                  },
+                  {
+                    "type": "color",
+                    "model": "settings.branding.errorColor",
+                    "label": "Error / status red",
+                    "key": "settings-branding-errorcolor",
+                    "itemType": "input",
+                    "picker": "picker",
+                    "defaultValue": "#E82727"
+                  },
+                  {
+                    "type": "text",
+                    "model": "settings.branding.fontFamily",
+                    "label": "Default font family",
+                    "key": "settings-branding-fontfamily",
+                    "itemType": "input",
+                    "defaultValue": "'Inter', 'Segoe UI', Arial, sans-serif"
+                  },
+                  {
+                    "type": "text",
+                    "model": "settings.branding.displayFontFamily",
+                    "label": "Display font family",
+                    "key": "settings-branding-displayfont",
+                    "itemType": "input",
+                    "defaultValue": "'Inter', 'Segoe UI', Arial, sans-serif"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "settings.branding.fontBrand",
+                    "label": "Brand font file (optional)",
+                    "key": "settings-branding-fontbrand",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "settings.branding.fontLight",
+                    "label": "Light font file (optional)",
+                    "key": "settings-branding-fontlight",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Site meta",
+                "opened": true,
+                "type": "general",
+                "key": "settings-meta-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "general.meta.siteTitle",
+                    "label": "Site title",
+                    "key": "settings-meta-title",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Livewall Campaign"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "general.meta.siteDescription",
+                    "label": "Site description",
+                    "key": "settings-meta-description",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": ""
+                    }
+                  }
+                ]
+              },
+              {
+                "title": "Legal links",
+                "opened": true,
+                "type": "general",
+                "key": "settings-legal-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "text",
+                    "model": "general.legal.termsUrl",
+                    "label": "Terms & conditions URL",
+                    "key": "settings-legal-terms",
+                    "itemType": "input",
+                    "defaultValue": "https://livewallgroup.com/terms"
+                  },
+                  {
+                    "type": "text",
+                    "model": "general.legal.privacyUrl",
+                    "label": "Privacy policy URL",
+                    "key": "settings-legal-privacy",
+                    "itemType": "input",
+                    "defaultValue": "https://livewallgroup.com/privacy"
+                  }
+                ]
+              },
+              {
+                "title": "Global header",
+                "opened": true,
+                "type": "general",
+                "key": "settings-header-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "boolean",
+                    "model": "header.enabled",
+                    "label": "Show header globally",
+                    "key": "settings-header-enabled",
+                    "itemType": "input",
+                    "defaultValue": false
+                  },
+                  {
+                    "type": "select",
+                    "model": "header.variant",
+                    "label": "Header variant",
+                    "key": "settings-header-variant",
+                    "itemType": "input",
+                    "options": {
+                      "default": "Default (surface)",
+                      "transparent": "Transparent"
+                    },
+                    "defaultValue": "default"
+                  },
+                  {
+                    "type": "boolean",
+                    "model": "header.showLogo",
+                    "label": "Show logo",
+                    "key": "settings-header-showlogo",
+                    "itemType": "input",
+                    "defaultValue": true
+                  },
+                  {
+                    "type": "boolean",
+                    "model": "header.showMenuButton",
+                    "label": "Show menu button",
+                    "key": "settings-header-showmenu",
+                    "itemType": "input",
+                    "defaultValue": true
+                  }
+                ]
+              },
+              {
+                "title": "Desktop wrapper",
+                "opened": true,
+                "type": "general",
+                "key": "settings-desktop-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "boolean",
+                    "model": "desktop.useDesktopWrapper",
+                    "label": "Use desktop QR wrapper",
+                    "key": "settings-desktop-enabled",
+                    "itemType": "input",
+                    "defaultValue": true
+                  }
+                ]
+              },
+              {
+                "title": "Menu visibility",
+                "opened": true,
+                "type": "general",
+                "key": "settings-menu-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "boolean",
+                    "model": "settings.menu.showHome",
+                    "label": "Show Home",
+                    "key": "settings-menu-home",
+                    "itemType": "input",
+                    "defaultValue": true
+                  },
+                  {
+                    "type": "boolean",
+                    "model": "settings.menu.showResume",
+                    "label": "Show Resume game",
+                    "key": "settings-menu-resume",
+                    "itemType": "input",
+                    "defaultValue": false
+                  },
+                  {
+                    "type": "boolean",
+                    "model": "settings.menu.showHowToPlay",
+                    "label": "Show How to play",
+                    "key": "settings-menu-how",
+                    "itemType": "input",
+                    "defaultValue": true
+                  },
+                  {
+                    "type": "boolean",
+                    "model": "settings.menu.showLeaderboard",
+                    "label": "Show Leaderboard",
+                    "key": "settings-menu-leader",
+                    "itemType": "input",
+                    "defaultValue": false
+                  },
+                  {
+                    "type": "boolean",
+                    "model": "settings.menu.showVoucher",
+                    "label": "Show My voucher",
+                    "key": "settings-menu-voucher",
+                    "itemType": "input",
+                    "defaultValue": false
+                  },
+                  {
+                    "type": "boolean",
+                    "model": "settings.menu.showTerms",
+                    "label": "Show Terms",
+                    "key": "settings-menu-terms",
+                    "itemType": "input",
+                    "defaultValue": true
+                  },
+                  {
+                    "type": "boolean",
+                    "model": "settings.menu.showPrivacy",
+                    "label": "Show Privacy",
+                    "key": "settings-menu-privacy",
+                    "itemType": "input",
+                    "defaultValue": true
+                  },
+                  {
+                    "type": "boolean",
+                    "model": "settings.menu.showFaq",
+                    "label": "Show FAQ",
+                    "key": "settings-menu-faq",
+                    "itemType": "input",
+                    "defaultValue": false
+                  },
+                  {
+                    "type": "boolean",
+                    "model": "settings.menu.showLeave",
+                    "label": "Show Leave campaign",
+                    "key": "settings-menu-leave",
+                    "itemType": "input",
+                    "defaultValue": true
+                  }
+                ]
+              },
+              {
+                "title": "Game boot",
+                "opened": true,
+                "type": "general",
+                "key": "settings-game-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "text",
+                    "model": "settings.game.sceneKey",
+                    "label": "Unity scene key",
+                    "key": "settings-game-scenekey",
+                    "itemType": "input",
+                    "defaultValue": "Racing"
+                  }
+                ]
+              },
+              {
+                "title": "Integrations",
+                "opened": true,
+                "type": "general",
+                "key": "settings-integrations-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "text",
+                    "model": "settings.capeKey",
+                    "label": "Cape Key",
+                    "key": "settings-capekey",
+                    "itemType": "input",
+                    "defaultValue": "scaffolder-test"
+                  },
+                  {
+                    "type": "text",
+                    "model": "settings.tagmanager",
+                    "label": "GTM ID",
+                    "key": "settings-tagmanager",
+                    "itemType": "input"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "path": "pages",
+        "title": "Pages",
+        "key": "next-pages-page",
+        "showLanguageSelector": true,
+        "tabs": [
+          {
+            "key": "next-header-tab",
+            "title": "Header & brand assets",
+            "path": "header",
+            "type": "page",
+            "multiLanguage": false,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Header assets",
+                "opened": true,
+                "type": "general",
+                "key": "next-header-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "general.header.logo",
+                    "label": "Logo",
+                    "key": "next-header-logo",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "general.header.menuBtnBg",
+                    "label": "Menu button BG",
+                    "key": "next-header-menubtnbg",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "general.header.menuIcon",
+                    "label": "Menu icon",
+                    "key": "next-header-menuicon",
+                    "itemType": "input"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-desktop-tab",
+            "title": "Desktop & Loading",
+            "path": "desktop",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Desktop assets",
+                "opened": true,
+                "type": "general",
+                "key": "next-desktop-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "desktop.logo",
+                    "label": "Desktop logo",
+                    "key": "next-desktop-logo",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "desktop.backgroundIllustration",
+                    "label": "Background illustration",
+                    "key": "next-desktop-bg",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Desktop copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-desktop-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "desktop.description",
+                    "label": "Description",
+                    "key": "next-desktop-description",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "This experience is optimised for mobile. Scan the QR code with your phone."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "desktop.qrText",
+                    "label": "QR Text",
+                    "key": "next-desktop-qrtext",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Scan to play on mobile"
+                    }
+                  }
+                ]
+              },
+              {
+                "title": "Loading assets",
+                "opened": true,
+                "type": "general",
+                "key": "next-loading-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "files.video.loadingVideo",
+                    "label": "Loading / intro video",
+                    "key": "next-loading-video",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Loading copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-loading-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "loading.title",
+                    "label": "Loading title",
+                    "key": "next-loading-title",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Loading…"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "loading.description1",
+                    "label": "Loading line 1",
+                    "key": "next-loading-desc1",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": ""
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "loading.description2",
+                    "label": "Loading line 2",
+                    "key": "next-loading-desc2",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": ""
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "loading.description3",
+                    "label": "Loading line 3",
+                    "key": "next-loading-desc3",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": ""
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-landing-tab",
+            "title": "Landing",
+            "path": "landing",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-landing-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.landing.kicker",
+                    "label": "Kicker (small label above headline)",
+                    "key": "next-landing-kicker",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Live experience"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.landing.headline",
+                    "label": "Headline",
+                    "key": "next-landing-headline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Welcome"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.landing.subline",
+                    "label": "Subline",
+                    "key": "next-landing-subline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Are you ready to play?"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.landing.cta",
+                    "label": "Play button",
+                    "key": "next-landing-cta",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Play"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.landing.ctaReturning",
+                    "label": "Returning player button",
+                    "key": "next-landing-cta-returning",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Play again"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.landing.leaderboardCta",
+                    "label": "Returning leaderboard button",
+                    "key": "next-landing-leaderboard-cta",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Leaderboard"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.landing.ctaLeaderboard",
+                    "label": "Leaderboard button",
+                    "key": "next-landing-cta2",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Leaderboard"
+                    }
+                  }
+                ]
+              },
+              {
+                "title": "Hero media (optional)",
+                "opened": true,
+                "type": "general",
+                "key": "next-landing-files-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "files.landing.heroImage",
+                    "label": "Hero image",
+                    "key": "next-landing-heroimage",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "files.landing.heroVideo",
+                    "label": "Hero video",
+                    "key": "next-landing-herovideo",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "files.landing.backgroundImage",
+                    "label": "Background",
+                    "key": "next-landing-bgimage",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Assets",
+                "opened": true,
+                "type": "general",
+                "key": "next-landing-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "general.landing.background",
+                    "label": "Background",
+                    "key": "next-landing-bg",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "general.landing.logo",
+                    "label": "Logo",
+                    "key": "next-landing-logo",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Settings",
+                "opened": true,
+                "type": "general",
+                "key": "next-landing-settings-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "boolean",
+                    "model": "settings.pages.landing.showLeaderboardButton",
+                    "label": "Show leaderboard button",
+                    "key": "next-landing-showleaderboard",
+                    "itemType": "input",
+                    "defaultValue": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-onboarding-tab",
+            "title": "Onboarding",
+            "path": "onboarding",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-onboarding-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.kicker",
+                    "label": "Kicker",
+                    "key": "next-onboarding-kicker",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "How to play"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.headline",
+                    "label": "Headline",
+                    "key": "next-onboarding-headline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "How to play"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.subline",
+                    "label": "Subline",
+                    "key": "next-onboarding-subline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": ""
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.cta",
+                    "label": "Let's go button",
+                    "key": "next-onboarding-cta",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Let's go"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.ctaNext",
+                    "label": "Continue button",
+                    "key": "next-onboarding-ctanext",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Continue"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.step1Title",
+                    "label": "Step 1 title",
+                    "key": "next-onboarding-step1-title",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Step 1"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.step1Body",
+                    "label": "Step 1 body",
+                    "key": "next-onboarding-step1-body",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Instructions for step 1."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.step2Title",
+                    "label": "Step 2 title",
+                    "key": "next-onboarding-step2-title",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Step 2"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.step2Body",
+                    "label": "Step 2 body",
+                    "key": "next-onboarding-step2-body",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Instructions for step 2."
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.step3Title",
+                    "label": "Step 3 title",
+                    "key": "next-onboarding-step3-title",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Step 3"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.onboarding.step3Body",
+                    "label": "Step 3 body",
+                    "key": "next-onboarding-step3-body",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Instructions for step 3."
+                    }
+                  }
+                ]
+              },
+              {
+                "title": "Assets",
+                "opened": true,
+                "type": "general",
+                "key": "next-onboarding-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "general.onboarding.background",
+                    "label": "Background",
+                    "key": "next-onboarding-bg",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "general.onboarding.logo",
+                    "label": "Logo",
+                    "key": "next-onboarding-logo",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "general.onboarding.heroImage",
+                    "label": "Hero image",
+                    "key": "next-onboarding-hero",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Step images",
+                "opened": true,
+                "type": "general",
+                "key": "next-onboarding-step-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "files.onboarding.step1Image",
+                    "label": "Step 1 image",
+                    "key": "next-onboarding-step1-image",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "files.onboarding.step2Image",
+                    "label": "Step 2 image",
+                    "key": "next-onboarding-step2-image",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "files.onboarding.step3Image",
+                    "label": "Step 3 image",
+                    "key": "next-onboarding-step3-image",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Settings",
+                "opened": true,
+                "type": "general",
+                "key": "next-onboarding-settings-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "boolean",
+                    "model": "settings.pages.onboarding.allowSkip",
+                    "label": "Allow skip",
+                    "key": "next-onboarding-allowskip",
+                    "itemType": "input",
+                    "defaultValue": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-result-tab",
+            "title": "Result",
+            "path": "result",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Assets",
+                "opened": true,
+                "type": "general",
+                "key": "next-result-assets-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "assetSelector",
+                    "model": "files.result.winImage",
+                    "label": "Win image",
+                    "key": "next-result-winimage",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "files.result.loseImage",
+                    "label": "Lose image",
+                    "key": "next-result-loseimage",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "general.result.background",
+                    "label": "Background",
+                    "key": "next-result-bg",
+                    "itemType": "input"
+                  },
+                  {
+                    "type": "assetSelector",
+                    "model": "general.result.logo",
+                    "label": "Logo",
+                    "key": "next-result-logo",
+                    "itemType": "input"
+                  }
+                ]
+              },
+              {
+                "title": "Copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-result-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.kicker",
+                    "label": "Kicker",
+                    "key": "next-result-kicker",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Result"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.headline",
+                    "label": "Headline",
+                    "key": "next-result-headline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Game over"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.subline",
+                    "label": "Subline",
+                    "key": "next-result-subline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": ""
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.scoreLabel",
+                    "label": "Score label",
+                    "key": "next-result-scorelabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Your score"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.rankLabel",
+                    "label": "Rank label",
+                    "key": "next-result-ranklabel",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Your rank"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.ctaContinue",
+                    "label": "Continue button",
+                    "key": "next-result-ctacontinue",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Continue"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.ctaPlayAgain",
+                    "label": "Play again button",
+                    "key": "next-result-ctaplayagain",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Play again"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.result.ctaLeaderboard",
+                    "label": "Leaderboard button",
+                    "key": "next-result-ctaleaderboard",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Leaderboard"
+                    }
+                  }
+                ]
+              },
+              {
+                "title": "Settings",
+                "opened": true,
+                "type": "general",
+                "key": "next-result-settings-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "number",
+                    "model": "settings.pages.result.autoNavSec",
+                    "label": "Auto-navigate after",
+                    "key": "next-result-autonavsec",
+                    "itemType": "input",
+                    "defaultValue": 0,
+                    "min": 0,
+                    "max": 120
+                  },
+                  {
+                    "type": "boolean",
+                    "model": "settings.pages.result.showPlayAgainButton",
+                    "label": "Show play again button",
+                    "key": "next-result-showplayagain",
+                    "itemType": "input",
+                    "defaultValue": true
+                  },
+                  {
+                    "type": "boolean",
+                    "model": "settings.pages.result.showLeaderboardButton",
+                    "label": "Show leaderboard button",
+                    "key": "next-result-showleaderboard",
+                    "itemType": "input",
+                    "defaultValue": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "next-menu-tab",
+            "title": "Menu",
+            "path": "menu",
+            "type": "page",
+            "multiLanguage": true,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Menu copy",
+                "opened": true,
+                "type": "general",
+                "key": "next-menu-copy-block",
+                "itemType": "block",
+                "items": [
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.menu.headline",
+                    "label": "Menu headline",
+                    "key": "next-menu-headline",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Menu"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.menu.home",
+                    "label": "Home",
+                    "key": "next-menu-home",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Home"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.menu.howToPlay",
+                    "label": "How to play",
+                    "key": "next-menu-howtoplay",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "How to play"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.menu.terms",
+                    "label": "Terms",
+                    "key": "next-menu-terms",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Terms"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.menu.privacy",
+                    "label": "Privacy",
+                    "key": "next-menu-privacy",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Privacy"
+                    }
+                  },
+                  {
+                    "type": "textMultiLanguage",
+                    "model": "copy.menu.leave",
+                    "label": "Leave campaign",
+                    "key": "next-menu-leave",
+                    "itemType": "input",
+                    "defaultValue": {
+                      "value": "Leave campaign"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "path": "publish",
+        "title": "Publish",
+        "key": "publish-page",
+        "showLanguageSelector": false,
+        "tabs": [
+          {
+            "key": "publish-general-tab",
+            "title": "General",
+            "path": "general",
+            "type": "page",
+            "multiLanguage": false,
+            "tour": false,
+            "blocks": [
+              {
+                "title": "Publish",
+                "opened": true,
+                "type": "publish",
+                "key": "publish-block",
+                "itemType": "block",
+                "model": "publish.results",
+                "items": []
+              }
+            ]
+          }
+        ],
+        "condition": "editor.type!='concept'"
+      }
+    ]
+  }
+}

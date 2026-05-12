@@ -2,81 +2,94 @@
 
 import { useEffect, useState } from 'react';
 import { useCapeData } from '@hooks/useCapeData';
-import { getCapeText, getCapeImage, getCapeBoolean } from '@utils/getCapeData';
+import { getCapeText, getCapeImage, getCapeBoolean, isVideoUrl } from '@utils/getCapeData';
 
 interface DesktopWrapperProps {
   children: React.ReactNode;
 }
 
-/**
- * Wraps the mobile-first campaign view with a desktop-friendly layout.
- * On screens wider than 768px: shows branding + QR code alongside a
- * 375×667 phone-frame preview.
- * On mobile: renders children fullscreen.
- *
- * Controlled by CAPE at desktop.* paths.
- */
 export default function DesktopWrapper({ children }: DesktopWrapperProps) {
   const { capeData } = useCapeData();
-  const [mounted, setMounted]     = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
-  const [currentUrl, setCurrentUrl] = useState('');
+  const [qrTargetUrl, setQrTargetUrl] = useState('');
 
   useEffect(() => {
-    setMounted(true);
-    setCurrentUrl(window.location.href);
-    const check = () => setIsDesktop(window.innerWidth > 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    setQrTargetUrl(getShareableDevUrl());
   }, []);
 
-  const useDesktopLayout = getCapeBoolean(capeData, 'desktop.useDesktopWrapper', true);
-  const showDesktop = mounted && isDesktop && useDesktopLayout;
+  const useDesktopLayout  = getCapeBoolean(capeData, 'desktop.useDesktopWrapper', true);
 
-  if (!showDesktop) {
-    return (
-      <div style={{ width: '100vw', height: '100dvh', overflow: 'hidden', position: 'relative' }}>
-        {children}
-      </div>
-    );
-  }
+  if (!useDesktopLayout) return <>{children}</>;
 
   const description = getCapeText(capeData, 'desktop.description', 'Scan the QR code to play on your mobile device');
   const labelQr     = getCapeText(capeData, 'desktop.qrText',      'Scan to play');
-  const logoUrl     = getCapeImage(capeData, 'desktop.logo');
-  const bgUrl       = getCapeImage(capeData, 'desktop.backgroundIllustration');
-  const qrUrl       = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}&bgcolor=ffffff&color=000000`;
+  const logoUrl     = getCapeImage(capeData, 'desktop.logo')
+                   || getCapeImage(capeData, 'general.header.logo')
+                   || getCapeImage(capeData, 'general.landing.logo');
+  const bgUrl       = getCapeImage(capeData, 'desktop.backgroundIllustration')
+                   || getCapeImage(capeData, 'general.landing.background')
+                   || getCapeImage(capeData, 'files.landing.backgroundImage');
+  const qrUrl       = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrTargetUrl)}&bgcolor=ffffff&color=000000`;
+
+  const bgIsVideo   = isVideoUrl(bgUrl);
+  const logoIsVideo = isVideoUrl(logoUrl);
 
   return (
-    <div className="desktop-wrapper">
+    <div className="desktop-wrapper" data-enabled={useDesktopLayout}>
       {bgUrl && (
-        <div className="desktop-wrapper__bg" style={{ backgroundImage: `url('${bgUrl}')` }} />
+        bgIsVideo
+          ? <video src={bgUrl} autoPlay loop muted playsInline className="desktop-wrapper__bg desktop-wrapper__bg--video" />
+          : <div className="desktop-wrapper__bg" style={{ backgroundImage: `url('${bgUrl}')` }} />
       )}
       <div className="desktop-wrapper__overlay" />
 
-      {/* Left: branding + QR */}
-      <div className="desktop-wrapper__info">
-        {logoUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={logoUrl} alt="Logo" className="desktop-wrapper__logo" />
-        )}
-        <p className="desktop-wrapper__description">{description}</p>
-        <div className="desktop-wrapper__qr-container">
-          <div className="desktop-wrapper__qr-box">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrUrl} alt="QR code" className="desktop-wrapper__qr-img" />
+      <div className="desktop-wrapper__stage">
+        <div className="desktop-wrapper__info">
+          {logoUrl && (
+            logoIsVideo
+              ? <video src={logoUrl} autoPlay loop muted playsInline className="desktop-wrapper__logo" />
+              // eslint-disable-next-line @next/next/no-img-element
+              : <img src={logoUrl} alt="Logo" className="desktop-wrapper__logo" />
+          )}
+          <p className="desktop-wrapper__description">{description}</p>
+          <div className="desktop-wrapper__qr-container">
+            <div className="desktop-wrapper__qr-box">
+              {qrTargetUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={qrUrl} alt="QR code" className="desktop-wrapper__qr-img" />
+              )}
+            </div>
+            <span className="desktop-wrapper__qr-label">{labelQr}</span>
           </div>
-          <span className="desktop-wrapper__qr-label">{labelQr}</span>
         </div>
-      </div>
 
-      {/* Right: phone frame */}
-      <div className="desktop-wrapper__phone">
-        <div className="desktop-wrapper__phone-frame">
-          {children}
+        <div className="desktop-wrapper__phone">
+          <div className="desktop-wrapper__phone-frame">
+            {children}
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+function getShareableDevUrl(): string {
+  const current = new URL(window.location.href);
+  const configuredOrigin = process.env.NEXT_PUBLIC_DEV_ORIGIN?.trim();
+
+  if (
+    configuredOrigin &&
+    (current.hostname === 'localhost' || current.hostname === '127.0.0.1')
+  ) {
+    try {
+      const url = new URL(configuredOrigin);
+      url.pathname = current.pathname;
+      url.search = current.search;
+      url.hash = current.hash;
+      return url.toString();
+    } catch {
+      return window.location.href;
+    }
+  }
+
+  return window.location.href;
 }

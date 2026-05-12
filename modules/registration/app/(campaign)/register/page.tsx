@@ -1,27 +1,30 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useCapeData } from '@hooks/useCapeData';
-import { getCapeText, getCapeBoolean } from '@utils/getCapeData';
+import { useInstanceId } from '@hooks/useInstanceId';
+import { useSafeNavigation } from '@hooks/useSafeNavigation';
+import { getCapeBoolean, buildCopyResolver } from '@utils/getCapeData';
 import RegistrationForm from '@components/_modules/RegistrationForm/RegistrationForm';
 
 export default function RegisterPage() {
-  const router       = useRouter();
+  const navigate     = useSafeNavigation();
   const { capeData } = useCapeData();
+  const instanceId   = useInstanceId('register');
+  const t            = buildCopyResolver(capeData, 'register', instanceId);
 
-  const headline = getCapeText(capeData, 'copy.register.headline', 'Register');
-  const subline  = getCapeText(capeData, 'copy.register.subline',  '');
-  const cta      = getCapeText(capeData, 'copy.register.cta',      'Register');
+  const headline = t('headline', 'Register');
+  const subline  = t('subline',  '');
+  const cta      = t('cta',      'Register');
 
   const labels = {
-    firstName:      getCapeText(capeData, 'copy.register.labelFirstName', 'First name'),
-    infix:          getCapeText(capeData, 'copy.register.labelInfix',     'Infix'),
-    lastName:       getCapeText(capeData, 'copy.register.labelLastName',  'Last name'),
-    email:          getCapeText(capeData, 'copy.register.labelEmail',     'Email'),
-    optIn1:         getCapeText(capeData, 'copy.register.optIn1',         'I confirm that I am 18 years of age or older'),
-    optIn2:         getCapeText(capeData, 'copy.register.optIn2',         'I accept the {{terms}}'),
-    successHeadline:getCapeText(capeData, 'copy.register.successHeadline','You\'re registered!'),
-    successBody:    getCapeText(capeData, 'copy.register.successBody',    ''),
+    firstName:      t('labelFirstName', 'First name'),
+    infix:          t('labelInfix',     'Infix'),
+    lastName:       t('labelLastName',  'Last name'),
+    email:          t('labelEmail',     'Email'),
+    optIn1:         t('optIn1',         'I confirm that I am 18 years of age or older'),
+    optIn2:         t('optIn2',         'I accept the {{terms}}'),
+    successHeadline:t('successHeadline','You\'re registered!'),
+    successBody:    t('successBody',    ''),
     cta,
   };
 
@@ -42,9 +45,9 @@ export default function RegisterPage() {
         >
           <RegistrationForm
             labels={labels}
-            showInfix={getCapeBoolean(capeData, 'settings.pages.register.showInfix', true)}
-            requireOptIns={getCapeBoolean(capeData, 'settings.pages.register.requireOptIns', true)}
-            onSuccess={() => router.push('{{NEXT_AFTER_REGISTER}}')}
+            showInfix={getCapeBoolean(capeData, `settings.pages.${instanceId}.showInfix`, true)}
+            requireOptIns={getCapeBoolean(capeData, `settings.pages.${instanceId}.requireOptIns`, true)}
+            onSuccess={() => navigate('{{NEXT_AFTER_REGISTER}}')}
           />
         </section>
 

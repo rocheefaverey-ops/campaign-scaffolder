@@ -8,6 +8,12 @@ import { extractBaseUrl, parsePlatform } from '~/utils/Helper.ts';
  * Get base URL for Unity
  */
 export const getUnityEnvironment = createServerFn().handler(async () => {
+  // When UNITY_BASE_URL is empty and no UNITY_VERSION fallback, Unity is not configured.
+  // Return url:'' so callers can skip loader injection and initialization.
+  if (!process.env.UNITY_BASE_URL?.trim() && !process.env.UNITY_VERSION?.trim()) {
+    return { url: '', isLocal: false };
+  }
+
   let url = `${process.env.UNITY_BASE_URL}/`;
   let isLocal = false;
 
@@ -25,8 +31,14 @@ export const getUnityEnvironment = createServerFn().handler(async () => {
     url += `${process.env.UNITY_GAME_NAME}/`;
     url += `V${versionJson.currentVersion}/`;
   } catch (e) {
-    console.warn('Falling back to local game hosting, because:', e);
-    isLocal = true;
+    if (process.env.UNITY_VERSION) {
+      // version.json not present on CDN — use hardcoded version from env
+      url += `${process.env.UNITY_GAME_NAME}/`;
+      url += `${process.env.UNITY_VERSION}/`;
+    } else {
+      console.warn('Falling back to local game hosting, because:', e);
+      isLocal = true;
+    }
   }
 
   // Apply device filter

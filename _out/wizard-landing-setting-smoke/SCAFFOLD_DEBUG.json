@@ -1,0 +1,152 @@
+{
+  "recreateCommand": "node C:/Dev/Livewall/campaign-scaffolder/cli/scaffold.js \\\n  --name=wizard-landing-setting-smoke \\\n  --cape-id=123 \\\n  --market=NL \\\n  --game=unity \\\n  --page=landing \\\n  --page=onboarding \\\n  --page=game \\\n  --page=result \\\n  --module=scoring \\\n  --yes",
+  "scaffoldedAt": "2026-05-07T08:26:25.538Z",
+  "options": {
+    "name": "wizard-landing-setting-smoke",
+    "stack": "next",
+    "capeId": "123",
+    "market": "NL",
+    "game": "unity",
+    "regMode": "after",
+    "pages": [
+      "landing",
+      "onboarding",
+      "game",
+      "result"
+    ],
+    "flow": {
+      "{{FLOW_ENTRY}}": "/landing",
+      "{{NEXT_AFTER_LANDING}}": "/onboarding",
+      "{{NEXT_AFTER_ONBOARDING}}": "/gameplay",
+      "{{NEXT_AFTER_GAME}}": "/result",
+      "{{NEXT_AFTER_RESULT}}": "/landing",
+      "{{PLAY_AGAIN_ROUTE}}": "/gameplay",
+      "{{LANDING_LEADERBOARD_ROUTE}}": "/landing",
+      "{{RESULT_LEADERBOARD_ROUTE}}": "/landing"
+    },
+    "modules": [
+      "unity",
+      "scoring"
+    ],
+    "optionalModules": [
+      "scoring"
+    ],
+    "envVarsAdded": [
+      "NEXT_PUBLIC_UNITY_BASE_URL",
+      "NEXT_PUBLIC_UNITY_GAME_NAME",
+      "NEXT_PUBLIC_UNITY_MIN_DPR",
+      "NEXT_PUBLIC_UNITY_MAX_DPR"
+    ],
+    "cspPatches": [
+      {
+        "module": "unity",
+        "patch": {
+          "script-src": [
+            "https://*.lwcf.nl",
+            "https://*.lwcf5.nl",
+            "https://lw-*.lwdev.nl"
+          ],
+          "frame-src": [
+            "'self'"
+          ]
+        }
+      }
+    ],
+    "wizard": {
+      "pageSettings": {
+        "landing": {
+          "onboardingFirstRunOnly": false
+        },
+        "onboarding": {
+          "allowSkip": false
+        },
+        "game": {
+          "timerEnabled": true,
+          "timerSec": 60
+        },
+        "result": {
+          "autoNavSec": 0
+        }
+      },
+      "flowEnabledExits": {
+        "landing.leaderboard": false,
+        "result.playAgain": true,
+        "result.leaderboard": false
+      },
+      "menuItemsEnabled": {
+        "home": true,
+        "resume": false,
+        "howToPlay": true,
+        "leaderboard": false,
+        "voucher": false,
+        "terms": true,
+        "privacy": true,
+        "faq": false,
+        "leave": true
+      },
+      "defaultLanguage": "EN",
+      "supportedLanguages": [
+        "EN"
+      ],
+      "timezone": "Europe/Brussels",
+      "createCape": false
+    },
+    "createdAt": "2026-05-07T08:26:25.538Z"
+  },
+  "moduleDetails": [
+    {
+      "id": "unity",
+      "filesCopied": [
+        {
+          "from": "modules/unity/components/IUnity.ts",
+          "to": "components/_modules/unity/IUnity.ts"
+        },
+        {
+          "from": "modules/unity/components/UnityLogger.ts",
+          "to": "components/_modules/unity/UnityLogger.ts"
+        },
+        {
+          "from": "modules/unity/components/UnityGame.tsx",
+          "to": "components/_modules/unity/UnityGame.tsx"
+        },
+        {
+          "from": "modules/unity/components/UnityContainer.tsx",
+          "to": "components/_modules/unity/UnityContainer.tsx"
+        },
+        {
+          "from": "modules/unity/app/(campaign)/gameplay/page.tsx",
+          "to": "app/(campaign)/gameplay/page.tsx",
+          "strategy": "replace"
+        },
+        {
+          "from": "modules/unity/app/(campaign)/video/page.tsx",
+          "to": "app/(campaign)/video/page.tsx",
+          "strategy": "replace"
+        },
+        {
+          "from": "modules/unity/lib/LivewallBridge.jslib",
+          "to": "public/LivewallBridge.jslib"
+        }
+      ],
+      "dirsCopied": [],
+      "packages": [],
+      "devPackages": []
+    },
+    {
+      "id": "scoring",
+      "filesCopied": [
+        {
+          "from": "modules/scoring/actions/create-session/action.ts",
+          "to": "app/actions/create-session/action.ts"
+        },
+        {
+          "from": "modules/scoring/actions/end-session/action.ts",
+          "to": "app/actions/end-session/action.ts"
+        }
+      ],
+      "dirsCopied": [],
+      "packages": [],
+      "devPackages": []
+    }
+  ]
+}

@@ -1,19 +1,22 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useCapeData } from '@hooks/useCapeData';
-import { getCapeText } from '@utils/getCapeData';
+import { useInstanceId } from '@hooks/useInstanceId';
+import { useSafeNavigation } from '@hooks/useSafeNavigation';
+import { buildCopyResolver } from '@utils/getCapeData';
 import Leaderboard from '@components/_modules/Leaderboard/Leaderboard';
 import Button from '@components/_core/Button/Button';
 
 export default function LeaderboardPage() {
-  const router       = useRouter();
+  const navigate     = useSafeNavigation();
   const { capeData } = useCapeData();
+  const instanceId   = useInstanceId('leaderboard');
+  const t            = buildCopyResolver(capeData, 'leaderboard', instanceId);
 
-  const headline = getCapeText(capeData, 'copy.leaderboard.headline', 'Leaderboard');
-  const subline  = getCapeText(capeData, 'copy.leaderboard.subline',  '');
-  const kicker   = getCapeText(capeData, 'copy.leaderboard.kicker',   'Ranking');
-  const ctaDone  = getCapeText(capeData, 'copy.leaderboard.ctaDone',  'Done');
+  const headline = t('headline', 'Leaderboard');
+  const subline  = t('subline',  '');
+  const kicker   = t('kicker',   'Ranking');
+  const ctaDone  = t('ctaDone',  'Done');
 
   return (
     <div className="campaign-screen">
@@ -34,7 +37,7 @@ export default function LeaderboardPage() {
         </section>
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.4s 0.2s ease both' }}>
-          <Button className="w-full" size="lg" onClick={() => router.push('{{NEXT_AFTER_LEADERBOARD}}')}>
+          <Button className="w-full" size="lg" onClick={() => navigate('{{NEXT_AFTER_LEADERBOARD}}')}>
             {ctaDone}
           </Button>
         </div>

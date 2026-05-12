@@ -5,7 +5,7 @@
   "engine": "unity",
 
   "cdn": {
-    "baseUrl": "https://placeholder-unity-acc.lwdev.nl",
+    "baseUrl": "https://lw-oldcptrum-toss-unity-test.lwcf.nl",
     "gameName": "Game",
     "platforms": ["desktop", "mobile"],
     "compression": "br",
@@ -54,14 +54,15 @@
   "translations": {},
 
   "env": {
-    "NEXT_PUBLIC_UNITY_BASE_URL":      "https://placeholder-unity-acc.lwdev.nl",
+    "NEXT_PUBLIC_UNITY_BASE_URL":      "https://lw-oldcptrum-toss-unity-test.lwcf.nl",
     "NEXT_PUBLIC_UNITY_GAME_NAME":     "Game",
-    "NEXT_PUBLIC_UNITY_VERSION":       "V2",
+    "NEXT_PUBLIC_UNITY_VERSION":       "V3",
     "NEXT_PUBLIC_UNITY_COMPRESSION":   "br",
     "NEXT_PUBLIC_UNITY_DEVICE_FILTER": "true",
     "NEXT_PUBLIC_UNITY_NO_CACHE":      "true",
     "NEXT_PUBLIC_UNITY_MIN_DPR":       "1.5",
-    "NEXT_PUBLIC_UNITY_MAX_DPR":       "3"
+    "NEXT_PUBLIC_UNITY_MAX_DPR":       "3",
+    "NEXT_PUBLIC_UNITY_VIEW_MODE":     "none"
   },
 
   "notes": [

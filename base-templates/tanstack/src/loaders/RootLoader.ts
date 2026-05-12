@@ -2,6 +2,7 @@ import { getCapeCopy, getCapeCopyMapUnity, getCapeProperty } from '~/server/cape
 import { getBaseUrl, getUnityEnvironment } from '~/utils/Functions.ts';
 import LogoImage from '~/assets/images/logo.png';
 import { getBlurUri } from '~/server/ImageBlurUri.ts';
+import { getNonce } from '~/server/middleware/SecurityMiddleware.ts';
 
 export async function loadRootData(language: string) {
   const [
@@ -38,5 +39,6 @@ export async function loadRootData(language: string) {
     logoPlaceholder: logoPlaceholder,
     unityEnvironment: unityEnv,
     baseUrl: getBaseUrl(),
+    nonce: getNonce(),
   };
 }

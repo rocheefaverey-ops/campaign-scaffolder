@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { DEFAULT_CONFIG, type ScaffoldConfig } from './shared/config.ts';
+import { type ScaffoldConfig } from './shared/config.ts';
+import { initialScaffoldConfig } from './shared/projectNameDefaults.ts';
 import { fromScaffolded } from './shared/fromScaffolded.ts';
 import { ping, getAuthStatus, loadExisting, type AuthStatus } from './bridge.ts';
 import StepStack    from './steps/StepStack.tsx';
 import StepProject  from './steps/StepProject.tsx';
 import StepPages    from './steps/StepPages.tsx';
+import StepGames    from './steps/StepGames.tsx';
 import StepCape     from './steps/StepCape.tsx';
 import StepBuild    from './steps/StepBuild.tsx';
 
@@ -12,16 +14,17 @@ const STEPS = [
   { id: 'stack',   label: 'Stack',   Component: StepStack },
   { id: 'project', label: 'Project', Component: StepProject },
   { id: 'pages',   label: 'Pages',   Component: StepPages },
-  // Modules and Branding will slot in here as they're built.
+  { id: 'games',   label: 'Game',    Component: StepGames },
   { id: 'cape',    label: 'CAPE',    Component: StepCape },
   { id: 'build',   label: 'Build',   Component: StepBuild },
 ] as const;
 
 export default function App() {
-  const [config, setConfig]     = useState<ScaffoldConfig>(DEFAULT_CONFIG);
-  const [stepIdx, setStepIdx]   = useState(0);
-  const [serverUp, setServerUp] = useState<boolean | null>(null);
-  const [auth, setAuth]         = useState<AuthStatus | null>(null);
+  const [config, setConfig]                 = useState<ScaffoldConfig>(() => initialScaffoldConfig());
+  const [stepIdx, setStepIdx]               = useState(0);
+  const [maxReachedStep, setMaxReachedStep] = useState(0);
+  const [serverUp, setServerUp]             = useState<boolean | null>(null);
+  const [auth, setAuth]                     = useState<AuthStatus | null>(null);
 
   useEffect(() => { ping().then(setServerUp); }, []);
 
@@ -43,24 +46,29 @@ export default function App() {
   const next = () => {
     const err = validateCurrent();
     if (err) { alert(err); return; }
-    setStepIdx((i) => Math.min(i + 1, STEPS.length - 1));
+    const newIdx = Math.min(stepIdx + 1, STEPS.length - 1);
+    setMaxReachedStep((m) => Math.max(m, newIdx));
+    setStepIdx(newIdx);
   };
+
   const back = () => setStepIdx((i) => Math.max(i - 1, 0));
+
+  const jumpToStep = (i: number) => {
+    if (i !== stepIdx && i <= maxReachedStep) setStepIdx(i);
+  };
 
   return (
     <div className="app">
       <header className="app__head">
         <h1>Livewall Campaign Wizard <span>· scaffold a new campaign</span></h1>
         <div className="app__head-right">
-          <OpenExistingButton onLoaded={(cfg) => { setConfig(cfg); setStepIdx(STEPS.length - 1); }} />
+          <OpenExistingButton onLoaded={(cfg) => {
+            setConfig(cfg);
+            const last = STEPS.length - 1;
+            setMaxReachedStep(last);
+            setStepIdx(last);
+          }} />
           <AuthBadge auth={auth} />
-          <ul className="app__steps">
-            {STEPS.map((s, i) => (
-              <li key={s.id} className={i === stepIdx ? 'is-current' : i < stepIdx ? 'is-done' : ''}>
-                {i + 1}. {s.label}
-              </li>
-            ))}
-          </ul>
         </div>
       </header>
 
@@ -75,13 +83,41 @@ export default function App() {
           setConfig={setConfig}
           goToStep={(id: string) => {
             const i = STEPS.findIndex((s) => s.id === id);
-            if (i >= 0) setStepIdx(i);
+            if (i >= 0) {
+              setMaxReachedStep((m) => Math.max(m, i));
+              setStepIdx(i);
+            }
           }}
         />
       </main>
 
       <footer className="app__foot">
         <button className="btn btn--ghost" onClick={back} disabled={isFirst}>← Back</button>
+
+        <nav className="app__stepper" aria-label="Wizard steps">
+          {STEPS.flatMap((s, i) => {
+            const isDone    = i < stepIdx;
+            const isCurrent = i === stepIdx;
+            const isLocked  = i > maxReachedStep;
+            const btn = (
+              <button
+                key={s.id}
+                className={`app__step-btn${isCurrent ? ' is-current' : isDone ? ' is-done' : ''}`}
+                onClick={() => jumpToStep(i)}
+                disabled={isLocked || isCurrent}
+                aria-current={isCurrent ? 'step' : undefined}
+                title={isLocked ? 'Complete previous steps to unlock' : s.label}
+              >
+                <span className="app__step-num">{i + 1}</span>
+                <span className="app__step-label">{s.label}</span>
+              </button>
+            );
+            return i > 0
+              ? [<span key={`sep-${i}`} className="app__step-sep" aria-hidden="true" />, btn]
+              : [btn];
+          })}
+        </nav>
+
         {!isLast && (
           <button className="btn btn--primary" onClick={next}>Next →</button>
         )}

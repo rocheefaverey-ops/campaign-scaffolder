@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { STACK_OPTIONS, type StackOption, type StepProps } from '../shared/config.ts';
+import { autoNameVersion } from '../shared/projectNameDefaults.ts';
 
 export default function StepStack({ config, setConfig }: StepProps) {
   const [openInfoIdx, setOpenInfoIdx] = useState<number | null>(null);
@@ -7,8 +8,8 @@ export default function StepStack({ config, setConfig }: StepProps) {
   return (
     <>
       <div>
-        <h2 className="step__title">What are you building?</h2>
-        <p className="step__hint">Pick a stack + game engine. You can change modules later — this only affects the base template.</p>
+        <h2 className="step__title">Engine</h2>
+        <p className="step__hint">Pick the runtime engine and base stack. You can change modules later.</p>
       </div>
 
       <div className="card-grid">
@@ -19,7 +20,11 @@ export default function StepStack({ config, setConfig }: StepProps) {
             <div key={i} className="stack-cell">
               <button
                 className={`card${selected ? ' is-selected' : ''}`}
-                onClick={() => setConfig({ ...config, stack: opt.id, game: opt.engine })}
+                onClick={() => {
+                  const v = autoNameVersion(config.name);
+                  const name = v ? `${opt.id}-${opt.engine}-scaf-v${v}` : config.name;
+                  setConfig({ ...config, stack: opt.id, game: opt.engine, name });
+                }}
                 style={{ position: 'relative' }}
               >
                 <div className="card__label">{opt.label}</div>
@@ -32,7 +37,6 @@ export default function StepStack({ config, setConfig }: StepProps) {
                   aria-label={`More info about ${opt.label}`}
                   aria-expanded={showInfo}
                   onClick={(e) => {
-                    // Don't propagate to the card's onClick — info button doesn't select the stack.
                     e.stopPropagation();
                     setOpenInfoIdx(showInfo ? null : i);
                   }}
@@ -62,7 +66,7 @@ function StackInfoPanel({ opt, onClose }: { opt: StackOption; onClose: () => voi
     <div className="stack-info-panel">
       <header className="stack-info-panel__head">
         <strong>{opt.label}</strong>
-        <button className="stack-info-panel__close" aria-label="Close" onClick={onClose}>×</button>
+        <button className="stack-info-panel__close" aria-label="Close" onClick={onClose}>x</button>
       </header>
 
       <p className="step__hint">{opt.hint}</p>
@@ -76,7 +80,7 @@ function StackInfoPanel({ opt, onClose }: { opt: StackOption; onClose: () => voi
 
       <div className="stack-info-panel__section">
         <h5>Reference projects</h5>
-        <p className="step__hint">{opt.references.join(' · ')}</p>
+        <p className="step__hint">{opt.references.join(' / ')}</p>
       </div>
 
       {opt.notes && (

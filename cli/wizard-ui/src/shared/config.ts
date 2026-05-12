@@ -127,6 +127,8 @@ export interface StepProps {
 export interface ScaffoldConfig {
   stack:        Stack;
   game:         Engine;
+  /** Selected game configuration from games/ folder. */
+  gameId?:      string;
   name:         string;
   /** When true, a fresh CAPE campaign is created and capeId is ignored. */
   createCape:   boolean;
@@ -221,21 +223,30 @@ export interface SettingDef {
  *   ✓ = the page actually reads this value at runtime today
  *   ◌ = scheduled — value is persisted to CAPE but no page consumes it yet
  */
+const VIDEO_PAGE_SETTINGS: SettingDef[] = [
+  { key: 'mode', label: 'Mode', kind: 'select', default: 'loadingScreen',
+    options: [
+      { value: 'intro',         label: 'Intro — plays once' },
+      { value: 'loadingScreen', label: 'Loading screen — loops until game ready' },
+    ],
+    hint: '✓ Loading screen mode waits for the game to finish loading; intro plays once.',
+  },
+  { key: 'alwaysSkip',       label: 'Always allow skip', kind: 'boolean', default: false,
+    hint: '✓ Show the skip button immediately. Overrides minPlaybackSec and the loading-screen wait.' },
+  { key: 'minPlaybackSec',   label: 'Min playback',   kind: 'number', default: 3, min: 0, max: 30, unit: 'sec',
+    hint: '✓ Don\'t allow skip before this many seconds. Ignored when "Always allow skip" is on.' },
+  { key: 'readyFallbackSec', label: 'Ready fallback', kind: 'number', default: 8, min: 1, max: 60, unit: 'sec',
+    hint: '✓ Auto-allow skip if the game-ready signal never fires.' },
+];
+
 export const PAGE_SETTINGS_SCHEMA: Record<string, SettingDef[]> = {
-  video: [
-    { key: 'mode', label: 'Mode', kind: 'select', default: 'loadingScreen',
-      options: [
-        { value: 'intro',         label: 'Intro — plays once' },
-        { value: 'loadingScreen', label: 'Loading screen — loops until game ready' },
-      ],
-      hint: '✓ Loading screen mode waits for the game to finish loading; intro plays once.',
-    },
-    { key: 'alwaysSkip',       label: 'Always allow skip', kind: 'boolean', default: false,
-      hint: '✓ Show the skip button immediately. Overrides minPlaybackSec and the loading-screen wait.' },
-    { key: 'minPlaybackSec',   label: 'Min playback',   kind: 'number', default: 3, min: 0, max: 30, unit: 'sec',
-      hint: '✓ Don\'t allow skip before this many seconds. Ignored when "Always allow skip" is on.' },
-    { key: 'readyFallbackSec', label: 'Ready fallback', kind: 'number', default: 8, min: 1, max: 60, unit: 'sec',
-      hint: '✓ Auto-allow skip if the game-ready signal never fires.' },
+  video: VIDEO_PAGE_SETTINGS,
+  'intro-video': VIDEO_PAGE_SETTINGS,
+  'loading-video': VIDEO_PAGE_SETTINGS,
+  'ad-video': VIDEO_PAGE_SETTINGS,
+  landing: [
+    { key: 'onboardingFirstRunOnly', label: 'Onboarding on first run only', kind: 'boolean', default: true,
+      hint: '✓ Returning players skip onboarding and continue directly to the next route.' },
   ],
   onboarding: [
     { key: 'allowSkip', label: 'Allow skip', kind: 'boolean', default: false,
@@ -263,7 +274,7 @@ export const PAGE_SETTINGS_SCHEMA: Record<string, SettingDef[]> = {
     { key: 'codeLength', label: 'Voucher code length', kind: 'number',  default: 8, min: 4, max: 16,
       hint: '✓ Truncate / pad the displayed code to this many characters.' },
   ],
-  // Pages without settings (landing, leaderboard) are simply omitted here —
+  // Pages without settings (leaderboard) are simply omitted here —
   // the settings panel skips pages with no schema entry.
 };
 
@@ -363,6 +374,12 @@ export const ALL_PAGES: PageMeta[] = [
     ] },
   { id: 'video',       label: 'Video',       hint: 'Intro / brand video, skippable.',   route: '/video',       requires: 'video',
     exits: [{ key: 'next', label: 'On end / skip',   token: 'NEXT_AFTER_VIDEO' }] },
+  { id: 'intro-video',       label: 'Intro video',       hint: 'Intro brand video before the game starts.',   route: '/intro-video',       requires: 'video',
+    exits: [{ key: 'next', label: 'On end / skip',   token: 'NEXT_AFTER_INTRO_VIDEO' }] },
+  { id: 'loading-video',     label: 'Loading video',     hint: 'Looping loading screen until the game is ready.', route: '/loading-video', requires: 'video',
+    exits: [{ key: 'next', label: 'On end / skip',   token: 'NEXT_AFTER_LOADING_VIDEO' }] },
+  { id: 'ad-video',          label: 'Ad video',          hint: 'Interstitial ad-style video page.',            route: '/ad-video',      requires: 'video',
+    exits: [{ key: 'next', label: 'On end / skip',   token: 'NEXT_AFTER_AD_VIDEO' }] },
   { id: 'onboarding',  label: 'Onboarding',  hint: 'How-to-play steps, multi-slide.',   route: '/onboarding',
     exits: [{ key: 'next', label: 'Final CTA',       token: 'NEXT_AFTER_ONBOARDING' }] },
   { id: 'register',    label: 'Register',    hint: 'Player registration form.',         route: '/register',    requires: 'registration',
@@ -490,14 +507,14 @@ export interface MenuItemDef {
 
 export const MENU_ITEMS: MenuItemDef[] = [
   { id: 'home',        label: 'Home',           target: '/landing',     kind: 'primary',   defaultEnabled: true  },
-  { id: 'resume',      label: 'Resume game',    target: '/gameplay',    kind: 'secondary', defaultEnabled: true  },
+  { id: 'resume',      label: 'Resume game',    target: '/gameplay',    kind: 'secondary', defaultEnabled: false },
   { id: 'howToPlay',   label: 'How to play',    target: '/onboarding',  kind: 'secondary', defaultEnabled: true  },
   { id: 'leaderboard', label: 'Leaderboard',   target: '/leaderboard', kind: 'secondary', defaultEnabled: false },
   { id: 'voucher',     label: 'My voucher',     target: '/voucher',     kind: 'secondary', defaultEnabled: false },
   { id: 'terms',       label: 'Terms',          target: '/terms',       kind: 'ghost',     defaultEnabled: true  },
-  { id: 'privacy',     label: 'Privacy',        target: '/privacy',     kind: 'ghost',     defaultEnabled: false },
+  { id: 'privacy',     label: 'Privacy',        target: '/privacy',     kind: 'ghost',     defaultEnabled: true  },
   { id: 'faq',         label: 'FAQ',             target: '/faq',         kind: 'ghost',     defaultEnabled: false },
-  { id: 'leave',       label: 'Leave campaign', target: '/',            kind: 'ghost',     defaultEnabled: false },
+  { id: 'leave',       label: 'Leave campaign', target: '/',            kind: 'ghost',     defaultEnabled: true  },
 ];
 
 export function defaultMenuItemsEnabled(): Record<string, boolean> {

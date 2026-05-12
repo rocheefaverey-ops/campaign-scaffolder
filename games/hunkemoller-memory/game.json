@@ -1,0 +1,7 @@
+{
+  "id": "hunkemoller-memory",
+  "name": "Hunkemöller Memory",
+  "description": "Card matching memory game — card images driven from CAPE.",
+  "engine": "memory",
+  "stack": "next"
+}

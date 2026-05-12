@@ -1,10 +1,10 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useCapeData } from '@hooks/useCapeData';
 import { useGameContext } from '@hooks/useGameContext';
+import { useSafeNavigation } from '@hooks/useSafeNavigation';
 import { buildUnityTranslations } from '@lib/game-bridge/cape-translations';
 import type { IGameResult, IUnityInput } from '@lib/game-bridge/game-bridge.types';
 
@@ -14,7 +14,7 @@ const R3FCanvas = dynamic(
 );
 
 export default function GameplayPage() {
-  const router = useRouter();
+  const navigate = useSafeNavigation();
   const { capeData, currentLanguage } = useCapeData();
   const { isMuted, onboardingCompleted, setScore } = useGameContext();
 
@@ -27,7 +27,7 @@ export default function GameplayPage() {
 
   const handleEnd = (result: IGameResult) => {
     setScore(result.score ?? 0);
-    router.push('{{NEXT_AFTER_GAME}}');
+    navigate('{{NEXT_AFTER_GAME}}');
   };
 
   return (

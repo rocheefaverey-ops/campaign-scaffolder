@@ -67,6 +67,7 @@ export default function StepCape({ config, setConfig }: StepProps) {
             value={config.capeId}
             onChange={(e) => setConfig({ ...config, capeId: e.target.value.trim() })}
           />
+          <p className="step__hint">Existing campaign to bind to. Leave blank to create a new one in the next step.</p>
         </div>
       )}
     </>

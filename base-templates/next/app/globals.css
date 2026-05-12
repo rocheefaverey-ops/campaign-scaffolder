@@ -1,5 +1,49 @@
 @import 'tailwindcss';
 
+@font-face {
+  font-family: 'Livewall';
+  src: url('/fonts/Livewall.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Stabil Grotesk';
+  src: url('/fonts/StabilGrotesk-Regular.woff2') format('woff2'),
+       url('/fonts/StabilGrotesk-Regular.woff')  format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Stabil Grotesk';
+  src: url('/fonts/StabilGrotesk-RegularItalic.woff2') format('woff2'),
+       url('/fonts/StabilGrotesk-RegularItalic.woff')  format('woff');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Stabil Grotesk';
+  src: url('/fonts/StabilGrotesk-Medium.woff2') format('woff2'),
+       url('/fonts/StabilGrotesk-Medium.woff')  format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Stabil Grotesk';
+  src: url('/fonts/StabilGrotesk-Bold.woff2') format('woff2'),
+       url('/fonts/StabilGrotesk-Bold.woff')  format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ──────────────────────────────────────────────────────────────────────────
  * Livewall house palette — the scaffolder baseline.
  * CAPE `settings.branding.*` values override these at runtime via
@@ -8,46 +52,47 @@
  * ────────────────────────────────────────────────────────────────────────── */
 
 @theme {
-  --font-family-default: var(--default-font-family, 'Inter', 'Segoe UI', Arial, sans-serif);
-  --color-primary:       #CDFF00;
-  --color-secondary:     #0E0E0E;
-  --color-tertiary:      #FAFAFA;
+  --font-family-default: var(--default-font-family, 'Stabil Grotesk', 'Inter', 'Segoe UI', Arial, sans-serif);
+  --color-primary:       #D1FF00;
+  --color-secondary:     #1A1A1A;
+  --color-tertiary:      #EEF1E9;
   --color-statusRed:     #E82727;
 }
 
 :root {
-  --color-primary:   #CDFF00;   /* Livewall lime */
-  --color-secondary: #0E0E0E;   /* Livewall ink */
-  --color-tertiary:  #FAFAFA;   /* Surface off-white */
+  --color-primary:   #D1FF00;   /* Engagement Blink / Livewall lime */
+  --color-secondary: #1A1A1A;   /* Livewall ink */
+  --color-tertiary:  #EEF1E9;   /* Pale green surface */
   --color-statusRed: #E82727;
 
-  --default-font-family: var(--font-inter), 'Inter', 'Segoe UI', Arial, sans-serif;
-  --display-font-family: var(--font-inter), 'Inter', 'Segoe UI', Arial, sans-serif;
+  --default-font-family: 'Stabil Grotesk', 'Inter', 'Segoe UI', Arial, sans-serif;
+  --display-font-family: 'Stabil Grotesk', 'Inter', 'Segoe UI', Arial, sans-serif;
+  --brand-font-family: 'Livewall', 'Stabil Grotesk', sans-serif;
 
-  --surface-base:     #FAFAFA;
+  --surface-base:     #FAFDF5;
   --surface-elevated: rgba(255, 255, 255, 0.80);
   --surface-strong:   rgba(255, 255, 255, 0.96);
-  --surface-ink:      #0E0E0E;
+  --surface-ink:      #1A1A1A;
   --surface-lime:     var(--color-primary);
 
-  --line-soft:   rgba(14, 14, 14, 0.08);
-  --line-strong: rgba(14, 14, 14, 0.18);
+  --line-soft:   rgba(26, 26, 26, 0.08);
+  --line-strong: rgba(26, 26, 26, 0.18);
 
-  --text-primary:   #0E0E0E;
-  --text-secondary: rgba(14, 14, 14, 0.64);
-  --text-inverse:   #FAFAFA;
+  --text-primary:   #000000;
+  --text-secondary: #787878;
+  --text-inverse:   #FAFDF5;
 
-  --shadow-soft: 0 18px 48px rgba(14, 14, 14, 0.10);
-  --shadow-card: 0 10px 30px rgba(14, 14, 14, 0.08);
+  --shadow-soft: 0 18px 48px rgba(26, 26, 26, 0.10);
+  --shadow-card: 0 10px 30px rgba(26, 26, 26, 0.08);
   --shadow-lime: 0 14px 38px color-mix(in srgb, var(--color-primary) 45%, transparent);
 
   --gradient-primary-glow: radial-gradient(ellipse 120% 80% at 50% -10%, color-mix(in srgb, var(--color-primary) 55%, transparent) 0%, transparent 70%);
   --campaign-ambient:
     radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 32%, transparent), transparent 38%),
-    radial-gradient(circle at 85% 15%, rgba(14, 14, 14, 0.06), transparent 32%),
-    linear-gradient(180deg, #FAFAFA 0%, #F2F2F2 100%);
+    radial-gradient(circle at 85% 15%, rgba(26, 26, 26, 0.06), transparent 32%),
+    linear-gradient(180deg, #FAFDF5 0%, #EEF1E9 100%);
   --campaign-image-wash:
-    linear-gradient(180deg, rgba(250, 250, 250, 0.32) 0%, rgba(240, 240, 240, 0.20) 38%, rgba(235, 235, 235, 0.62) 100%);
+    linear-gradient(180deg, rgba(250, 253, 245, 0.32) 0%, rgba(238, 241, 233, 0.20) 38%, rgba(232, 234, 227, 0.62) 100%);
 }
 
 *,
@@ -83,6 +128,11 @@ a,
   touch-action: manipulation;
 }
 
+img {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
 button {
   background: none;
   border: none;
@@ -112,15 +162,20 @@ img {
 @utility dvh { height: 100dvh; }
 
 .desktop-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4rem;
+  display: grid;
+  place-items: center;
   width: 100vw;
-  height: 100vh;
-  position: relative;
+  height: 100dvh;
   overflow: hidden;
-  background: var(--campaign-ambient);
+  position: relative;
+  background: #0E0E0E;
+  padding: clamp(2rem, 4vw, 4rem);
+}
+
+@media (min-width: 769px) {
+  .desktop-wrapper[data-enabled="true"] {
+    display: grid;
+  }
 }
 
 .desktop-wrapper__bg {
@@ -131,35 +186,56 @@ img {
   background-repeat: no-repeat;
 }
 
+.desktop-wrapper__bg--video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .desktop-wrapper__overlay {
   position: absolute;
   inset: 0;
+  pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(247, 243, 236, 0.92) 0%, rgba(247, 243, 236, 0.74) 35%, rgba(247, 243, 236, 0.2) 100%);
+    linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.68) 42%, rgba(0, 0, 0, 0.78) 100%),
+    radial-gradient(ellipse 80% 70% at 72% 48%, color-mix(in srgb, var(--color-primary) 18%, transparent), transparent 64%);
+}
+
+.desktop-wrapper__stage {
+  position: relative;
+  z-index: 1;
+  width: min(1120px, 100%);
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(340px, 414px);
+  align-items: center;
+  justify-content: center;
+  gap: clamp(3rem, 7vw, 7rem);
 }
 
 .desktop-wrapper__info {
   position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5rem;
-  max-width: 320px;
+  justify-content: center;
+  gap: 1.35rem;
+  width: 100%;
   text-align: center;
+  padding: 2rem 0;
 }
 
 .desktop-wrapper__logo {
   height: 48px;
   width: auto;
   object-fit: contain;
+  filter: brightness(0) invert(1);
 }
 
 .desktop-wrapper__description {
-  color: var(--text-primary);
+  color: #fff;
   font-size: 1.125rem;
   line-height: 1.5;
-  opacity: 0.78;
+  opacity: 0.9;
 }
 
 .desktop-wrapper__qr-container {
@@ -170,10 +246,10 @@ img {
 }
 
 .desktop-wrapper__qr-box {
-  background: rgba(255, 255, 255, 0.88);
-  border-radius: 20px;
+  background: #fff;
+  border-radius: 12px;
   padding: 12px;
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
 }
 
 .desktop-wrapper__qr-img {
@@ -183,29 +259,67 @@ img {
 }
 
 .desktop-wrapper__qr-label {
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 0.875rem;
 }
 
 .desktop-wrapper__phone {
   position: relative;
-  z-index: 1;
+  justify-self: center;
 }
 
 .desktop-wrapper__phone-frame {
-  width: 375px;
-  height: 667px;
-  border-radius: 14px;
+  width: min(414px, 28vw);
+  min-width: 360px;
+  aspect-ratio: 375 / 667;
+  height: auto;
+  max-height: calc(100dvh - 5rem);
+  border-radius: 24px;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 24px 80px rgba(14, 14, 14, 0.18), 0 0 0 1px rgba(14, 14, 14, 0.08);
-  border: 1px solid rgba(14, 14, 14, 0.1);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.desktop-wrapper__app-shell {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+@media (max-width: 1040px) {
+  .desktop-wrapper__stage {
+    gap: 2rem;
+  }
+
+  .desktop-wrapper__phone-frame {
+    min-width: 330px;
+  }
 }
 
 @media (max-width: 768px) {
+  .desktop-wrapper {
+    display: block;
+    padding: 0;
+  }
+
+  .desktop-wrapper__stage {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .desktop-wrapper__info {
+    display: none;
+  }
+
   .desktop-wrapper__phone-frame {
     width: 100vw;
+    min-width: 0;
     height: 100dvh;
+    max-height: none;
+    aspect-ratio: auto;
     border-radius: 0;
     box-shadow: none;
     border: none;
@@ -580,6 +694,8 @@ input[type='radio'] {
   height: 100%;
   object-fit: cover;
   z-index: 0;
+  pointer-events: none;
+  -webkit-touch-callout: none;
 }
 
 .campaign-hero-shade {
@@ -614,7 +730,6 @@ input[type='radio'] {
   width: auto;
   max-width: 60vw;
   object-fit: contain;
-  filter: drop-shadow(0 2px 14px rgba(14,14,14,0.42));
 }
 
 /* Pin the headline/body to the lower third — logo top, content above CTA. */

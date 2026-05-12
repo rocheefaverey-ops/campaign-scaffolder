@@ -1,20 +1,22 @@
 'use client';
 
 import { useCallback, useContext, useEffect, useRef, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { UnityContext } from '@components/_modules/unity/UnityGame';
 import { useCapeData } from '@hooks/useCapeData';
 import { useGameContext } from '@hooks/useGameContext';
+import { useSafeNavigation } from '@hooks/useSafeNavigation';
 import { buildUnityTranslations } from '@lib/game-bridge/cape-translations';
 import { UnityNavigationType, UnityTrackingType } from '@lib/game-bridge/game-bridge.types';
+import { getCapeText } from '@utils/getCapeData';
 import type { IUnityNavigation, IUnityTracking, IGameResult } from '@lib/game-bridge/game-bridge.types';
 
 export default function GameplayPage() {
   const ctx = useContext(UnityContext);
-  const router = useRouter();
+  const navigate = useSafeNavigation();
   const { capeData } = useCapeData();
   const { isMuted, onboardingCompleted, setScore, setOnboardingCompleted } = useGameContext();
   const [, startTransition] = useTransition();
+  const targetScene = getCapeText(capeData, 'settings.game.sceneKey', 'Racing');
 
   const booted = useRef(false);
   const started = useRef(false);
@@ -35,7 +37,7 @@ export default function GameplayPage() {
       setScore(0);
     }
     ctx?.setUnityVisible(false);
-    router.replace('/result');
+    navigate('/result', 'replace');
   };
 
   const stableEndListener = useRef<(data: unknown) => void>(
@@ -52,7 +54,7 @@ export default function GameplayPage() {
       const payload = JSON.parse(String(data)) as IUnityNavigation;
       switch (payload.type) {
         case UnityNavigationType.INTERNAL_URL:
-          if (payload.target) router.replace(payload.target);
+          if (payload.target) navigate(payload.target, 'replace');
           break;
         case UnityNavigationType.EXTERNAL_URL:
           if (payload.target) window.open(payload.target, '_blank', 'noopener,noreferrer');
@@ -131,6 +133,16 @@ export default function GameplayPage() {
     if (!ctx || booted.current) return;
     booted.current = true;
 
+    const wasPreloadedFromVideo = sessionStorage.getItem('unity-started-from-video') === 'true';
+
+    if (wasPreloadedFromVideo) {
+      started.current = true;
+      sessionStorage.removeItem('unity-started-from-video');
+      ctx.setUnityVisible(true);
+      ctx.startGame(true);
+      return;
+    }
+
     const translations = buildUnityTranslations(
       capeData,
       process.env.NEXT_PUBLIC_CAPE_LANGUAGE ?? 'EN'
@@ -139,7 +151,7 @@ export default function GameplayPage() {
     ctx.setData({ translations, playTutorial: !onboardingCompleted });
 
     startTransition(async () => {
-      ctx.setTargetScene('{{UNITY_DEFAULT_SCENE}}');
+      ctx.setTargetScene(targetScene);
       await ctx.initializeUnity(true);
       // sendSetScene uses skipPreload:true — works for builds that don't fire
       // addressableLoaded. For builds that do, use preloadScene() instead.
@@ -159,5 +171,5 @@ export default function GameplayPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMuted]);
 
-  return <div className="w-full h-full bg-black" />;
+  return <div className="pointer-events-none h-full w-full" />;
 }

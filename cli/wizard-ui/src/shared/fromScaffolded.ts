@@ -29,6 +29,10 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
   // ── Strings & primitives — fall back to DEFAULT_CONFIG when missing.
   const stack             = pickString(raw, 'stack')             as Stack   ?? DEFAULT_CONFIG.stack;
   const game              = pickString(raw, 'game')              as Engine  ?? DEFAULT_CONFIG.game;
+  const selectedGame = (raw.selectedGame && typeof raw.selectedGame === 'object')
+    ? raw.selectedGame as Record<string, unknown>
+    : {};
+  const gameId            = pickString(wizard, 'gameId') ?? pickString(selectedGame, 'id');
   const name              = pickString(raw, 'name')                          ?? DEFAULT_CONFIG.name;
   const market            = pickString(raw, 'market')            as Market  ?? DEFAULT_CONFIG.market;
   const capeId            = pickString(raw, 'capeId')                        ?? DEFAULT_CONFIG.capeId;
@@ -69,6 +73,7 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
   return {
     stack,
     game,
+    gameId,
     name,
     createCape,
     capeTitle,

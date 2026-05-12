@@ -1,12 +1,12 @@
 'use client';
 
 import { useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useGameContext } from '@hooks/useGameContext';
+import { useSafeNavigation } from '@hooks/useSafeNavigation';
 import MemoryGame from '@components/_modules/MemoryGame/MemoryGame';
 
 export default function GameplayPage() {
-  const router = useRouter();
+  const navigate = useSafeNavigation();
   const { setScore, setGameIsReady } = useGameContext();
 
   useEffect(() => {
@@ -16,8 +16,8 @@ export default function GameplayPage() {
 
   const handleWin = useCallback((score: number) => {
     setScore(score);
-    router.push('{{NEXT_AFTER_GAME}}');
-  }, [setScore, router]);
+    navigate('{{NEXT_AFTER_GAME}}');
+  }, [setScore, navigate]);
 
   return (
     <main className="relative h-full w-full overflow-hidden bg-black">

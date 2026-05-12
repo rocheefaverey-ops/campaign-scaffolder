@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { type StepProps } from '../shared/config.ts';
 import { listGames, type GameInfo } from '../bridge.ts';
+import { autoNameVersion } from '../shared/projectNameDefaults.ts';
 
 export default function StepGames({ config, setConfig }: StepProps) {
   const [openInfoIdx, setOpenInfoIdx] = useState<number | null>(null);
@@ -14,9 +15,16 @@ export default function StepGames({ config, setConfig }: StepProps) {
     return () => { cancelled = true; };
   }, [config.stack]);
 
+  // Clear a stale gameId when the user switches engine (e.g. Unity→R3F).
+  useEffect(() => {
+    if (config.gameId !== undefined) {
+      const match = games.find(g => g.id === config.gameId);
+      if (match && match.engine !== config.game) setConfig({ ...config, gameId: undefined });
+    }
+  }, [config.game]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const selectedGameId = config.gameId;
-  const engineGames = games.filter((game) => game.engine === config.game);
-  const visibleGames = engineGames.length > 0 ? engineGames : games;
+  const visibleGames   = games.filter((game) => game.engine === config.game);
 
   return (
     <>
@@ -24,19 +32,19 @@ export default function StepGames({ config, setConfig }: StepProps) {
         <h2 className="step__title">Game</h2>
         <p className="step__hint">
           Select a pre-built game definition from <code>games/*/game.json</code>.
-          Leave empty to use the selected engine without game-specific defaults.
+          Leave empty to use the {config.game} engine without game-specific defaults.
         </p>
       </div>
 
       <div className="card-grid">
-        {/* "No game" option */}
+        {/* "No specific game" option */}
         <div key="none" className="stack-cell">
           <button
             className={`card${selectedGameId === undefined ? ' is-selected' : ''}`}
             onClick={() => setConfig({ ...config, gameId: undefined })}
           >
             <div className="card__label">No specific game</div>
-            <div className="card__hint">Use {config.game || 'default'} engine settings only</div>
+            <div className="card__hint">Use {config.game} engine settings only</div>
           </button>
         </div>
 
@@ -47,7 +55,11 @@ export default function StepGames({ config, setConfig }: StepProps) {
             <div key={game.id} className="stack-cell">
               <button
                 className={`card${selected ? ' is-selected' : ''}`}
-                onClick={() => setConfig({ ...config, gameId: game.id, game: game.engine as any })}
+                onClick={() => {
+                  const v = autoNameVersion(config.name);
+                  const name = v ? `${config.stack}-${config.game}-${game.id}-scaf-v${v}` : config.name;
+                  setConfig({ ...config, gameId: game.id, game: game.engine as any, name });
+                }}
               >
                 <div className="card__label">{game.name}</div>
                 <div className="card__hint">{game.description}</div>

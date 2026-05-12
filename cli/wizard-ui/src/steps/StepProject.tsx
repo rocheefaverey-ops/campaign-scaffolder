@@ -50,6 +50,7 @@ export default function StepProject({ config, setConfig }: StepProps) {
             <option value="FR">FR — France</option>
             <option value="DE">DE — Germany</option>
           </select>
+          <p className="step__hint">Two-letter country code. Drives default language, GDPR copy, and CAPE locale. Example: NL</p>
         </div>
 
         <div className="field">
@@ -98,6 +99,9 @@ export default function StepProject({ config, setConfig }: StepProps) {
             value={config.outputDir ?? ''}
             onChange={(e) => setConfig({ ...config, outputDir: e.target.value || undefined })}
           />
+          <p className="step__hint">
+            Where to scaffold the project. Default ../{config.name || '{name}'} resolves to a sibling project folder next to this scaffolder.
+          </p>
         </div>
       </div>
 

@@ -18,6 +18,7 @@ const config: Config = {
       },
       fontFamily: {
         default: ['var(--default-font-family)', 'sans-serif'],
+        livewall: ['var(--brand-font-family)', 'sans-serif'],
       },
     },
   },

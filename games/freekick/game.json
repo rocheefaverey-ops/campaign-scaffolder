@@ -1,0 +1,7 @@
+{
+  "id": "freekick",
+  "name": "Freekick",
+  "description": "2D football freekick arcade game — aim and shoot to score.",
+  "engine": "phaser",
+  "stack": "next"
+}

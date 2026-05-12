@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ScaffoldConfig, BuildMode, StepProps } from '../shared/config.ts';
+import { pageMeta, type ScaffoldConfig, type BuildMode, type StepProps, type PageInstance } from '../shared/config.ts';
+import { rememberFreshScaffoldCreated } from '../shared/projectNameDefaults.ts';
 import { startScaffold, logoutCape, getGitStatus, type LogEvent, type GitStatus } from '../bridge.ts';
 
 type BuildState =
@@ -65,6 +66,9 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
       : config;
     const handle = startScaffold(submitConfig, (e) => setLines((prev) => [...prev, e]));
     handle.done.then((res) => {
+      if (res.ok && submitConfig.buildMode === 'create') {
+        rememberFreshScaffoldCreated(submitConfig.name);
+      }
       setState({ kind: 'done', ok: res.ok, outputDir: res.outputDir });
     });
   };
@@ -304,6 +308,7 @@ function GitPanel({ git, mode, safety, override, setOverride }:
 }
 
 function Summary({ config }: { config: ScaffoldConfig }) {
+  const resolvedModules = resolveModulesForSummary(config);
   const rows: Array<[string, string]> = [
     ['Stack',     `${config.stack} + ${config.game}`],
     ['Name',      config.name || '—'],
@@ -311,8 +316,8 @@ function Summary({ config }: { config: ScaffoldConfig }) {
                     ? `Create new${config.capeTitle ? ` — "${config.capeTitle}"` : ' (auto-titled)'}`
                     : `Existing #${config.capeId || '—'}`],
     ['Market',    config.market],
-    ['Pages',     config.pages.join(', ') || '—'],
-    ['Modules',   config.modules.join(', ') || '—'],
+    ['Pages',     formatPages(config.pages)],
+    ['Modules',   resolvedModules.join(', ') || '—'],
     ['Output',    config.outputDir ?? '(sibling of scaffolder)'],
   ];
   return (
@@ -327,4 +332,31 @@ function Summary({ config }: { config: ScaffoldConfig }) {
       </tbody>
     </table>
   );
+}
+
+function formatPages(pages: PageInstance[]): string {
+  if (pages.length === 0) return '—';
+  return pages.map((page) => {
+    const meta = pageMeta(page.type);
+    const label = meta?.label ?? page.type;
+    const route = page.id === page.type ? (meta?.route ?? `/${page.id}`) : `/${page.id}`;
+    return page.id === page.type ? `${label} (${route})` : `${label} · ${page.id} (${route})`;
+  }).join(', ');
+}
+
+function resolveModulesForSummary(config: ScaffoldConfig): string[] {
+  const modules = new Set<string>();
+  if (config.game === 'unity' || config.game === 'phaser' || config.game === 'r3f' || config.game === 'memory') {
+    modules.add(config.game);
+  }
+
+  const pageTypes = new Set(config.pages.map((p) => p.type));
+  if (pageTypes.has('register')) modules.add('registration');
+  if (pageTypes.has('leaderboard')) modules.add('leaderboard');
+  if (pageTypes.has('voucher')) modules.add('voucher');
+  if (pageTypes.has('video') || pageTypes.has('intro-video') || pageTypes.has('loading-video') || pageTypes.has('ad-video')) modules.add('video');
+  if (pageTypes.has('game') || pageTypes.has('result') || pageTypes.has('register') || pageTypes.has('leaderboard')) modules.add('scoring');
+  if (modules.has('leaderboard') || modules.has('registration')) modules.add('scoring');
+
+  return [...modules];
 }

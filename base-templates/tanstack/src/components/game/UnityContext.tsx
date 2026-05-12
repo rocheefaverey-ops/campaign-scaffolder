@@ -119,6 +119,11 @@ export function UnityProvider({ children }: IDefaultProps) {
   }, []);
 
   const initializeUnity = useCallback(async (omitLogs = false) => {
+    if (!unityEnvironment.url) {
+      setUnityLoading(false);
+      return;
+    }
+
     if (isInitialized.current) {
       if (!isUnityLoadingRef.current) {
         if (!omitLogs) {
@@ -159,6 +164,16 @@ export function UnityProvider({ children }: IDefaultProps) {
       },
       errorHandler: () => true,
     };
+
+    // Wait for the Unity loader script to finish executing (it's injected async in <head>)
+    await new Promise<void>((resolve, reject) => {
+      if (typeof window.createUnityInstance === 'function') { resolve(); return; }
+      let attempts = 0;
+      const id = setInterval(() => {
+        if (typeof window.createUnityInstance === 'function') { clearInterval(id); resolve(); }
+        else if (++attempts > 200) { clearInterval(id); reject(new Error('Unity loader script did not load')); }
+      }, 50);
+    });
 
     // Trigger Unity load
     const unityLoader = async () => {

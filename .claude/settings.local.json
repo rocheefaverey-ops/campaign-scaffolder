@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-Item -Path \"C:\\\\Dev\\\\Livewall\\\\campaign-scaffolder\\\\formats\" -ErrorAction SilentlyContinue)",
+      "Bash(Get-ChildItem)",
+      "Bash(node --check cli/cape-client.js)",
+      "Bash(node --check cli/scaffold.js)",
+      "Bash(node --input-type=module --eval \"import './cli/cape-client.js'; console.log\\('module ok'\\);\")",
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(git commit *)",
+      "Bash(git *)",
+      "Bash(node --check \"C:\\\\Dev\\\\Livewall\\\\campaign-scaffolder\\\\cli\\\\scaffold.js\")",
+      "Bash(node --input-type=module --eval ' *)",
+      "Bash(node *)"
+    ]
+  }
+}

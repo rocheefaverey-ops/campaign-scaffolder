@@ -91,6 +91,9 @@ export const ELEMENT_CATALOGUE = {
 };
 
 export const PAGE_DEFAULTS = {
+  'intro-video': [],
+  'loading-video': [],
+  'ad-video': [],
   landing: ['hero-bg', 'logo', 'title', 'subtitle', 'cta-primary'],
   onboarding: ['title', 'subtitle', 'step-list', 'cta-primary'],
   gameplay: [],
@@ -99,6 +102,9 @@ export const PAGE_DEFAULTS = {
 };
 
 export const PAGE_ELEMENTS = {
+  'intro-video': [],
+  'loading-video': [],
+  'ad-video': [],
   landing: ['hero-bg', 'logo', 'title', 'subtitle', 'cta-primary', 'cta-secondary', 'countdown', 'partners'],
   onboarding: ['hero-bg', 'title', 'subtitle', 'hero-image', 'step-list', 'cta-primary'],
   gameplay: [],

@@ -5,8 +5,13 @@ import { useRouter } from 'next/navigation';
 import { UnityContext } from '@components/_modules/unity/UnityGame';
 import { useCapeData } from '@hooks/useCapeData';
 import { useInstanceId } from '@hooks/useInstanceId';
-import { getCapeImage } from '@utils/getCapeData';
+import { useSafeNavigation } from '@hooks/useSafeNavigation';
+import { getCapeImage, buildImageResolver } from '@utils/getCapeData';
 import VideoIntro from '@components/_modules/VideoIntro/VideoIntro';
+
+function resolveCapeInstanceAlias(value: string) {
+  return String(value).replace(/-([a-z0-9])/g, (_, chr) => chr.toUpperCase());
+}
 
 /**
  * Unity override of the engine-neutral video page.
@@ -21,19 +26,24 @@ import VideoIntro from '@components/_modules/VideoIntro/VideoIntro';
  */
 export default function VideoPage() {
   const router       = useRouter();
+  const navigate     = useSafeNavigation();
   const unity        = useContext(UnityContext);
   const { capeData } = useCapeData();
   const warmedUp     = useRef(false);
   const [gameReady, setGameReady] = useState(false);
   const instanceId   = useInstanceId('video');
+  const instanceAliasId = resolveCapeInstanceAlias(instanceId);
+  const img          = buildImageResolver(capeData, 'video', instanceId);
 
   const videoSrc =
-    getCapeImage(capeData, 'general.video.introVideo')
+    img('introVideo')
+    || getCapeImage(capeData, `files.${instanceId}.loadingVideo`)
+    || getCapeImage(capeData, `files.${instanceAliasId}.loadingVideo`)
     || getCapeImage(capeData, 'files.video.loadingVideo')
     || '/assets/intro-livewall.mp4';
 
   const settingsAll = (capeData as { settings?: { pages?: Record<string, { mode?: string; minPlaybackSec?: number; readyFallbackSec?: number; alwaysSkip?: boolean }> } } | null)?.settings;
-  const inst = settingsAll?.pages?.[instanceId];
+  const inst = settingsAll?.pages?.[instanceId] ?? settingsAll?.pages?.[instanceAliasId];
   const mode             = inst?.mode             ?? 'loadingScreen'; // Unity defaults to loader
   const minPlaybackSec   = inst?.minPlaybackSec   ?? 3;
   const readyFallbackSec = inst?.readyFallbackSec ?? 30; // generous for WebGL bundle
@@ -41,8 +51,8 @@ export default function VideoPage() {
   const isLoaderMode     = mode === 'loadingScreen';
 
   useEffect(() => {
-    if (!videoSrc) router.replace('{{NEXT_AFTER_VIDEO}}');
-  }, [router, videoSrc]);
+    if (!videoSrc) navigate('{{NEXT_AFTER_VIDEO}}', 'replace');
+  }, [navigate, videoSrc]);
 
   useEffect(() => {
     if (videoSrc) router.prefetch('{{NEXT_AFTER_VIDEO}}');
@@ -75,7 +85,7 @@ export default function VideoPage() {
     });
   }, [unity]);
 
-  const handleEnd = () => router.push('{{NEXT_AFTER_VIDEO}}');
+  const handleEnd = () => navigate('{{NEXT_AFTER_VIDEO}}');
 
   if (!videoSrc) return null;
 

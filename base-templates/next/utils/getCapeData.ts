@@ -47,6 +47,12 @@ export function getCapeBoolean(
 ): boolean {
   const value = resolvePath(capeData, path);
   if (typeof value === 'boolean') return value;
+  if (typeof value === 'object' && value !== null && 'value' in (value as Record<string, unknown>)) {
+    const inner = (value as Record<string, unknown>).value;
+    if (typeof inner === 'boolean') return inner;
+    if (inner === 'true'  || inner === '1' || inner === 1) return true;
+    if (inner === 'false' || inner === '0' || inner === 0) return false;
+  }
   if (value === 'true'  || value === '1' || value === 1) return true;
   if (value === 'false' || value === '0' || value === 0) return false;
   return defaultValue;
@@ -63,6 +69,82 @@ export function getCapeNumber(
   if (typeof value === 'number') return value;
   const parsed = Number(value);
   return isNaN(parsed) ? defaultValue : parsed;
+}
+
+// ─── Per-instance resolvers ──────────────────────────────────────────────────
+
+/**
+ * Build a copy resolver scoped to a page instance. Used by pages that may
+ * appear multiple times in a flow (e.g. `video-intro` + `video-outro`):
+ *
+ *   const id = useInstanceId('video');
+ *   const t  = buildCopyResolver(capeData, 'video', id);
+ *   const headline = t('headline', 'Welcome');
+ *
+ * Resolution order:
+ *   1. `copy.{instanceId}.{field}` — instance-specific override (wizard /
+ *      CAPE editor sets this when there are duplicates).
+ *   2. `copy.{pageType}.{field}` — type-level fallback. For singleton
+ *      instances (id === type) this is the same key, so existing campaigns
+ *      keep working unchanged.
+ *   3. `defaultValue`.
+ *
+ * Same shape as `getCapeText` for the final result.
+ */
+export function buildCopyResolver(
+  capeData: Record<string, unknown> | null,
+  pageType: string,
+  instanceId: string,
+): (field: string, defaultValue?: string) => string {
+  return (field, defaultValue = '') => {
+    const instanceAlias = resolveCapeInstanceAlias(instanceId);
+    const typeAlias = resolveCapeInstanceAlias(pageType);
+    if (instanceId !== pageType) {
+      const instanceVal = getCapeText(capeData, `copy.${instanceId}.${field}`);
+      if (instanceVal) return instanceVal;
+      if (instanceAlias !== instanceId) {
+        const aliasVal = getCapeText(capeData, `copy.${instanceAlias}.${field}`);
+        if (aliasVal) return aliasVal;
+      }
+    }
+    const typeVal = getCapeText(capeData, `copy.${pageType}.${field}`);
+    if (typeVal) return typeVal;
+    if (typeAlias !== pageType) {
+      const aliasTypeVal = getCapeText(capeData, `copy.${typeAlias}.${field}`);
+      if (aliasTypeVal) return aliasTypeVal;
+    }
+    return defaultValue;
+  };
+}
+
+/**
+ * Image counterpart to `buildCopyResolver`. Same fallback rule; reads under
+ * `general.{id|type}.{field}` (the most common image namespace).
+ */
+export function buildImageResolver(
+  capeData: Record<string, unknown> | null,
+  pageType: string,
+  instanceId: string,
+): (field: string) => string {
+  return (field) => {
+    const instanceAlias = resolveCapeInstanceAlias(instanceId);
+    const typeAlias = resolveCapeInstanceAlias(pageType);
+    if (instanceId !== pageType) {
+      const instanceVal = getCapeImage(capeData, `general.${instanceId}.${field}`);
+      if (instanceVal) return instanceVal;
+      if (instanceAlias !== instanceId) {
+        const aliasVal = getCapeImage(capeData, `general.${instanceAlias}.${field}`);
+        if (aliasVal) return aliasVal;
+      }
+    }
+    const typeVal = getCapeImage(capeData, `general.${pageType}.${field}`);
+    if (typeVal) return typeVal;
+    if (typeAlias !== pageType) {
+      const aliasTypeVal = getCapeImage(capeData, `general.${typeAlias}.${field}`);
+      if (aliasTypeVal) return aliasTypeVal;
+    }
+    return '';
+  };
 }
 
 // ─── Header config ────────────────────────────────────────────────────────────
@@ -108,6 +190,17 @@ export function getHeaderConfig(
   return { enabled: globalEnabled, variant: globalVariant, showLogo: globalShowLogo, showMenuButton: globalShowMenu };
 }
 
+// ─── Media helpers ────────────────────────────────────────────────────────────
+
+const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg', 'mov']);
+
+/** Returns true when the URL points to a video file (by extension). */
+export function isVideoUrl(url: string): boolean {
+  if (!url) return false;
+  const ext = url.split('?')[0].split('.').pop()?.toLowerCase() ?? '';
+  return VIDEO_EXTS.has(ext);
+}
+
 // ─── Internals ────────────────────────────────────────────────────────────────
 
 function resolvePath(obj: Record<string, unknown> | null, path: string): unknown {
@@ -141,6 +234,10 @@ function resolveText(value: unknown): string {
     if ('value' in obj && typeof obj.value === 'string') return obj.value;
   }
   return '';
+}
+
+function resolveCapeInstanceAlias(value: string): string {
+  return String(value).replace(/-([a-z0-9])/g, (_, chr) => chr.toUpperCase());
 }
 
 function getActiveLang(): string {

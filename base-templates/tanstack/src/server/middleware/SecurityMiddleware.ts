@@ -11,7 +11,7 @@ export const securityMiddleware = createMiddleware().server(({ next }) => {
   const cspTemplate = `
     default-src 'none';
     connect-src 'self' https://region1.google-analytics.com ${extractBaseUrl(process.env.UNITY_BASE_URL ?? '')};
-    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval';
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval' ${isLocal() ? "'unsafe-eval'" : ''};
     style-src 'self' 'unsafe-inline';
     media-src 'self' blob:;
     img-src 'self' data: blob:;

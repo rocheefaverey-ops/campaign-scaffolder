@@ -1,0 +1,116 @@
+{
+  "name": "landing-setting-smoke",
+  "stack": "next",
+  "capeId": "123",
+  "market": "NL",
+  "capeAutoPublished": true,
+  "game": "unity",
+  "selectedGame": {
+    "id": "haas-f1",
+    "name": "Haas F1 Racing",
+    "description": "Top-down F1 racing game with boost, obstacles, and token collection."
+  },
+  "pages": [
+    "landing",
+    "onboarding",
+    "game",
+    "result"
+  ],
+  "flow": {
+    "{{FLOW_ENTRY}}": "/landing",
+    "{{NEXT_AFTER_LANDING}}": "/onboarding",
+    "{{NEXT_AFTER_ONBOARDING}}": "/gameplay",
+    "{{NEXT_AFTER_GAME}}": "/result",
+    "{{NEXT_AFTER_RESULT}}": "/landing",
+    "{{PLAY_AGAIN_ROUTE}}": "/gameplay",
+    "{{LANDING_LEADERBOARD_ROUTE}}": "/landing",
+    "{{RESULT_LEADERBOARD_ROUTE}}": "/landing"
+  },
+  "flowExits": {
+    "result.next": "landing"
+  },
+  "modules": [
+    "unity",
+    "scoring"
+  ],
+  "optionalModules": [
+    "scoring"
+  ],
+  "envVarsAdded": [
+    "NEXT_PUBLIC_UNITY_BASE_URL",
+    "NEXT_PUBLIC_UNITY_GAME_NAME",
+    "NEXT_PUBLIC_UNITY_MIN_DPR",
+    "NEXT_PUBLIC_UNITY_MAX_DPR"
+  ],
+  "cspPatches": [
+    {
+      "module": "unity",
+      "patch": {
+        "script-src": [
+          "https://*.lwcf.nl",
+          "https://*.lwcf5.nl",
+          "https://lw-*.lwdev.nl"
+        ],
+        "frame-src": [
+          "'self'"
+        ]
+      }
+    }
+  ],
+  "wizard": {
+    "pageSettings": {
+      "landing": {
+        "onboardingFirstRunOnly": true
+      },
+      "intro-video": {
+        "skipAfterSeconds": 3
+      },
+      "loading-video": {},
+      "ad-video": {
+        "skipAfterSeconds": 3
+      },
+      "onboarding": {
+        "allowSkip": false
+      },
+      "register": {
+        "showInfix": true,
+        "requireOptIns": true
+      },
+      "game": {
+        "timerEnabled": true,
+        "timerSec": 60
+      },
+      "result": {
+        "autoNavSec": 0
+      },
+      "voucher": {
+        "showQr": true,
+        "codeLength": 8
+      }
+    },
+    "flowEnabledExits": {
+      "landing.leaderboard": false,
+      "result.playAgain": true,
+      "result.leaderboard": false
+    },
+    "menuItemsEnabled": {
+      "home": true,
+      "resume": false,
+      "howToPlay": true,
+      "leaderboard": false,
+      "voucher": false,
+      "terms": true,
+      "privacy": true,
+      "faq": false,
+      "leave": true
+    },
+    "defaultLanguage": "EN",
+    "supportedLanguages": [
+      "EN"
+    ],
+    "timezone": "Europe/Brussels",
+    "createCape": true,
+    "gameId": "haas-f1"
+  },
+  "createdAt": "2026-05-07T08:26:00.937Z"
+}

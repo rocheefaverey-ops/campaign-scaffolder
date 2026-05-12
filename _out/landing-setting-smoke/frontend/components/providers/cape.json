@@ -1,0 +1,15 @@
+{
+  "settings": {
+    "branding": {
+      "themeColor": "#000000",
+      "primaryColor": "#6c63ff",
+      "fontFamily": ""
+    }
+  },
+  "general": {
+    "meta": {
+      "siteTitle": { "value": "Campaign" },
+      "siteDescription": { "value": "" }
+    }
+  }
+}

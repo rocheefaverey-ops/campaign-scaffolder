@@ -1,18 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
-import { Inter } from 'next/font/google';
 import { baseMetadata } from './metadata';
 import Providers from './providers';
 import { getCapeDataServer } from '@lib/cape/cape.server';
 import DesktopWrapper from '@components/_core/DesktopWrapper/DesktopWrapper';
 import './globals.css';
-
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  weight: ['400', '500', '600', '700', '800', '900'],
-  variable: '--font-inter',
-});
 
 export const metadata: Metadata = baseMetadata;
 
@@ -35,11 +27,13 @@ export default async function RootLayout({
   const capeData = await getCapeDataServer();
 
   return (
-    <html lang={process.env.NEXT_PUBLIC_CAPE_LANGUAGE ?? 'en'} className={inter.variable}>
+    <html lang={process.env.NEXT_PUBLIC_CAPE_LANGUAGE ?? 'en'}>
       <body className="antialiased bg-[var(--surface-base)] text-[var(--text-primary)]">
         <Providers capeData={capeData} platform={platform} nonce={nonce}>
           <DesktopWrapper>
-            {children}
+            <div className="desktop-wrapper__app-shell">
+              {children}
+            </div>
           </DesktopWrapper>
         </Providers>
       </body>

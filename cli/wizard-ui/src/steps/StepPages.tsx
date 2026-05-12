@@ -50,9 +50,7 @@ export default function StepPages({ config, setConfig }: StepProps) {
       <div>
         <h2 className="step__title">Pages &amp; flow</h2>
         <p className="step__hint">
-          Click an available page to add it to your flow. The same page type can be added multiple times —
-          a second video gets the route <code>/video-2</code>, a third <code>/video-3</code>, etc.
-          Drag the cards in your flow to reorder them.
+          Click an available page to add it to your flow. Drag the cards in your flow to reorder them.
         </p>
       </div>
 
@@ -61,17 +59,19 @@ export default function StepPages({ config, setConfig }: StepProps) {
           <h3 className="pages-col__title">Available</h3>
           {ALL_PAGES.map(p => {
             const count = typeCounts[p.id] ?? 0;
+            const canAdd = count === 0;
             return (
               <button
                 key={p.id}
                 className="page-card page-card--available"
                 onClick={() => addInstance(p.id)}
-                title={count === 0 ? 'Click to add' : 'Click to add another instance'}
+                disabled={!canAdd}
+                title={!canAdd ? 'Already in flow' : 'Click to add'}
               >
                 <div className="page-card__row">
                   <strong>{p.label}</strong>
                   <span className="page-card__add">
-                    {count === 0 ? '+ Add' : `+ Add another (${count} in flow)`}
+                    {!canAdd ? 'In flow' : '+ Add'}
                   </span>
                 </div>
                 <div className="page-card__hint">{p.hint}</div>
@@ -245,7 +245,12 @@ function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, on
     .filter((i) => i.id !== instance.id)
     .map((i) => {
       const m = pageMeta(i.type);
-      return m ? { id: i.id, type: i.type, label: i.id === i.type ? m.label : `${m.label} · ${i.id}`, route: `/${i.id}` } : null;
+      return m ? {
+        id: i.id,
+        type: i.type,
+        label: i.id === i.type ? m.label : `${m.label} · ${i.id}`,
+        route: i.id === i.type ? m.route : `/${i.id}`,
+      } : null;
     })
     .filter((m): m is NonNullable<typeof m> => Boolean(m));
 
@@ -255,8 +260,7 @@ function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, on
     return inFlow[index + 1]?.id ?? null;
   };
 
-  // Display the route as /{instance-id} (which is what the scaffolder generates).
-  const route = `/${instance.id}`;
+  const route = instance.id === instance.type ? meta.route : `/${instance.id}`;
   // Title: bare type label for a singleton instance, "Type · id" for duplicates.
   const title = instance.id === instance.type ? meta.label : `${meta.label} · ${instance.id}`;
 
@@ -339,5 +343,18 @@ function RegOption({ mode, label, hint, current, onClick }:
 
 StepPages.validate = (c: ScaffoldConfig): string | null => {
   if (c.pages.length === 0) return 'Pick at least one page for the flow.';
+  const ids = c.pages.map((p) => p.id);
+  if (c.game === 'none' && c.pages.some((p) => p.type === 'game')) {
+    return '`game` page requires an engine. Pick an engine or remove the game page.';
+  }
+  for (const page of c.pages) {
+    const match = page.id.match(/^([a-z]+)-(\d+)$/);
+    if (match && !ids.includes(match[1])) {
+      return `\`${page.id}\` is a duplicate instance and requires a \`${match[1]}\` page first.`;
+    }
+    if (match && match[1] !== 'video') {
+      return `Only video supports duplicate instances. Remove \`${page.id}\`.`;
+    }
+  }
   return null;
 };

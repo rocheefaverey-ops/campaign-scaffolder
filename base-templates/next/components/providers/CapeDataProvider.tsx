@@ -33,13 +33,22 @@ interface CapeDataProviderProps {
 function injectFonts(capeData: Record<string, unknown>) {
   const branding = ((capeData?.settings as Record<string, unknown>)?.branding as Record<string, unknown>) ?? {};
 
-  const condensedBlack = (branding.fontCondensedBlack as Array<{ url?: string }> | undefined)?.[0]?.url;
+  const condensedBlack = (
+    (branding.fontCondensedBlack as Array<{ url?: string }> | undefined) ??
+    (branding.fontBrand as Array<{ url?: string }> | undefined)
+  )?.[0]?.url;
   const light          = (branding.fontLight          as Array<{ url?: string }> | undefined)?.[0]?.url;
   const tertiary       = (branding.fontTertiary        as Array<{ url?: string }> | undefined)?.[0]?.url;
 
   const hasFontFiles = !!(condensedBlack || light || tertiary);
-  const fontFamily   = (branding.fontFamily as string) ||
-    (hasFontFiles ? "'BrandFont', 'Inter', 'Segoe UI', Arial, sans-serif" : "'Inter', 'Segoe UI', Arial, sans-serif");
+  const rawFamily    = branding.fontFamily;
+  const resolvedFamily = typeof rawFamily === 'string'
+    ? rawFamily
+    : (rawFamily as { value?: string } | undefined)?.value ?? '';
+  const fontFamily   = resolvedFamily ||
+    (hasFontFiles
+      ? "'BrandFont', 'Stabil Grotesk', 'Inter', 'Segoe UI', Arial, sans-serif"
+      : "'Stabil Grotesk', 'Inter', 'Segoe UI', Arial, sans-serif");
 
   document.documentElement.style.setProperty('--default-font-family', fontFamily);
 
