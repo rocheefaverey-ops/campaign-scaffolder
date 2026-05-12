@@ -1,15 +1,83 @@
 {
   "settings": {
     "branding": {
-      "themeColor": "#000000",
-      "primaryColor": "#6c63ff",
-      "fontFamily": ""
+      "themeColor":          "#D1FF00",
+      "primaryColor":        "#D1FF00",
+      "secondaryColor":      "#1A1A1A",
+      "tertiaryColor":       "#EEF1E9",
+      "accentColor":         "#D1FF00",
+      "errorColor":          "#E82727",
+      "fontFamily":          "'Stabil Grotesk', 'Inter', 'Segoe UI', Arial, sans-serif",
+      "displayFontFamily":   "'Stabil Grotesk', 'Inter', 'Segoe UI', Arial, sans-serif",
+      "favicon":             [{ "url": "/assets/favicon.svg" }],
+      "fontBrand":           [],
+      "fontLight":           []
+    },
+    "languages": { "NL": "NL - Dutch", "EN": "EN - English" },
+    "menu": {
+      "showHome":        true,
+      "showResume":      false,
+      "showHowToPlay":   true,
+      "showLeaderboard": false,
+      "showVoucher":     false,
+      "showTerms":       true,
+      "showPrivacy":     true,
+      "showFaq":         false,
+      "showLeave":       true
     }
+  },
+  "header": {
+    "enabled": true,
+    "variant": "default",
+    "showLogo": true,
+    "showMenuButton": true
   },
   "general": {
     "meta": {
-      "siteTitle": { "value": "Campaign" },
+      "siteTitle":       { "value": "Livewall Campaign" },
       "siteDescription": { "value": "" }
+    },
+    "legal": {
+      "termsUrl":   { "value": "https://livewallgroup.com/terms" },
+      "privacyUrl": { "value": "https://livewallgroup.com/privacy" }
+    },
+    "header": {
+      "logo":      [{ "url": "/assets/logo-livewall-mark.svg" }],
+      "menuBtnBg": [{ "url": "/assets/favicon.svg" }],
+      "menuIcon":  [{ "url": "/assets/favicon.svg" }]
+    },
+    "landing": {
+      "logo":       [{ "url": "/assets/livewall-logo-zwart.webp" }],
+      "background": [{ "url": "/assets/ambient-bg.mp4" }]
+    },
+    "onboarding": {
+      "logo":       [{ "url": "/assets/livewall-logo-zwart.webp" }],
+      "background": [{ "url": "/assets/ambient-bg.mp4" }],
+      "heroImage":  [{ "url": "/assets/hero-desktop-pattern.png" }]
+    },
+    "result": {
+      "logo":       [{ "url": "/assets/livewall-logo-zwart.webp" }],
+      "background": [{ "url": "/assets/ambient-bg.mp4" }]
+    }
+  },
+  "desktop": {
+    "useDesktopWrapper": true,
+    "logo":                    [{ "url": "/assets/livewall-logo-zwart.webp" }],
+    "backgroundIllustration":  [{ "url": "/assets/header-video.mp4" }]
+  },
+  "files": {
+    "landing": {
+      "heroImage":       [{ "url": "/assets/flow.mp4" }],
+      "backgroundImage": [{ "url": "/assets/flow.mp4" }]
+    },
+    "onboarding": {
+      "step1Image": [{ "url": "/assets/flow.mp4" }],
+      "step2Image": [{ "url": "/assets/flow.mp4" }],
+      "step3Image": [{ "url": "/assets/flow.mp4" }]
+    },
+    "result": {
+      "winImage":  [{ "url": "/assets/flow.mp4" }],
+      "loseImage": [{ "url": "/assets/flow.mp4" }]
     }
   }
 }

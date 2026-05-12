@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCapeData } from '@hooks/useCapeData';
-import { getCapeText, getCapeImage, getCapeBoolean } from '@utils/getCapeData';
+import { useInstanceId } from '@hooks/useInstanceId';
+import { useSafeNavigation } from '@hooks/useSafeNavigation';
+import { getCapeText, getCapeImage, getCapeBoolean, buildCopyResolver, buildImageResolver, isVideoUrl } from '@utils/getCapeData';
 import Button from '@components/_core/Button/Button';
 
 /**
@@ -22,35 +24,59 @@ import Button from '@components/_core/Button/Button';
  */
 export default function OnboardingPage() {
   const router       = useRouter();
+  const navigate     = useSafeNavigation();
   const { capeData } = useCapeData();
+  const instanceId   = useInstanceId('onboarding');
+  const t   = buildCopyResolver(capeData, 'onboarding', instanceId);
+  const img = buildImageResolver(capeData, 'onboarding', instanceId);
 
   // Always-on visuals (mirror landing)
-  const bgUrl   = getCapeImage(capeData, 'general.onboarding.background')
+  const bgUrl   = img('background')
+              || getCapeImage(capeData, `files.${instanceId}.backgroundImage`)
+              || getCapeImage(capeData, `files.${instanceId}.heroImage`)
               || getCapeImage(capeData, 'general.landing.background')
               || '/assets/hero-mobile.png';
-  const logoUrl = getCapeImage(capeData, 'general.landing.logo')
+  const logoUrl = img('logo')
+              || getCapeImage(capeData, 'general.landing.logo')
               || getCapeImage(capeData, 'general.header.logo')
               || '/assets/logo-livewall-wordmark.svg';
 
-  // Per-step CAPE content. Empty title → step is treated as not populated.
-  // We probe up to 6 steps because real CAPE campaigns regularly use 4 (e.g.
-  // Proximus runner / pinball / bonanza tutorials). The filter drops empties,
-  // so most campaigns still render 3 — but 4-step (or 5-, 6-step) flows
-  // adapt automatically.
-  const steps = [1, 2, 3, 4, 5, 6].map((n) => ({
-    title: getCapeText (capeData, `copy.onboarding.step${n}Title`, ''),
-    body:  getCapeText (capeData, `copy.onboarding.step${n}Body`,  ''),
-    image: getCapeImage(capeData, `files.onboarding.step${n}Image`),
-  })).filter(s => s.title.trim().length > 0);
+  // Default tutorial content used when the CAPE schema doesn't define
+  // step{N}Title/Body fields (this campaign's cape-format.json only declares
+  // kicker/headline/subline/cta for onboarding). Each entry is overridden
+  // per-step by `copy.{instanceId}.step{N}Title` / `step${N}Body` once the
+  // campaign manager adds those fields and populates them.
+  //
+  // Steps 4–6 still probe CAPE — campaigns that DO define more steps in
+  // their schema (e.g. Proximus runner / pinball tutorials) keep rendering
+  // them automatically.
+  const DEFAULT_STEPS: Array<{ title: string; body: string }> = [
+    { title: 'Welcome',           body: 'Tap the screen to start playing.' },
+    { title: 'Score points',      body: 'React fast, beat the clock, rack up combos.' },
+    { title: 'Top the leaderboard', body: 'Set a high score and see how you stack up.' },
+  ];
 
-  const headline = getCapeText(capeData, 'copy.onboarding.headline', '[copy.onboarding.headline]');
-  const subline  = getCapeText(capeData, 'copy.onboarding.subline',  '');
-  const kicker   = getCapeText(capeData, 'copy.onboarding.kicker',   'How to play');
-  const ctaFinal = getCapeText(capeData, 'copy.onboarding.cta',      '[copy.onboarding.cta]');
-  const ctaNext  = getCapeText(capeData, 'copy.onboarding.ctaNext',  'Continue');
-  const allowSkip = getCapeBoolean(capeData, 'settings.pages.onboarding.allowSkip', false);
+  const steps = [1, 2, 3, 4, 5, 6].map((n) => {
+    const dflt = DEFAULT_STEPS[n - 1];
+    return {
+      title: t(`step${n}Title`, dflt?.title ?? ''),
+      body:  t(`step${n}Body`,  dflt?.body  ?? ''),
+      image: getCapeImage(capeData, `files.${instanceId}.step${n}Image`)
+          || getCapeImage(capeData, `files.onboarding.step${n}Image`),
+    };
+  }).filter(s => s.title.trim().length > 0);
+
+  const headline  = t('headline', '[copy.onboarding.headline]');
+  const subline   = t('subline',  '');
+  const kicker    = t('kicker',   'How to play');
+  const ctaFinal  = t('cta',      "Let's go");
+  const ctaNext   = t('ctaNext',  'Continue');
+  const allowSkip = getCapeBoolean(capeData, `settings.pages.${instanceId}.allowSkip`, false);
 
   const [slideIdx, setSlideIdx] = useState(0);
+  // With DEFAULT_STEPS providing 3 baseline steps, isMulti is always true
+  // unless someone deliberately overrides every default with empty CAPE
+  // values — keep the threshold so that opt-out path still works.
   const isMulti     = steps.length >= 2;
   const isLastSlide = slideIdx === steps.length - 1;
   const currentStep = steps[slideIdx];
@@ -61,7 +87,7 @@ export default function OnboardingPage() {
   const showBody     = isMulti ? currentStep.body  : (steps[0]?.body  || subline);
   const showCta      = isMulti && !isLastSlide ? ctaNext : ctaFinal;
 
-  const advance = () => router.push('{{NEXT_AFTER_ONBOARDING}}');
+  const advance = () => navigate('{{NEXT_AFTER_ONBOARDING}}');
   const onCtaClick = () => {
     if (!isMulti || isLastSlide) advance();
     else setSlideIdx(i => Math.min(i + 1, steps.length - 1));
@@ -69,8 +95,11 @@ export default function OnboardingPage() {
 
   return (
     <div className="campaign-screen campaign-screen--hero">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={showBg} alt="" className="campaign-hero-bleed" aria-hidden key={showBg} />
+      {isVideoUrl(showBg)
+        ? <video src={showBg} className="campaign-hero-bleed" autoPlay muted loop playsInline aria-hidden key={showBg} />
+        // eslint-disable-next-line @next/next/no-img-element
+        : <img   src={showBg} alt="" className="campaign-hero-bleed" aria-hidden key={showBg} />
+      }
       <div className="campaign-hero-shade" aria-hidden />
 
       <div className="campaign-shell">

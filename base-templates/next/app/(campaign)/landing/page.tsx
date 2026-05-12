@@ -3,7 +3,7 @@
 import { useCapeData } from '@hooks/useCapeData';
 import { useInstanceId } from '@hooks/useInstanceId';
 import { useSafeNavigation } from '@hooks/useSafeNavigation';
-import { getCapeImage, getCapeBoolean, buildCopyResolver, buildImageResolver } from '@utils/getCapeData';
+import { getCapeImage, getCapeBoolean, buildCopyResolver, buildImageResolver, isVideoUrl } from '@utils/getCapeData';
 import { useGameContext } from '@hooks/useGameContext';
 import Button from '@components/_core/Button/Button';
 
@@ -18,9 +18,15 @@ export default function LandingPage() {
 
   // Static leaderboard button — campaign-manager controlled via CAPE
   const showLeaderboard  = getCapeBoolean(capeData, `settings.pages.${instanceId}.showLeaderboardButton`, false);
+  const onboardingFirstRunOnlyRaw = '{{LANDING_ONBOARDING_FIRST_RUN_ONLY}}';
+  const onboardingFirstRunOnly = onboardingFirstRunOnlyRaw.startsWith('{{')
+    ? true
+    : onboardingFirstRunOnlyRaw === 'true';
   const leaderboardLabel = t('ctaLeaderboard', 'Leaderboard');
 
   const bgUrl    = img('background')
+                || getCapeImage(capeData, `files.${instanceId}.backgroundImage`)
+                || getCapeImage(capeData, `files.${instanceId}.heroImage`)
                 || '/assets/hero-mobile.png';
   const logoUrl  = img('logo')
                 || getCapeImage(capeData, 'general.header.logo')
@@ -29,24 +35,30 @@ export default function LandingPage() {
   const headline = t('headline', '[copy.landing.headline]');
   const subline  = t('subline',  '');
   const kicker   = t('kicker',   'Live experience');
-  const cta      = t('cta',      '[copy.landing.cta]');
+  const cta      = t('cta',      'Play');
 
   // Return-player copy — falls back to primary CTA label if not set in CAPE
   const ctaReturning         = t('ctaReturning', cta);
   const leaderboardReturnCta = t('leaderboardCta', leaderboardLabel);
 
-  // Scaffold-time feature gate — toggled in the web wizard
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  const showReturnPlayerButtons = ('{{RETURN_PLAYER_BUTTONS}}' as string) === 'true';
+  const nextAfterLanding = '{{NEXT_AFTER_LANDING}}';
+  const nextAfterOnboardingRaw = '{{NEXT_AFTER_ONBOARDING}}';
+  const nextAfterOnboarding = nextAfterOnboardingRaw.startsWith('{{')
+    ? nextAfterLanding
+    : nextAfterOnboardingRaw;
 
-  // Skip onboarding for returning players
-  const handlePlay = () =>
-    navigate(showReturnPlayerButtons && onboardingCompleted ? '/gameplay' : '{{NEXT_AFTER_LANDING}}');
+  const playRoute = onboardingFirstRunOnly && onboardingCompleted
+    ? nextAfterOnboarding
+    : nextAfterLanding;
+  const handlePlay = () => navigate(playRoute);
 
   return (
     <div className="campaign-screen campaign-screen--hero">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={bgUrl} alt="" className="campaign-hero-bleed" aria-hidden />
+      {isVideoUrl(bgUrl)
+        ? <video src={bgUrl} className="campaign-hero-bleed" autoPlay muted loop playsInline aria-hidden />
+        // eslint-disable-next-line @next/next/no-img-element
+        : <img   src={bgUrl} alt="" className="campaign-hero-bleed" aria-hidden />
+      }
 
       <div className="campaign-hero-shade" aria-hidden />
 
@@ -76,11 +88,11 @@ export default function LandingPage() {
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.5s 0.28s ease both' }}>
           <Button className="w-full" size="lg" onClick={handlePlay}>
-            {showReturnPlayerButtons && hasPlayed ? ctaReturning : cta}
+            {hasPlayed ? ctaReturning : cta}
           </Button>
-          {(showLeaderboard || (showReturnPlayerButtons && hasPlayed)) && (
+          {(showLeaderboard || hasPlayed) && (
             <Button variant="secondary" className="w-full" size="lg" onClick={() => navigate('{{LANDING_LEADERBOARD_ROUTE}}')}>
-              {showReturnPlayerButtons && hasPlayed ? leaderboardReturnCta : leaderboardLabel}
+              {hasPlayed ? leaderboardReturnCta : leaderboardLabel}
             </Button>
           )}
         </div>

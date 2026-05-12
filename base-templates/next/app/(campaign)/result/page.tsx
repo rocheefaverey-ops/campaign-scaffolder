@@ -1,42 +1,47 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useCapeData } from '@hooks/useCapeData';
 import { useInstanceId } from '@hooks/useInstanceId';
-import { getCapeText, getCapeImage, getCapeNumber, getCapeBoolean } from '@utils/getCapeData';
+import { useSafeNavigation } from '@hooks/useSafeNavigation';
+import { getCapeText, getCapeImage, getCapeNumber, getCapeBoolean, buildCopyResolver, buildImageResolver, isVideoUrl } from '@utils/getCapeData';
 import { useGameContext } from '@hooks/useGameContext';
 import Button from '@components/_core/Button/Button';
 
 export default function ResultPage() {
-  const router       = useRouter();
+  const navigate     = useSafeNavigation();
   const { capeData } = useCapeData();
   const { score, rank, userName } = useGameContext();
   const instanceId = useInstanceId('result');
+  const t   = buildCopyResolver(capeData, 'result', instanceId);
+  const img = buildImageResolver(capeData, 'result', instanceId);
 
   // Kiosk auto-navigate. 0 (default) keeps the page interactive.
   const autoNavSec = getCapeNumber(capeData, `settings.pages.${instanceId}.autoNavSec`, 0);
   useEffect(() => {
     if (autoNavSec <= 0) return;
-    const t = window.setTimeout(() => router.push('{{NEXT_AFTER_RESULT}}'), autoNavSec * 1000);
-    return () => window.clearTimeout(t);
-  }, [router, autoNavSec]);
+    const timer = window.setTimeout(() => navigate('/landing'), autoNavSec * 1000);
+    return () => window.clearTimeout(timer);
+  }, [navigate, autoNavSec]);
 
-  const bgUrl    = getCapeImage(capeData, 'general.result.background')
+  const bgUrl    = img('background')
+               || getCapeImage(capeData, `files.${instanceId}.backgroundImage`)
+               || getCapeImage(capeData, `files.${instanceId}.heroImage`)
                || getCapeImage(capeData, 'general.landing.background')
                || '/assets/hero-mobile.png';
-  const logoUrl  = getCapeImage(capeData, 'general.landing.logo')
+  const logoUrl  = img('logo')
+               || getCapeImage(capeData, 'general.landing.logo')
                || getCapeImage(capeData, 'general.header.logo')
                || '/assets/logo-livewall-wordmark.svg';
   const menuIcon = getCapeImage(capeData, 'general.header.menuIcon');
 
-  const headline    = getCapeText(capeData, 'copy.result.headline',     '[copy.result.headline]');
-  const kicker      = getCapeText(capeData, 'copy.result.kicker',       'Result');
-  const scoreLabel  = getCapeText(capeData, 'copy.result.scoreLabel',   'Score');
-  const rankLabel   = getCapeText(capeData, 'copy.result.rankLabel',    'Rank');
-  const cta         = getCapeText(capeData, 'copy.result.ctaContinue',  '[copy.result.ctaContinue]');
-  const retryLabel  = getCapeText(capeData, 'copy.result.ctaPlayAgain', '[copy.result.ctaPlayAgain]');
-  const lbLabel     = getCapeText(capeData, 'copy.result.ctaLeaderboard','Leaderboard');
+  const headline   = t('headline',       '[copy.result.headline]');
+  const kicker     = t('kicker',         'Result');
+  const scoreLabel = t('scoreLabel',     'Score');
+  const rankLabel  = t('rankLabel',      'Rank');
+  const cta        = t('ctaContinue',    '[copy.result.ctaContinue]');
+  const retryLabel = t('ctaPlayAgain',   '[copy.result.ctaPlayAgain]');
+  const lbLabel    = t('ctaLeaderboard', 'Leaderboard');
 
   // Configurable button visibility (wizard's optional exits).
   const showPlayAgain   = getCapeBoolean(capeData, `settings.pages.${instanceId}.showPlayAgainButton`,   true);
@@ -44,8 +49,11 @@ export default function ResultPage() {
 
   return (
     <div className="campaign-screen campaign-screen--hero">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={bgUrl} alt="" className="campaign-hero-bleed" aria-hidden />
+      {isVideoUrl(bgUrl)
+        ? <video src={bgUrl} className="campaign-hero-bleed" autoPlay muted loop playsInline aria-hidden />
+        // eslint-disable-next-line @next/next/no-img-element
+        : <img   src={bgUrl} alt="" className="campaign-hero-bleed" aria-hidden />
+      }
       <div className="campaign-hero-shade" aria-hidden />
 
       <div className="campaign-shell">
@@ -56,7 +64,7 @@ export default function ResultPage() {
             type="button"
             className="campaign-menu-btn"
             aria-label="Menu"
-            onClick={() => router.push('/menu')}
+            onClick={() => navigate('/menu')}
           >
             {menuIcon
               // eslint-disable-next-line @next/next/no-img-element
@@ -86,16 +94,16 @@ export default function ResultPage() {
         </div>
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.5s 0.32s ease both' }}>
-          <Button className="w-full" size="lg" onClick={() => router.push('{{NEXT_AFTER_RESULT}}')}>
+          <Button className="w-full" size="lg" onClick={() => navigate('{{NEXT_AFTER_RESULT}}')}>
             {cta}
           </Button>
           {showPlayAgain && (
-            <Button variant="secondary" className="w-full" size="lg" onClick={() => router.push('{{PLAY_AGAIN_ROUTE}}')}>
+            <Button variant="secondary" className="w-full" size="lg" onClick={() => navigate('{{PLAY_AGAIN_ROUTE}}')}>
               {retryLabel}
             </Button>
           )}
           {showLeaderboard && (
-            <Button variant="ghost" className="w-full" size="lg" onClick={() => router.push('{{RESULT_LEADERBOARD_ROUTE}}')}>
+            <Button variant="ghost" className="w-full" size="lg" onClick={() => navigate('{{RESULT_LEADERBOARD_ROUTE}}')}>
               {lbLabel}
             </Button>
           )}
