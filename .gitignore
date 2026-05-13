@@ -10,3 +10,9 @@ coverage/
 .turbo/
 *.exe
 *.bat
+
+# Scaffold test output
+_out/
+
+# Large video files (keep locally, don't commit)
+*.mp4
