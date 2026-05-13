@@ -9,7 +9,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import {
-  ALL_PAGES, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, MENU_ITEMS,
+  ALL_PAGES, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, MENU_ITEMS, defaultRouteForType,
   type ScaffoldConfig, type RegMode, type StepProps, type PageInstance,
 } from '../shared/config.ts';
 import PageSettingsCard from './PageSettingsCard.tsx';
@@ -38,11 +38,24 @@ export default function StepPages({ config, setConfig }: StepProps) {
   };
 
   const addInstance = (type: string) => {
-    const id = nextInstanceId(type, inFlow);
-    setConfig({ ...config, pages: [...inFlow, { id, type }] });
+    const id    = nextInstanceId(type, inFlow);
+    const route = defaultRouteForType(type);
+    setConfig({ ...config, pages: [...inFlow, { id, type, route }] });
   };
   const removeInstance = (id: string) => {
     setConfig({ ...config, pages: inFlow.filter(i => i.id !== id) });
+  };
+
+  const onChangeRoute = (instanceId: string, raw: string) => {
+    const slug  = raw.startsWith('/') ? raw : `/${raw}`;
+    const taken = config.pages.some(p => p.id !== instanceId && p.route === slug);
+    if (taken) return; // silently block — duplicate route; UI should show error state
+    setConfig({
+      ...config,
+      pages: config.pages.map(p =>
+        p.id === instanceId ? { ...p, route: slug } : p
+      ),
+    });
   };
 
   return (
@@ -112,6 +125,7 @@ export default function StepPages({ config, setConfig }: StepProps) {
                       setConfig({ ...config, flowEnabledExits: { ...config.flowEnabledExits, [k]: enabled } });
                     }}
                     onRemove={() => removeInstance(instance.id)}
+                    onChangeRoute={onChangeRoute}
                   />
                 ))}
               </ol>
@@ -222,9 +236,10 @@ interface FlowCardProps {
   onChangeExit:     (pageId: string, exitKey: string, target: string) => void;
   onToggleExit:     (pageId: string, exitKey: string, enabled: boolean) => void;
   onRemove:         () => void;
+  onChangeRoute:    (instanceId: string, raw: string) => void;
 }
 
-function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, onChangeExit, onToggleExit, onRemove }: FlowCardProps) {
+function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, onChangeExit, onToggleExit, onRemove, onChangeRoute }: FlowCardProps) {
   const meta = pageMeta(instance.type);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: instance.id });
 
@@ -249,7 +264,7 @@ function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, on
         id: i.id,
         type: i.type,
         label: i.id === i.type ? m.label : `${m.label} · ${i.id}`,
-        route: i.id === i.type ? m.route : `/${i.id}`,
+        route: i.route,
       } : null;
     })
     .filter((m): m is NonNullable<typeof m> => Boolean(m));
@@ -260,7 +275,6 @@ function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, on
     return inFlow[index + 1]?.id ?? null;
   };
 
-  const route = instance.id === instance.type ? meta.route : `/${instance.id}`;
   // Title: bare type label for a singleton instance, "Type · id" for duplicates.
   const title = instance.id === instance.type ? meta.label : `${meta.label} · ${instance.id}`;
 
@@ -271,9 +285,24 @@ function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, on
       <div className="flow-card__body">
         <div className="flow-card__row">
           <strong>{title}</strong>
-          <code className="flow-card__route">{route}</code>
         </div>
         <div className="page-card__hint">{meta.hint}</div>
+        <div className="flow-card__route">
+          <label
+            className="flow-card__route-label"
+            htmlFor={`route-${instance.id}`}
+          >
+            Route
+          </label>
+          <input
+            id={`route-${instance.id}`}
+            className="flow-card__route-input"
+            type="text"
+            value={instance.route}
+            onChange={e => onChangeRoute(instance.id, e.target.value)}
+            aria-label={`URL route for ${instance.id} page`}
+          />
+        </div>
       </div>
       <button className="flow-card__remove" onClick={onRemove} aria-label={`Remove ${title}`}>×</button>
 

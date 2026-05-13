@@ -1,5 +1,5 @@
 import {
-  DEFAULT_CONFIG, defaultPageSettings, defaultEnabledExits, defaultMenuItemsEnabled,
+  DEFAULT_CONFIG, defaultPageSettings, defaultEnabledExits, defaultMenuItemsEnabled, defaultRouteForType,
   type ScaffoldConfig, type PageInstance, type Stack, type Engine, type Market, type RegMode, type PageSettings,
 } from './config.ts';
 
@@ -23,7 +23,10 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
     ? raw.pageTypes as Record<string, string>
     : {};
   const pages: PageInstance[] = pageIds.length > 0
-    ? pageIds.map((id) => ({ id, type: pageTypes[id] ?? id }))
+    ? pageIds.map((id) => {
+        const type = pageTypes[id] ?? id;
+        return { id, type, route: defaultRouteForType(type) };
+      })
     : DEFAULT_CONFIG.pages;
 
   // ── Strings & primitives — fall back to DEFAULT_CONFIG when missing.
