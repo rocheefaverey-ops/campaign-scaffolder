@@ -37,7 +37,7 @@ export default function DesktopWrapper({ children }: DesktopWrapperProps) {
     <div className="desktop-wrapper" data-enabled={useDesktopLayout}>
       {bgUrl && (
         bgIsVideo
-          ? <video src={bgUrl} autoPlay loop muted playsInline className="desktop-wrapper__bg desktop-wrapper__bg--video" style={{ pointerEvents: 'none' }} />
+          ? <video src={bgUrl} autoPlay loop muted playsInline className="desktop-wrapper__bg desktop-wrapper__bg--video" style={{ pointerEvents: 'none' }} onEnded={e => { e.currentTarget.currentTime = 0; e.currentTarget.play(); }} />
           : <div className="desktop-wrapper__bg" style={{ backgroundImage: `url('${bgUrl}')` }} />
       )}
       <div className="desktop-wrapper__overlay" />

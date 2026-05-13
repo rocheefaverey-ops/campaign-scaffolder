@@ -68,7 +68,7 @@
   "files": {
     "landing": {
       "heroImage":       [{ "url": "/assets/flow.mp4" }],
-      "backgroundImage": [{ "url": "/assets/flow.mp4" }]
+      "backgroundImage": [{ "url": "/assets/background.mp4" }]
     },
     "onboarding": {
       "step1Image": [{ "url": "/assets/flow.mp4" }],
