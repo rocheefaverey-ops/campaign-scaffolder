@@ -34,7 +34,7 @@ git push lwservice master:main
 ## Prerequisites
 - Node.js 18+ (TanStack stack requires Node 24+).
 - Web UI: `cd cli/wizard-server && node server.js` → http://localhost:3456
-- CLI: `wizard.bat` (Windows) or `node cli/scaffold.js`
+- CLI: `scripts/wizard.bat` (Windows) or `node cli/scaffold.js`
 
 ## Quick start
 **Recommended (Web UI):**
@@ -49,7 +49,7 @@ node server.js
 ```bash
 node cli/scaffold.js
 # or on Windows
-wizard.bat
+scripts/wizard.bat
 ```
 
 Non-interactive example (Next stack):
@@ -129,7 +129,7 @@ Modules can add env vars, CSP directives, npm deps, and files listed in their `m
 - `modules/` reusable slices controlled by manifests.
 - `base-templates/next/` starter Next.js app.
 - `games/` registry of game manifests (`_template` for new ones).
-- `wizard.bat`, `test-scaffold.bat` convenience launchers.
+- `scripts/wizard.bat`, `scripts/scaffold-test.bat` convenience launchers (in `scripts/`).
 
 Happy scaffolding!
 
