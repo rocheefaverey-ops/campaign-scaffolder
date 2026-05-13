@@ -1967,32 +1967,6 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
     ok(`Base template → ${c.dim(frontendDir)}`);
   }
 
-  // 1b. Rename (campaign) route folders to match custom routeMap slugs.
-  // The base template ships with folder names derived from PAGE_ROUTES defaults
-  // (e.g. `landing/`, `gameplay/`).  When the user passes --route=landing:/home
-  // or the wizard emits a custom route, we rename the folder so Next.js serves
-  // the page at the right path.
-  {
-    const campaignDir = join(frontendDir, 'app', '(campaign)');
-    let renamed = 0;
-    for (const pageId of pages) {
-      const defaultSlug = (PAGE_ROUTES[pageId] ?? `/${pageId}`).slice(1);
-      const customSlug  = (routeMap[pageId]   ?? PAGE_ROUTES[pageId] ?? `/${pageId}`).slice(1);
-      if (defaultSlug === customSlug) continue;
-      const from = join(campaignDir, defaultSlug);
-      const to   = join(campaignDir, customSlug);
-      if (existsSync(from) && !existsSync(to)) {
-        try {
-          renameSync(from, to);
-          renamed++;
-        } catch (e) {
-          warn(`Could not rename "${defaultSlug}" → "${customSlug}": ${e.message}`);
-        }
-      }
-    }
-    if (renamed > 0) ok(`${renamed} route folder(s) renamed to match custom routes`);
-  }
-
   // Read createdAt from existing marker if updating (used in final write below)
   const _prevCreatedAt = (() => {
     if (!isUpdate) return null;
@@ -2240,6 +2214,32 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
     }
 
     ok(`${generated} page(s) generated`);
+  }
+
+  // 3c. Rename (campaign) route folders to match custom routeMap slugs.
+  // Runs AFTER module copy and page builder so all files land at default paths
+  // first (e.g. `landing/`, `gameplay/`).  Then we atomically rename any folder
+  // whose slug differs from the PAGE_ROUTES default so Next.js serves the page
+  // at the right path.
+  {
+    const campaignDir = join(frontendDir, 'app', '(campaign)');
+    let renamed = 0;
+    for (const pageId of pages) {
+      const defaultSlug = (PAGE_ROUTES[pageId] ?? `/${pageId}`).slice(1);
+      const customSlug  = (routeMap[pageId]   ?? PAGE_ROUTES[pageId] ?? `/${pageId}`).slice(1);
+      if (defaultSlug === customSlug) continue;
+      const from = join(campaignDir, defaultSlug);
+      const to   = join(campaignDir, customSlug);
+      if (existsSync(from) && !existsSync(to)) {
+        try {
+          renameSync(from, to);
+          renamed++;
+        } catch (e) {
+          warn(`Could not rename "${defaultSlug}" → "${customSlug}": ${e.message}`);
+        }
+      }
+    }
+    if (renamed > 0) ok(`${renamed} route folder(s) renamed to match custom routes`);
   }
 
   // 4. Append env vars + create .env
