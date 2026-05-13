@@ -3379,11 +3379,14 @@ async function main() {
     const rawPages       = Array.isArray(cfg.pages) ? cfg.pages : [];
     const pageIds        = [];
     const pageTypes      = {};
+    const routeMap       = {};
     for (const entry of rawPages) {
       if (typeof entry === 'string') {
         pageIds.push(entry);
+        routeMap[entry] = PAGE_ROUTES[entry] ?? `/${entry}`;
       } else if (entry && typeof entry === 'object' && entry.id) {
         pageIds.push(entry.id);
+        routeMap[entry.id] = entry.route ?? PAGE_ROUTES[entry.id] ?? `/${entry.id}`;
       }
     }
 
@@ -3474,6 +3477,10 @@ async function main() {
       // (e.g. {'intro-video': 'video'}). Singletons have id === type and
       // don't appear in this map.
       pageTypes,
+      // Custom page routes extracted from wizard config: id→route
+      // (e.g. {'landing': '/'}). Filled during config-file mode; empty in
+      // interactive mode (which uses PAGE_ROUTES directly).
+      routeMap,
       // Wizard-only metadata: round-tripped through .scaffolded so the
       // "Open existing" path in the web wizard can re-fill the entire UI.
       // Each field is undefined when missing so JSON.stringify drops it.
