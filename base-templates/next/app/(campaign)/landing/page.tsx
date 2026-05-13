@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCapeData } from '@hooks/useCapeData';
 import { useInstanceId } from '@hooks/useInstanceId';
@@ -62,7 +62,7 @@ export default function LandingPage() {
 
       <div className="campaign-hero-shade" aria-hidden />
 
-      <div className="campaign-shell">
+      <div className="campaign-shell relative z-10">
         <header className="campaign-hero-header campaign-hero-header--with-close" style={{ animation: 'fadeIn 0.4s ease both' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logoUrl} alt="Logo" className="campaign-hero-logo" />
