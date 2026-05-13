@@ -47,8 +47,6 @@ export default function StepPages({ config, setConfig }: StepProps) {
   };
 
   const onChangeRoute = (instanceId: string, raw: string) => {
-    const taken = config.pages.some(p => p.id !== instanceId && p.route === raw);
-    if (taken) return;
     setConfig({
       ...config,
       pages: config.pages.map(p =>
