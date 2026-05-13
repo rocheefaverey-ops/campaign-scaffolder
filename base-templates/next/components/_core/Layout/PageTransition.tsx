@@ -23,7 +23,7 @@ export default function PageTransition({ children }: PageTransitionProps) {
   }, [pathname]);
 
   return (
-    <div ref={containerRef} className="h-full w-full will-change-[opacity]">
+    <div ref={containerRef} className="h-full w-full">
       {children}
     </div>
   );
