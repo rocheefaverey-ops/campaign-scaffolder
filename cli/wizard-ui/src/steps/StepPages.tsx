@@ -47,9 +47,18 @@ export default function StepPages({ config, setConfig }: StepProps) {
   };
 
   const onChangeRoute = (instanceId: string, raw: string) => {
-    const slug  = raw.startsWith('/') ? raw : `/${raw}`;
-    const taken = config.pages.some(p => p.id !== instanceId && p.route === slug);
-    if (taken) return; // silently block — duplicate route; UI should show error state
+    const taken = config.pages.some(p => p.id !== instanceId && p.route === raw);
+    if (taken) return;
+    setConfig({
+      ...config,
+      pages: config.pages.map(p =>
+        p.id === instanceId ? { ...p, route: raw } : p
+      ),
+    });
+  };
+
+  const onBlurRoute = (instanceId: string, raw: string) => {
+    const slug = raw.startsWith('/') ? raw : `/${raw}`;
     setConfig({
       ...config,
       pages: config.pages.map(p =>
@@ -126,6 +135,7 @@ export default function StepPages({ config, setConfig }: StepProps) {
                     }}
                     onRemove={() => removeInstance(instance.id)}
                     onChangeRoute={onChangeRoute}
+                    onBlurRoute={onBlurRoute}
                   />
                 ))}
               </ol>
@@ -237,9 +247,10 @@ interface FlowCardProps {
   onToggleExit:     (pageId: string, exitKey: string, enabled: boolean) => void;
   onRemove:         () => void;
   onChangeRoute:    (instanceId: string, raw: string) => void;
+  onBlurRoute:      (instanceId: string, raw: string) => void;
 }
 
-function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, onChangeExit, onToggleExit, onRemove, onChangeRoute }: FlowCardProps) {
+function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, onChangeExit, onToggleExit, onRemove, onChangeRoute, onBlurRoute }: FlowCardProps) {
   const meta = pageMeta(instance.type);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: instance.id });
 
@@ -252,6 +263,9 @@ function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, on
   if (!meta) return null;
 
   const exits = meta.exits ?? [];
+
+  const takenRoutes = new Set(inFlow.filter(p => p.id !== instance.id).map(p => p.route));
+  const isDuplicate = takenRoutes.has(instance.route);
 
   // Other instances in the flow — pickable as exit destinations. Each gets a
   // display label that combines the page-type label and the instance id (so
@@ -296,11 +310,12 @@ function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, on
           </label>
           <input
             id={`route-${instance.id}`}
-            className="flow-card__route-input"
+            className={`flow-card__route-input${isDuplicate ? ' flow-card__route-input--error' : ''}`}
             type="text"
             value={instance.route}
             onChange={e => onChangeRoute(instance.id, e.target.value)}
-            aria-label={`URL route for ${instance.id} page`}
+            onBlur={e => onBlurRoute(instance.id, e.target.value)}
+            title={isDuplicate ? `Route "${instance.route}" is already used by another page` : undefined}
           />
         </div>
       </div>
