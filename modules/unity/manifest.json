@@ -28,6 +28,12 @@
       "type": "component"
     },
     {
+      "src": "app/(campaign)/layout.tsx",
+      "dest": "app/(campaign)/layout.tsx",
+      "type": "page",
+      "strategy": "replace"
+    },
+    {
       "src": "app/(campaign)/gameplay/page.tsx",
       "dest": "app/(campaign)/gameplay/page.tsx",
       "type": "page",
@@ -52,8 +58,16 @@
   "envVars": [
     "NEXT_PUBLIC_UNITY_BASE_URL",
     "NEXT_PUBLIC_UNITY_GAME_NAME",
+    "NEXT_PUBLIC_UNITY_VERSION",
+    "NEXT_PUBLIC_UNITY_COMPRESSION",
+    "NEXT_PUBLIC_UNITY_DEVICE_FILTER",
+    "NEXT_PUBLIC_UNITY_NO_CACHE",
     "NEXT_PUBLIC_UNITY_MIN_DPR",
-    "NEXT_PUBLIC_UNITY_MAX_DPR"
+    "NEXT_PUBLIC_UNITY_MAX_DPR",
+    "NEXT_PUBLIC_UNITY_VIEW_MODE",
+    "NEXT_PUBLIC_UNITY_BOOT_SEQUENCE",
+    "NEXT_PUBLIC_UNITY_BOOT_OBJECT",
+    "NEXT_PUBLIC_UNITY_BOOT_METHOD"
   ],
 
   "cspPatch": {
@@ -65,6 +79,7 @@
     "IMPORTANT: Wrap {children} in the campaign layout with <UnityContainer> so Unity persists across routes (video → gameplay → result).",
     "Example: import UnityContainer from '@components/_modules/unity/UnityContainer'; then <UnityContainer>{children}</UnityContainer>",
     "Unity build must include LivewallBridge.jslib — copy public/LivewallBridge.jslib to Assets/Plugins/WebGL/ in your Unity project.",
+    "AUDIO: Set all audio clip compression to Vorbis under the WebGL platform tab in the Unity Inspector — FSB/MP3/PCM formats cause 'Unable to decode audio data' errors in the browser.",
     "Unity build must emit a version.json at {NEXT_PUBLIC_UNITY_BASE_URL}/{NEXT_PUBLIC_UNITY_GAME_NAME}/version.json with { currentVersion: N }.",
     "Unity build files must live at {baseUrl}/{gameName}/V{N}/{platform}/ where platform is 'desktop', 'ios', or 'android'.",
     "Boot sequence: initializeUnity (createUnityInstance → sceneLoaded) → preloadScene (SetScene → addressableLoaded) → loadScene (LoadScene → sceneLoaded) → startGame (StartGame).",

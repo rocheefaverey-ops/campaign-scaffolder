@@ -23,7 +23,7 @@ import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
-import { checkAuth, login as capeLogin, clearTokenCache } from '../cape-client.js';
+import { validateAuth, login as capeLogin, clearTokenCache } from '../cape-client.js';
 import { loadGameRegistry } from '../game-registry.js';
 import { KNOWN_PAGE_TYPES } from '../cape-format-builder.js';
 
@@ -302,7 +302,7 @@ app.post('/api/load-existing', async (req, reply) => {
 
 app.get('/api/auth/status', async () => {
   try {
-    const tokens = await checkAuth();
+    const tokens = await validateAuth();
     if (!tokens?.authToken) return { authenticated: false };
     // authToken format is "userId:token" — surface the userId only, never the token.
     const userId = String(tokens.authToken).split(':')[0] || null;
@@ -378,7 +378,9 @@ const scaffoldConfigSchema = {
     flowExits:        { type: 'object' },
     flowEntry:        { type: 'string' },
     flowEnabledExits: { type: 'object' },
+    flowButtonVariants: { type: 'object' },
     menuItemsEnabled: { type: 'object' },
+    menuButtonVariants: { type: 'object' },
     buildMode:        { type: 'string', enum: ['create', 'update', 'recreate'] },
     loadedProjectDir: { type: 'string' },
     pageElementSelections:   { type: 'object' },

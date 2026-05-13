@@ -3,6 +3,7 @@
   "name": "Old Captain Rum Toss",
   "description": "Rum bottle tossing game — fill glasses, track play time. Voucher reward on completion.",
   "engine": "unity",
+  "stack": "next",
 
   "cdn": {
     "baseUrl": "https://lw-oldcptrum-toss-unity-test.lwcf.nl",

@@ -35,7 +35,7 @@ export const ELEMENT_CATALOGUE = {
   },
   'cta-secondary': {
     label: 'Secondary button',
-    description: 'Secondary action (ghost/outlined style)',
+    description: 'Secondary action (outlined style)',
     pages: ['landing', 'result', 'menu'],
   },
   countdown: {
@@ -90,6 +90,13 @@ export const ELEMENT_CATALOGUE = {
   },
 };
 
+const variantFor = (opts, pageId, exitKey, fallback = 'primary') => {
+  const value = opts?.buttonVariants?.[`${pageId}.${exitKey}`];
+  return ['primary', 'secondary', 'tertiary', 'dark', 'danger'].includes(value) ? value : fallback;
+};
+
+const variantProp = (variant) => ` variant="${variant}"`;
+
 export const PAGE_DEFAULTS = {
   'intro-video': [],
   'loading-video': [],
@@ -123,6 +130,8 @@ function imports(extras = []) {
 }
 
 function buildLanding(els, opts) {
+  const primaryVariant = variantFor(opts, 'landing', 'next', 'primary');
+  const secondaryVariant = variantFor(opts, 'landing', 'leaderboard', 'secondary');
   const hasBg = els.includes('hero-bg');
   const hasLogo = els.includes('logo');
   const hasTitle = els.includes('title');
@@ -189,8 +198,8 @@ ${capeLines}
         </section>
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.5s 0.28s ease both' }}>
-          ${hasCta ? `<Button fullWidth size="lg" onClick={() => router.push('${opts.nextRoute}')}>{ctaLabel}</Button>` : ''}
-          ${hasCtaSec ? `<Button fullWidth variant="secondary" size="lg" onClick={() => router.push('/onboarding')}>{ctaLabel2}</Button>` : ''}
+          ${hasCta ? `<Button fullWidth${variantProp(primaryVariant)} size="lg" onClick={() => router.push('${opts.nextRoute}')}>{ctaLabel}</Button>` : ''}
+          ${hasCtaSec ? `<Button fullWidth${variantProp(secondaryVariant)} size="lg" onClick={() => router.push('/onboarding')}>{ctaLabel2}</Button>` : ''}
           ${partnersBlock}
         </div>
       </div>
@@ -201,6 +210,7 @@ ${capeLines}
 }
 
 function buildOnboarding(els, opts) {
+  const primaryVariant = variantFor(opts, 'onboarding', 'next', 'primary');
   const hasTitle = els.includes('title');
   const hasSubtitle = els.includes('subtitle');
   const hasBg = els.includes('hero-bg');
@@ -258,7 +268,7 @@ ${capeLines}
         </div>
 
         ${hasCta ? `<div className="campaign-actions" style={{ animation: 'fadeIn 0.4s 0.4s ease both' }}>
-          <Button fullWidth size="lg" onClick={() => router.push('${opts.nextRoute}')}>{ctaLabel}</Button>
+          <Button fullWidth${variantProp(primaryVariant)} size="lg" onClick={() => router.push('${opts.nextRoute}')}>{ctaLabel}</Button>
         </div>` : ''}
       </div>
     </div>
@@ -268,6 +278,8 @@ ${capeLines}
 }
 
 function buildResult(els, opts) {
+  const primaryVariant = variantFor(opts, 'result', 'next', 'primary');
+  const secondaryVariant = variantFor(opts, 'result', 'playAgain', 'secondary');
   const hasBg = els.includes('hero-bg');
   const hasTitle = els.includes('title');
   const hasSubtitle = els.includes('subtitle');
@@ -334,8 +346,8 @@ ${capeLines}
         </section>
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.4s 0.25s ease both' }}>
-          ${hasCta ? `<Button fullWidth size="lg" onClick={() => router.push('${opts.nextRoute}')}>{ctaLabel}</Button>` : ''}
-          ${hasCtaSec ? `<Button fullWidth variant="secondary" size="lg" onClick={() => router.push('${opts.retryRoute ?? '/gameplay'}')}>{retryLabel}</Button>` : ''}
+          ${hasCta ? `<Button fullWidth${variantProp(primaryVariant)} size="lg" onClick={() => router.push('${opts.nextRoute}')}>{ctaLabel}</Button>` : ''}
+          ${hasCtaSec ? `<Button fullWidth${variantProp(secondaryVariant)} size="lg" onClick={() => router.push('${opts.retryRoute ?? '/gameplay'}')}>{retryLabel}</Button>` : ''}
         </div>
       </div>
     </div>
@@ -351,8 +363,8 @@ function buildMenu(els, opts) {
   const hasFooter = els.includes('branding-footer');
 
   const navItems = opts.navItems ?? [
-    { label: 'Home', route: '/landing', variant: 'primary' },
-    { label: 'How to play', route: '/onboarding', variant: 'secondary' },
+    { label: 'Home', route: '/landing', variant: opts.menuButtonVariants?.home ?? 'primary' },
+    { label: 'How to play', route: '/onboarding', variant: opts.menuButtonVariants?.howToPlay ?? 'secondary' },
   ];
 
   return `'use client';
@@ -382,7 +394,7 @@ export default function MenuPage() {
             ${navItems.map((item) =>
               `<Button fullWidth${item.variant !== 'primary' ? ` variant="${item.variant}"` : ''} onClick={() => router.push('${item.route}')}>${item.label}</Button>`
             ).join('\n            ')}
-            ${hasCtaSec ? `<Button fullWidth variant="ghost" size="sm" onClick={() => router.push('/terms')}>Terms &amp; conditions</Button>` : ''}
+            ${hasCtaSec ? `<Button fullWidth variant="${opts.menuButtonVariants?.terms ?? 'tertiary'}" size="sm" onClick={() => router.push('/terms')}>Terms &amp; conditions</Button>` : ''}
           </div>
         </div>` : ''}
 

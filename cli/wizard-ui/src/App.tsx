@@ -92,7 +92,7 @@ export default function App() {
       </main>
 
       <footer className="app__foot">
-        <button className="btn btn--ghost" onClick={back} disabled={isFirst}>← Back</button>
+        <button className="btn btn--tertiary" onClick={back} disabled={isFirst}>← Back</button>
 
         <nav className="app__stepper" aria-label="Wizard steps">
           {STEPS.flatMap((s, i) => {
@@ -175,7 +175,7 @@ function OpenExistingButton({ onLoaded }: { onLoaded: (cfg: ScaffoldConfig) => v
     <>
       <button
         type="button"
-        className="btn btn--ghost"
+        className="btn btn--tertiary"
         style={{ padding: '4px 12px', fontSize: 12 }}
         onClick={() => setOpen(true)}
       >
@@ -210,7 +210,7 @@ function OpenExistingButton({ onLoaded }: { onLoaded: (cfg: ScaffoldConfig) => v
             {error && <div className="banner banner--err">{error}</div>}
 
             <div className="modal__foot">
-              <button type="button" className="btn btn--ghost" onClick={() => setOpen(false)} disabled={busy}>Cancel</button>
+              <button type="button" className="btn btn--tertiary" onClick={() => setOpen(false)} disabled={busy}>Cancel</button>
               <button type="submit" className="btn btn--primary" disabled={busy || !path.trim()}>
                 {busy ? 'Loading…' : 'Load'}
               </button>

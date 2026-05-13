@@ -2,7 +2,6 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@utils/helpers';
 
 const buttonVariants = cva(
-  // ── Base ──────────────────────────────────────────────────────────────────
   [
     'relative inline-flex items-center justify-center',
     'min-h-[48px] rounded-full px-8 font-default font-bold',
@@ -14,16 +13,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Filled lime-on-ink — the signature Livewall CTA
         primary:   'btn-primary',
-        // Filled ink-on-light — for "confirming" actions
-        ink:       'btn-ink',
-        // Outlined — for tertiary actions
         secondary: 'btn-secondary',
-        // Minimal — text only
-        ghost:     'btn-ghost',
-        // Destructive actions
+        tertiary:  'btn-tertiary',
+        dark:      'btn-dark',
         danger:    'btn-danger',
+
+        // Backwards-compatible aliases used by older generated pages.
+        ghost:     'btn-tertiary',
+        ink:       'btn-dark',
       },
       size: {
         sm: 'min-h-[40px] px-5 text-xs',

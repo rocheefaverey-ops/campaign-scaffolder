@@ -12,11 +12,13 @@ import Button from '@components/_core/Button/Button';
  * via `copy.menu.{id}` and a default visibility that CAPE can override via
  * `settings.menu.show{Id}` (capitalised).
  */
+type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'dark' | 'danger';
+
 type MenuItem = {
   id:     string;
   label:  string;
   target: string;
-  kind:   'primary' | 'secondary' | 'ghost';
+  kind:   ButtonVariant;
   defaultEnabled: boolean;
   externalUrlPath?: string;
   requiresRoute?: string;
@@ -27,15 +29,15 @@ const AVAILABLE_CAMPAIGN_ROUTES = new Set<string>(
 );
 
 const MENU_ITEMS: MenuItem[] = [
-  { id: 'home',        label: 'Home',           target: '/landing',     kind: 'primary',   defaultEnabled: true  },
-  { id: 'resume',      label: 'Resume game',    target: '/gameplay',    kind: 'secondary', defaultEnabled: true  },
-  { id: 'howToPlay',   label: 'How to play',    target: '/onboarding',  kind: 'secondary', defaultEnabled: true  },
-  { id: 'leaderboard', label: 'Leaderboard',    target: '/leaderboard', kind: 'secondary', defaultEnabled: false },
-  { id: 'voucher',     label: 'My voucher',     target: '/voucher',     kind: 'secondary', defaultEnabled: false },
-  { id: 'terms',       label: 'Terms',          target: '/terms',       kind: 'ghost',     defaultEnabled: true,  externalUrlPath: 'general.legal.termsUrl' },
-  { id: 'privacy',     label: 'Privacy',        target: '/privacy',     kind: 'ghost',     defaultEnabled: false, externalUrlPath: 'general.legal.privacyUrl' },
-  { id: 'faq',         label: 'FAQ',            target: '/faq',         kind: 'ghost',     defaultEnabled: false, requiresRoute: '/faq' },
-  { id: 'leave',       label: 'Leave campaign', target: '/',            kind: 'ghost',     defaultEnabled: false },
+  { id: 'home',        label: 'Home',           target: '/landing',     kind: '{{MENU_VARIANT_HOME}}' as ButtonVariant,        defaultEnabled: true  },
+  { id: 'resume',      label: 'Resume game',    target: '/gameplay',    kind: '{{MENU_VARIANT_RESUME}}' as ButtonVariant,      defaultEnabled: true  },
+  { id: 'howToPlay',   label: 'How to play',    target: '/onboarding',  kind: '{{MENU_VARIANT_HOWTOPLAY}}' as ButtonVariant,   defaultEnabled: true  },
+  { id: 'leaderboard', label: 'Leaderboard',    target: '/leaderboard', kind: '{{MENU_VARIANT_LEADERBOARD}}' as ButtonVariant, defaultEnabled: false },
+  { id: 'voucher',     label: 'My voucher',     target: '/voucher',     kind: '{{MENU_VARIANT_VOUCHER}}' as ButtonVariant,     defaultEnabled: false },
+  { id: 'terms',       label: 'Terms',          target: '/terms',       kind: '{{MENU_VARIANT_TERMS}}' as ButtonVariant,       defaultEnabled: true,  externalUrlPath: 'general.legal.termsUrl' },
+  { id: 'privacy',     label: 'Privacy',        target: '/privacy',     kind: '{{MENU_VARIANT_PRIVACY}}' as ButtonVariant,     defaultEnabled: false, externalUrlPath: 'general.legal.privacyUrl' },
+  { id: 'faq',         label: 'FAQ',            target: '/faq',         kind: '{{MENU_VARIANT_FAQ}}' as ButtonVariant,         defaultEnabled: false, requiresRoute: '/faq' },
+  { id: 'leave',       label: 'Leave campaign', target: '/',            kind: '{{MENU_VARIANT_LEAVE}}' as ButtonVariant,       defaultEnabled: false },
 ];
 
 function flagKey(id: string): string {
@@ -82,8 +84,8 @@ export default function MenuPage() {
               return (
                 <Button
                   key={item.id}
-                  variant={item.kind === 'primary' ? 'primary' : item.kind === 'secondary' ? 'secondary' : 'ghost'}
-                  size={item.kind === 'ghost' ? 'sm' : 'md'}
+                  variant={item.kind}
+                  size={item.kind === 'tertiary' ? 'sm' : 'md'}
                   className="w-full"
                   onClick={() => navigate(target)}
                 >

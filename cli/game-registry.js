@@ -100,7 +100,20 @@ export function gameEnvLines(game, template = 'next') {
     return lines;
   }
   if (!game?.env) return [];
-  return Object.entries(game.env).map(([k, v]) => `${k}=${v}`);
+  const lines = Object.entries(game.env).map(([k, v]) => `${k}=${v}`);
+
+  // Some Unity exports use the standard Livewall sequence:
+  // WebService.SetData -> WebService.SetScene -> WebService.LoadScene -> GameService.StartGame.
+  // Older/simpler exports boot with a single message, e.g. Manager.LoadScene(config).
+  // Encode that protocol from the manifest so imported games don't need hand-written pages.
+  const boot = game.boot ?? {};
+  if (game.engine === 'unity' && boot.gameObjects?.setup && boot.setupMethod && !boot.sceneMethod && !boot.loadMethod && !boot.startMethod) {
+    lines.push('NEXT_PUBLIC_UNITY_BOOT_SEQUENCE=single-message');
+    lines.push(`NEXT_PUBLIC_UNITY_BOOT_OBJECT=${boot.gameObjects.setup}`);
+    lines.push(`NEXT_PUBLIC_UNITY_BOOT_METHOD=${boot.setupMethod}`);
+  }
+
+  return lines;
 }
 
 /**

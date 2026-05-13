@@ -67,7 +67,7 @@ export default function VoucherPage() {
         </div>
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.5s 0.32s ease both' }}>
-          <Button className="w-full" size="lg" onClick={() => navigate('{{NEXT_AFTER_VOUCHER}}')}>
+          <Button variant={'{{BUTTON_VARIANT_VOUCHER_NEXT}}' as any} className="w-full" size="lg" onClick={() => navigate('{{NEXT_AFTER_VOUCHER}}')}>
             {cta}
           </Button>
         </div>

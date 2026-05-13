@@ -37,7 +37,7 @@ export default function LeaderboardPage() {
         </section>
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.4s 0.2s ease both' }}>
-          <Button className="w-full" size="lg" onClick={() => navigate('{{NEXT_AFTER_LEADERBOARD}}')}>
+          <Button variant={'{{BUTTON_VARIANT_LEADERBOARD_NEXT}}' as any} className="w-full" size="lg" onClick={() => navigate('{{NEXT_AFTER_LEADERBOARD}}')}>
             {ctaDone}
           </Button>
         </div>

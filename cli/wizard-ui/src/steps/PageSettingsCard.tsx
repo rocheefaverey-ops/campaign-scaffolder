@@ -28,6 +28,10 @@ export default function PageSettingsCard({ pageId, schemaType, pageLabel, settin
   if (!schema || schema.length === 0) return null;
 
   const pageValues = settings[pageId] ?? {};
+  const resolvedValues = Object.fromEntries(
+    schema.map((def) => [def.key, pageValues[def.key] ?? def.default]),
+  ) as Record<string, SettingValue>;
+  const visibleSettings = schema.filter((def) => isVisible(def, resolvedValues));
 
   const update = (key: string, value: SettingValue) => {
     setSettings({
@@ -44,12 +48,14 @@ export default function PageSettingsCard({ pageId, schemaType, pageLabel, settin
       </header>
 
       <div className="page-settings-card__body">
-        {schema.map((def) => (
+        {visibleSettings.map((def) => (
           <SettingControl
             key={def.key}
             def={def}
             value={pageValues[def.key] ?? def.default}
+            isDefault={(pageValues[def.key] ?? def.default) === def.default}
             onChange={(v) => update(def.key, v)}
+            onReset={() => update(def.key, def.default)}
           />
         ))}
       </div>
@@ -58,19 +64,30 @@ export default function PageSettingsCard({ pageId, schemaType, pageLabel, settin
 }
 
 function SettingControl({
-  def, value, onChange,
+  def, value, isDefault, onChange, onReset,
 }: {
   def:      SettingDef;
   value:    SettingValue;
+  isDefault: boolean;
   onChange: (v: SettingValue) => void;
+  onReset:  () => void;
 }) {
+  const hint = cleanHint(def.hint);
+
   return (
     <div className="page-setting">
       <div className="page-setting__head">
-        <label className="page-setting__label">{def.label}</label>
-        <code className="page-setting__key">{def.key}</code>
+        <div>
+          <label className="page-setting__label">{def.label}</label>
+          {hint && <p className="page-setting__hint">{hint}</p>}
+        </div>
+        <div className="page-setting__meta">
+          {isDefault && <span className="page-setting__default">Default</span>}
+          <button type="button" className="page-setting__reset" onClick={onReset} disabled={isDefault}>
+            Reset
+          </button>
+        </div>
       </div>
-      {def.hint && <p className="page-setting__hint">{def.hint}</p>}
 
       <div className="page-setting__control">
         {def.kind === 'select' && (
@@ -104,10 +121,22 @@ function SettingControl({
               checked={Boolean(value)}
               onChange={(e) => onChange(e.target.checked)}
             />
+            <span className="page-setting__switch" aria-hidden="true" />
             <span>{Boolean(value) ? 'On' : 'Off'}</span>
           </label>
         )}
       </div>
     </div>
   );
+}
+
+function isVisible(def: SettingDef, values: Record<string, SettingValue>): boolean {
+  if (!def.showWhen?.length) return true;
+  return def.showWhen.every((rule) => values[rule.key] === rule.value);
+}
+
+function cleanHint(hint?: string): string {
+  return (hint ?? '')
+    .replace(/^âœ“\s*/, '')
+    .replace(/^✓\s*/, '');
 }

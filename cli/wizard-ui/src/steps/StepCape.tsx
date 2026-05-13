@@ -92,7 +92,7 @@ function AuthSection({ auth, onChange }: { auth: AuthStatus | null; onChange: (a
       <div className="banner banner--ok" style={{ justifyContent: 'space-between' }}>
         <span>✓ Logged in to CAPE{auth.userId ? <> · <code>user #{auth.userId}</code></> : null}</span>
         <button
-          className="btn btn--ghost"
+          className="btn btn--tertiary"
           style={{ padding: '4px 10px', fontSize: 12 }}
           onClick={async () => { await logoutCape(); onChange({ authenticated: false }); }}
           title="Sign out and log in with different credentials. Use this if your session has expired or campaign creation fails with a userIncorrect / auth error."

@@ -136,7 +136,7 @@ export default function OnboardingPage() {
               ))}
             </div>
           )}
-          <Button className="w-full" size="lg" onClick={onCtaClick}>
+          <Button variant={'{{BUTTON_VARIANT_ONBOARDING_NEXT}}' as any} className="w-full" size="lg" onClick={onCtaClick}>
             {showCta}
           </Button>
           {allowSkip && !isLastSlide && (

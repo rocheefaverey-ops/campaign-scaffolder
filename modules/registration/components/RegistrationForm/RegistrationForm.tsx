@@ -229,7 +229,7 @@ export default function RegistrationForm({ labels = {}, showInfix = true, requir
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
+      <Button type="submit" variant={'{{BUTTON_VARIANT_REGISTER_NEXT}}' as any} disabled={isSubmitting} className="mt-2 w-full">
         {isSubmitting ? 'Registering…' : (labels.cta ?? 'Register')}
       </Button>
     </form>

@@ -22,7 +22,8 @@ export interface UnityContextType {
   // Controls
   setTargetScene: (sceneKey: string) => void;
   setData: (data: IUnitySetData) => void;
-  initializeUnity: (omitLogs?: boolean) => Promise<void>;
+  initializeUnity: (omitLogs?: boolean, waitForInitialScene?: boolean) => Promise<void>;
+  sendMessage: (objectName: string, methodName: string, data?: string | number) => void;
   /** Fire-and-forget: sends SetScene to Unity without waiting for any event.
    *  skipPreload:true skips the addressable preload handshake — use for builds
    *  that don't fire addressableLoaded (they respond to LoadScene directly). */
@@ -54,30 +55,16 @@ export function useUnityGame(): UnityContextType {
 
 const MUTED_STORAGE_KEY = 'unity-muted';
 
-/** Flag to suppress event-map dispatch logging during internal JS access */
-let _suppressDispatchLog = false;
-
-/** Create a Map that logs unhandled Unity event dispatches (events with no listeners) */
-function createEventMap(): Map<string, Array<UnityEventCallback>> {
-  const map = new Map<string, Array<UnityEventCallback>>();
-  const originalGet = map.get.bind(map);
-
-  map.get = function (key: string): Array<UnityEventCallback> | undefined {
-    const listeners = originalGet(key);
-    if (!_suppressDispatchLog) {
-      if (!listeners || listeners.length === 0) {
-        uLog.event(`← ${key} (no listeners)`);
-      }
-    }
-    return listeners;
-  } as typeof map.get;
-
-  return map;
-}
-
 function parseNumber(input: string | null | undefined, fallback: number): number {
   const parsed = Number(input);
   return isNaN(parsed) ? fallback : parsed;
+}
+
+function unityFileUrl(baseUrl: string, file: string): string {
+  const compression = process.env.NEXT_PUBLIC_UNITY_COMPRESSION ? `.${process.env.NEXT_PUBLIC_UNITY_COMPRESSION}` : '';
+  const noCache = process.env.NEXT_PUBLIC_UNITY_NO_CACHE === 'true';
+  const noCacheSuffix = noCache ? `?t=${Date.now()}` : '';
+  return `${baseUrl}Build/${file}${compression}${noCacheSuffix}`;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -93,7 +80,7 @@ interface UnityGameProps {
 export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGameProps) {
   // Ensure unityEventMap exists immediately — before any child effects run
   if (typeof window !== 'undefined' && !window.unityEventMap) {
-    window.unityEventMap = createEventMap();
+    window.unityEventMap = new Map();
   }
 
   // Muted state — persisted in localStorage, exposed on window for Unity .jslib
@@ -133,7 +120,8 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
     // React StrictMode unmounts+remounts in dev — resetting after createUnityInstance
     // has started would wipe the 'sceneLoaded' listener and cause initializeUnity to hang.
     if (!isInitialized.current) {
-      window.unityEventMap = createEventMap();
+      window.unityEventMap = new Map();
+      listenerRegistryRef.current.clear();
       uLog.lifecycle('UnityGame mounted — unityEventMap reset');
     } else {
       uLog.lifecycle('UnityGame remounted — keeping existing unityEventMap (Unity already initializing)');
@@ -247,7 +235,7 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
   }, []);
 
   const initializeUnity = useCallback(
-    async (omitLogs = false) => {
+    async (omitLogs = false, waitForInitialScene = true) => {
       if (isInitialized.current) {
         if (!isUnityLoadingRef.current) {
           if (!omitLogs) uLog.warn('Unity is already initialized!');
@@ -269,9 +257,9 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
         companyName: 'Livewall',
         productName: 'Campaign Game',
         productVersion: '1.0',
-        frameworkUrl: `${buildBaseUrl}Build/Build.framework.js`,
-        dataUrl: `${buildBaseUrl}Build/Build.data`,
-        codeUrl: `${buildBaseUrl}Build/Build.wasm`,
+        frameworkUrl: unityFileUrl(buildBaseUrl, 'Build.framework.js'),
+        dataUrl: unityFileUrl(buildBaseUrl, 'Build.data'),
+        codeUrl: unityFileUrl(buildBaseUrl, 'Build.wasm'),
         streamingAssetsUrl: `${buildBaseUrl}StreamingAssets`,
         devicePixelRatio: targetDpr,
         matchWebGLToCanvasSize: true,
@@ -310,9 +298,14 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
       };
 
       setUnityLoading(true);
-      await waitForUnity('sceneLoaded', unityLoader);
+      if (waitForInitialScene) {
+        await waitForUnity('sceneLoaded', unityLoader);
+        uLog.lifecycle('initializeUnity complete — sceneLoaded received');
+      } else {
+        await unityLoader();
+        uLog.lifecycle('initializeUnity complete — Unity instance created');
+      }
       setUnityLoading(false);
-      uLog.lifecycle('initializeUnity complete — sceneLoaded received');
     },
     [buildBaseUrl, isLocal] // eslint-disable-line react-hooks/exhaustive-deps
   );
@@ -451,8 +444,13 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
   }, [isLocal]);
 
   // ── Event system ──────────────────────────────────────────────────────────
+  // window.unityEventMap stores a callable dispatch function per event name.
+  // Older Unity jslibss call map.get('ready')(data) — a plain function call.
+  // We keep the actual listener arrays in listenerRegistryRef so we can add/remove
+  // individual callbacks without replacing the dispatch function reference.
 
   const callbackMapRef = useRef<WeakMap<UnityEventCallback, UnityEventCallback>>(new WeakMap());
+  const listenerRegistryRef = useRef<Map<string, UnityEventCallback[]>>(new Map());
 
   const addEventListener = useCallback((eventName: string, callback: UnityEventCallback) => {
     if (typeof window === 'undefined') {
@@ -460,7 +458,7 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
       return;
     }
     if (!window.unityEventMap) {
-      window.unityEventMap = createEventMap();
+      window.unityEventMap = new Map();
     }
 
     let wrappedCallback = callbackMapRef.current.get(callback);
@@ -472,13 +470,19 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
       callbackMapRef.current.set(callback, wrappedCallback);
     }
 
-    _suppressDispatchLog = true;
-    const listeners = window.unityEventMap.get(eventName) ?? [];
-    _suppressDispatchLog = false;
-    if (!listeners.includes(wrappedCallback)) {
-      listeners.push(wrappedCallback);
-      window.unityEventMap.set(eventName, listeners);
+    const registry = listenerRegistryRef.current;
+    const cbs = registry.get(eventName) ?? [];
+    if (!cbs.includes(wrappedCallback)) {
+      cbs.push(wrappedCallback);
+      registry.set(eventName, cbs);
     }
+
+    // Store a plain callable function so old Unity jslibss (which do map.get(name)(data))
+    // and new jslibss (which do map.get(name).forEach(...)) both work.
+    window.unityEventMap.set(eventName, (data: unknown) => {
+      if (cbs.length === 0) uLog.event(`← ${eventName} (no listeners)`);
+      cbs.forEach(cb => cb(data));
+    });
   }, []);
 
   const removeEventListener = useCallback((eventName: string, callback: UnityEventCallback) => {
@@ -491,13 +495,16 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
     const wrappedCallback = callbackMapRef.current.get(callback);
     const callbackToRemove = wrappedCallback || callback;
 
-    _suppressDispatchLog = true;
-    const listeners = window.unityEventMap.get(eventName) ?? [];
-    _suppressDispatchLog = false;
-    const index = listeners.indexOf(callbackToRemove);
+    const registry = listenerRegistryRef.current;
+    const cbs = registry.get(eventName) ?? [];
+    const index = cbs.indexOf(callbackToRemove);
     if (index !== -1) {
-      listeners.splice(index, 1);
-      window.unityEventMap.set(eventName, listeners);
+      cbs.splice(index, 1);
+    }
+
+    if (cbs.length === 0) {
+      window.unityEventMap.delete(eventName);
+      registry.delete(eventName);
     }
   }, []);
 
@@ -537,6 +544,7 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
       fullBoot,
       replayBoot,
       initializeUnity,
+      sendMessage,
       sendSetScene,
       waitForSceneLoad,
       setData,

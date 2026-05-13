@@ -9,8 +9,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import {
-  ALL_PAGES, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, MENU_ITEMS, defaultRouteForType,
-  type ScaffoldConfig, type RegMode, type StepProps, type PageInstance,
+  ALL_PAGES, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, MENU_ITEMS, BUTTON_VARIANTS, defaultRouteForType,
+  type ScaffoldConfig, type RegMode, type StepProps, type PageInstance, type ButtonVariant,
 } from '../shared/config.ts';
 import PageSettingsCard from './PageSettingsCard.tsx';
 import PreviewPane from './PreviewPane.tsx';
@@ -121,6 +121,7 @@ export default function StepPages({ config, setConfig }: StepProps) {
                     inFlow={inFlow}
                     flowExits={config.flowExits}
                     enabledExits={config.flowEnabledExits}
+                    buttonVariants={config.flowButtonVariants}
                     onChangeExit={(pageId, exitKey, target) => {
                       const k = `${pageId}.${exitKey}`;
                       const next = { ...config.flowExits };
@@ -130,6 +131,10 @@ export default function StepPages({ config, setConfig }: StepProps) {
                     onToggleExit={(pageId, exitKey, enabled) => {
                       const k = `${pageId}.${exitKey}`;
                       setConfig({ ...config, flowEnabledExits: { ...config.flowEnabledExits, [k]: enabled } });
+                    }}
+                    onChangeVariant={(pageId, exitKey, variant) => {
+                      const k = `${pageId}.${exitKey}`;
+                      setConfig({ ...config, flowButtonVariants: { ...config.flowButtonVariants, [k]: variant } });
                     }}
                     onRemove={() => removeInstance(instance.id)}
                     onChangeRoute={onChangeRoute}
@@ -208,8 +213,9 @@ export default function StepPages({ config, setConfig }: StepProps) {
         <div className="menu-picker__list">
           {MENU_ITEMS.map(item => {
             const enabled = config.menuItemsEnabled[item.id] ?? item.defaultEnabled;
+            const variant = config.menuButtonVariants[item.id] ?? item.kind;
             return (
-              <label key={item.id} className={`menu-picker__row${enabled ? ' is-enabled' : ''}`}>
+              <div key={item.id} className={`menu-picker__row${enabled ? ' is-enabled' : ''}`}>
                 <input
                   type="checkbox"
                   checked={enabled}
@@ -220,10 +226,20 @@ export default function StepPages({ config, setConfig }: StepProps) {
                 />
                 <div className="menu-picker__row-body">
                   <span className="menu-picker__row-label">{item.label}</span>
-                  <span className={`menu-picker__row-kind menu-picker__row-kind--${item.kind}`}>{item.kind}</span>
+                  <select
+                    className="menu-picker__variant"
+                    value={variant}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      menuButtonVariants: { ...config.menuButtonVariants, [item.id]: e.target.value as ButtonVariant },
+                    })}
+                    aria-label={`Button variant for ${item.label}`}
+                  >
+                    {BUTTON_VARIANTS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+                  </select>
                   <code className="menu-picker__row-target">{item.target}</code>
                 </div>
-              </label>
+              </div>
             );
           })}
         </div>
@@ -241,14 +257,16 @@ interface FlowCardProps {
   inFlow:           PageInstance[];
   flowExits:        Record<string, string>;
   enabledExits:     Record<string, boolean>;
+  buttonVariants:   Record<string, ButtonVariant>;
   onChangeExit:     (pageId: string, exitKey: string, target: string) => void;
   onToggleExit:     (pageId: string, exitKey: string, enabled: boolean) => void;
+  onChangeVariant:  (pageId: string, exitKey: string, variant: ButtonVariant) => void;
   onRemove:         () => void;
   onChangeRoute:    (instanceId: string, raw: string) => void;
   onBlurRoute:      (instanceId: string, raw: string) => void;
 }
 
-function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, onChangeExit, onToggleExit, onRemove, onChangeRoute, onBlurRoute }: FlowCardProps) {
+function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, buttonVariants, onChangeExit, onToggleExit, onChangeVariant, onRemove, onChangeRoute, onBlurRoute }: FlowCardProps) {
   const meta = pageMeta(instance.type);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: instance.id });
 
@@ -333,6 +351,7 @@ function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, on
             const enabled    = isOptional
               ? (enabledExits[choiceKey] ?? exit.defaultEnabled ?? false)
               : true;
+            const variant = buttonVariants[choiceKey] ?? exit.defaultVariant ?? 'primary';
 
             return (
               <div key={exit.key} className={`flow-card__exit${isOptional && !enabled ? ' is-disabled' : ''}`}>
@@ -350,6 +369,7 @@ function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, on
                   <span className="flow-card__exit-label">→ {exit.label}</span>
                 )}
 
+                <div className="flow-card__exit-controls">
                 <select
                   value={choice}
                   onChange={(e) => onChangeExit(instance.id, exit.key, e.target.value)}
@@ -361,6 +381,16 @@ function FlowCard({ instance, index, isLast, inFlow, flowExits, enabledExits, on
                     <option key={o.id} value={o.id}>{o.label}</option>
                   ))}
                 </select>
+                <select
+                  className="flow-card__variant"
+                  value={variant}
+                  onChange={(e) => onChangeVariant(instance.id, exit.key, e.target.value as ButtonVariant)}
+                  disabled={!enabled}
+                  aria-label={`Button variant for ${title} ${exit.label}`}
+                >
+                  {BUTTON_VARIANTS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+                </select>
+                </div>
               </div>
             );
           })}

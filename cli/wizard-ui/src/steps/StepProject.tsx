@@ -28,7 +28,7 @@ export default function StepProject({ config, setConfig }: StepProps) {
         <p className="step__hint">These get baked into the scaffolded files (folder name, env vars, CAPE binding).</p>
       </div>
 
-      <div style={{ display: 'grid', gap: 16, gridTemplateColumns: '1fr 1fr' }}>
+      <div className="project-grid">
         <div className="field">
           <label htmlFor="name">Project name</label>
           <input
@@ -92,7 +92,7 @@ export default function StepProject({ config, setConfig }: StepProps) {
           </select>
         </div>
 
-        <div className="field" style={{ gridColumn: '1 / -1' }}>
+        <div className="field project-grid__wide">
           <label htmlFor="output">Output folder (optional)</label>
           <input
             id="output" type="text" placeholder="(default: sibling dir of scaffolder)"
@@ -105,8 +105,8 @@ export default function StepProject({ config, setConfig }: StepProps) {
         </div>
       </div>
 
-      <p className="step__hint" style={{ marginTop: 4 }}>
-        CAPE campaign setup happens at the end — by default we'll create a fresh campaign for you. No need to enter an ID here.
+      <p className="project-note">
+        CAPE campaign setup runs during build. By default the wizard creates a fresh campaign, so no campaign ID is needed here.
       </p>
 
       <LanguagesPicker config={config} toggleSupported={toggleSupported} setDefault={setDefault} />
@@ -169,7 +169,7 @@ function LanguagesPicker({
         />
       </div>
 
-      {groups.selected.length > 0 && filter && (
+      {groups.selected.length > 0 && (
         <LangGroup
           title="Selected"
           items={groups.selected}

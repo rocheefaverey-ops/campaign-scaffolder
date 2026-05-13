@@ -1,6 +1,8 @@
 import {
-  DEFAULT_CONFIG, defaultPageSettings, defaultEnabledExits, defaultMenuItemsEnabled, defaultRouteForType,
+  DEFAULT_CONFIG, defaultPageSettings, defaultEnabledExits, defaultFlowButtonVariants,
+  defaultMenuItemsEnabled, defaultMenuButtonVariants, defaultRouteForType,
   type ScaffoldConfig, type PageInstance, type Stack, type Engine, type Market, type RegMode, type PageSettings,
+  type ButtonVariant,
 } from './config.ts';
 
 /**
@@ -55,9 +57,15 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
   const flowEnabledExits: Record<string, boolean> = (wizard.flowEnabledExits && typeof wizard.flowEnabledExits === 'object')
     ? wizard.flowEnabledExits as Record<string, boolean>
     : defaultEnabledExits();
+  const flowButtonVariants: Record<string, ButtonVariant> = (wizard.flowButtonVariants && typeof wizard.flowButtonVariants === 'object')
+    ? { ...defaultFlowButtonVariants(), ...wizard.flowButtonVariants as Record<string, ButtonVariant> }
+    : defaultFlowButtonVariants();
   const menuItemsEnabled: Record<string, boolean> = (wizard.menuItemsEnabled && typeof wizard.menuItemsEnabled === 'object')
     ? wizard.menuItemsEnabled as Record<string, boolean>
     : defaultMenuItemsEnabled();
+  const menuButtonVariants: Record<string, ButtonVariant> = (wizard.menuButtonVariants && typeof wizard.menuButtonVariants === 'object')
+    ? { ...defaultMenuButtonVariants(), ...wizard.menuButtonVariants as Record<string, ButtonVariant> }
+    : defaultMenuButtonVariants();
 
   const defaultLanguage    = pickString(wizard, 'defaultLanguage') ?? DEFAULT_CONFIG.defaultLanguage;
   const supportedLanguages = Array.isArray(wizard.supportedLanguages)
@@ -96,7 +104,9 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
     flowExits,
     flowEntry,
     flowEnabledExits,
+    flowButtonVariants,
     menuItemsEnabled,
+    menuButtonVariants,
     // fromScaffolded() is only called from the "Open existing" flow.
     // Default the picker to in-place update; the user can switch to
     // recreate/fresh on the Build step.

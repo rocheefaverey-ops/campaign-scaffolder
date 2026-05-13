@@ -32,7 +32,7 @@ import { printPostScaffoldMessage } from './post-scaffold-message.js';
 import { PAGE_ELEMENTS, PAGE_DEFAULTS, ELEMENT_CATALOGUE, buildPage } from './page-builder.js';
 import { TS_PAGE_ELEMENTS, TS_PAGE_DEFAULTS, TS_ELEMENT_CATALOGUE, TS_ALL_PAGES, TS_PAGE_ROUTES, buildTsPage } from './tanstack-page-builder.js';
 import { getGamesByEngine, getGamesByStack, getGame, gameEnvLines, gameLabel } from './game-registry.js';
-import { checkAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, seedTemplateAssets, publishCampaign } from './cape-client.js';
+import { checkAuth, validateAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, seedTemplateAssets, publishCampaign } from './cape-client.js';
 import { buildTanStackCapeFormat, buildNextCapeFormat } from './cape-format-builder.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -403,6 +403,7 @@ function parseArgs(argv) {
     else if (key === 'cape-id')  args.capeId   = val;
     else if (key === 'market')   args.market   = val;
     else if (key === 'game' || key === 'engine') args.game = val;
+    else if (key === 'game-id')  args.gameId   = val;
     else if (key === 'stack')    args.stack    = val;
     else if (key === 'reg-mode') args.regMode  = val;
     else if (key === 'gtm-id')   args.gtmId    = val;
@@ -1944,7 +1945,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   printPostScaffoldMessage({ projectName: name, capeId, market, modules: [], outputDir: _tsFinalFrontendDir, stack: 'tanstack', capeAutoPublished, capePublishedUrl });
 }
 
-async function scaffoldNext({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, menuItemsEnabled = {}, pageTypes = {}, _wizardMeta = null, routeMap = {} }) {
+async function scaffoldNext({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowButtonVariants = {}, menuItemsEnabled = {}, menuButtonVariants = {}, pageTypes = {}, _wizardMeta = null, routeMap = {} }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -2137,6 +2138,14 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
   const flowTokens = computeFlowTokens(pages, regMode, flowExits, flowEntry, pageTypes, routeMap);
   const availableCampaignRoutes = pages.map((id) => routeFor(id, routeMap));
   const onboardingFirstRunOnly = landingOnboardingFirstRunOnly(_wizardMeta);
+  const buttonVariant = (pageId, exitKey, fallback = 'primary') => {
+    const value = flowButtonVariants?.[`${pageId}.${exitKey}`];
+    return ['primary', 'secondary', 'tertiary', 'dark', 'danger'].includes(value) ? value : fallback;
+  };
+  const menuVariant = (itemId, fallback = 'secondary') => {
+    const value = menuButtonVariants?.[itemId];
+    return ['primary', 'secondary', 'tertiary', 'dark', 'danger'].includes(value) ? value : fallback;
+  };
   const tokens = {
     '{{PROJECT_NAME}}':       name,
     '{{CAPE_ID}}':            capeId,
@@ -2149,6 +2158,24 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
     '{{NEXT_AFTER_VIDEO_PAGE}}': flowTokens['{{NEXT_AFTER_VIDEO}}'] ?? '/landing',
     '{{LANDING_ONBOARDING_FIRST_RUN_ONLY}}': onboardingFirstRunOnly ? 'true' : 'false',
     '{{AVAILABLE_CAMPAIGN_ROUTES}}': availableCampaignRoutes.join('|'),
+    '{{BUTTON_VARIANT_LANDING_NEXT}}':        buttonVariant('landing', 'next', 'primary'),
+    '{{BUTTON_VARIANT_LANDING_LEADERBOARD}}': buttonVariant('landing', 'leaderboard', 'secondary'),
+    '{{BUTTON_VARIANT_ONBOARDING_NEXT}}':     buttonVariant('onboarding', 'next', 'primary'),
+    '{{BUTTON_VARIANT_REGISTER_NEXT}}':       buttonVariant('register', 'next', 'primary'),
+    '{{BUTTON_VARIANT_RESULT_NEXT}}':         buttonVariant('result', 'next', 'primary'),
+    '{{BUTTON_VARIANT_RESULT_PLAY_AGAIN}}':   buttonVariant('result', 'playAgain', 'secondary'),
+    '{{BUTTON_VARIANT_RESULT_LEADERBOARD}}':  buttonVariant('result', 'leaderboard', 'tertiary'),
+    '{{BUTTON_VARIANT_LEADERBOARD_NEXT}}':    buttonVariant('leaderboard', 'next', 'primary'),
+    '{{BUTTON_VARIANT_VOUCHER_NEXT}}':        buttonVariant('voucher', 'next', 'primary'),
+    '{{MENU_VARIANT_HOME}}':                  menuVariant('home', 'primary'),
+    '{{MENU_VARIANT_RESUME}}':                menuVariant('resume', 'secondary'),
+    '{{MENU_VARIANT_HOWTOPLAY}}':             menuVariant('howToPlay', 'secondary'),
+    '{{MENU_VARIANT_LEADERBOARD}}':           menuVariant('leaderboard', 'secondary'),
+    '{{MENU_VARIANT_VOUCHER}}':               menuVariant('voucher', 'secondary'),
+    '{{MENU_VARIANT_TERMS}}':                 menuVariant('terms', 'tertiary'),
+    '{{MENU_VARIANT_PRIVACY}}':               menuVariant('privacy', 'tertiary'),
+    '{{MENU_VARIANT_FAQ}}':                   menuVariant('faq', 'tertiary'),
+    '{{MENU_VARIANT_LEAVE}}':                 menuVariant('leave', 'danger'),
     ...flowTokens,
   };
   const replacedCount = tokenReplaceDir(frontendDir, tokens);
@@ -2186,6 +2213,8 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
         nextRoute:  nextRoute(page),
         retryRoute,
         stepCount:  pageElementSelections[`${page}__stepCount`] ?? 3,
+        buttonVariants: flowButtonVariants,
+        menuButtonVariants,
       };
 
       try {
@@ -3432,7 +3461,7 @@ async function main() {
     if (cfg.createCape) {
       // Check cached auth FIRST so we fail fast with a clean error instead of
       // hanging on a child-process readline prompt that has no stdin.
-      const cached = await checkAuth();
+      const cached = await validateAuth();
       if (!cached) {
         throw new Error(
           'CAPE auth required for createCape mode, but no cached login found.\n' +
@@ -3504,9 +3533,11 @@ async function main() {
       flowExits:               (cfg.flowExits && typeof cfg.flowExits === 'object') ? cfg.flowExits : {},
       flowEntry:               typeof cfg.flowEntry === 'string' ? cfg.flowEntry : '',
       flowEnabledExits:        (cfg.flowEnabledExits && typeof cfg.flowEnabledExits === 'object') ? cfg.flowEnabledExits : {},
+      flowButtonVariants:      (cfg.flowButtonVariants && typeof cfg.flowButtonVariants === 'object') ? cfg.flowButtonVariants : {},
       // Menu visibility — drives which menu copy keys make it into the
       // generated CAPE format. The /menu route reads the matching CAPE flags.
       menuItemsEnabled:        (cfg.menuItemsEnabled && typeof cfg.menuItemsEnabled === 'object') ? cfg.menuItemsEnabled : {},
+      menuButtonVariants:      (cfg.menuButtonVariants && typeof cfg.menuButtonVariants === 'object') ? cfg.menuButtonVariants : {},
       // Multi-page support: id→type for pages whose id ≠ type
       // (e.g. {'intro-video': 'video'}). Singletons have id === type and
       // don't appear in this map.
@@ -3521,7 +3552,9 @@ async function main() {
       _wizardMeta: {
         pageSettings:       (cfg.pageSettings && Object.keys(cfg.pageSettings).length > 0)             ? cfg.pageSettings       : undefined,
         flowEnabledExits:   (cfg.flowEnabledExits && Object.keys(cfg.flowEnabledExits).length > 0)     ? cfg.flowEnabledExits   : undefined,
+        flowButtonVariants: (cfg.flowButtonVariants && Object.keys(cfg.flowButtonVariants).length > 0) ? cfg.flowButtonVariants : undefined,
         menuItemsEnabled:   (cfg.menuItemsEnabled && Object.keys(cfg.menuItemsEnabled).length > 0)     ? cfg.menuItemsEnabled   : undefined,
+        menuButtonVariants: (cfg.menuButtonVariants && Object.keys(cfg.menuButtonVariants).length > 0) ? cfg.menuButtonVariants : undefined,
         defaultLanguage:    cfg.defaultLanguage    || undefined,
         supportedLanguages: (Array.isArray(cfg.supportedLanguages) && cfg.supportedLanguages.length > 0) ? cfg.supportedLanguages : undefined,
         timezone:           cfg.timezone           || undefined,
@@ -3691,7 +3724,15 @@ async function main() {
     const pages = args.pages.length > 0 ? args.pages : (stack === 'tanstack' ? ['launch', 'tutorial', 'game', 'score'] : buildDefaultPages(args.game || ''));
     const pageTypes = inferPageTypes(pages);
     const allModules = resolveModules(args.game || (stack === 'tanstack' ? 'unity' : ''), pages, args.modules);
-    const selectedGame = (args.game || 'unity') === 'unity' ? (getGamesByStack('unity', stack)[0] ?? null) : null;
+    const selectedGame = (args.game || 'unity') === 'unity'
+      ? (args.gameId ? getGame(args.gameId) : (getGamesByStack('unity', stack)[0] ?? null))
+      : null;
+    if (args.gameId && !selectedGame) {
+      throw new Error(`Unknown game id "${args.gameId}". Expected a games/{id}/game.json manifest.`);
+    }
+    if (selectedGame?.stack && selectedGame.stack !== stack) {
+      throw new Error(`Game "${selectedGame.id}" is registered for stack "${selectedGame.stack}", not "${stack}".`);
+    }
     let capeAutoPublished = Boolean(args.capeId);
     let capePublishedUrl = '';
 
@@ -3761,7 +3802,7 @@ async function main() {
         supportedLanguages: ['EN'],
         timezone: 'Europe/Brussels',
         createCape: true,
-        gameId: 'haas-f1',
+        gameId: selectedGame?.id || undefined,
       },
     };
   } else {

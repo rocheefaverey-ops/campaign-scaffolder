@@ -66,6 +66,6 @@ declare global {
       onProgress?: (progress: number) => void
     ) => Promise<IUnityApplication>;
     /** Unity dispatches events into this map via a .jslib call */
-    unityEventMap: Map<string, Array<UnityEventCallback>>;
+    unityEventMap: Map<string, UnityEventCallback>;
   }
 }

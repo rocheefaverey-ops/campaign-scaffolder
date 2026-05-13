@@ -11,6 +11,7 @@ export type Stack  = 'next' | 'tanstack';
 export type Engine = 'unity' | 'r3f' | 'phaser' | 'memory' | 'none';
 export type Market = 'NL' | 'BE' | 'FR' | 'DE';
 export type RegMode = 'none' | 'gate' | 'after';
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'dark' | 'danger';
 /**
  * How the wizard's Build step applies the config:
  *
@@ -177,12 +178,14 @@ export interface ScaffoldConfig {
    * Persisted to CAPE as `settings.pages.{pageId}.{capeFlag} = boolean`.
    */
   flowEnabledExits: Record<string, boolean>;
+  flowButtonVariants: Record<string, ButtonVariant>;
   /**
    * Per-menu-item visibility, keyed by item id (see MENU_ITEMS). Persisted
    * to CAPE as `settings.menu.show{Id}`. The /menu route reads these flags
    * and renders only the enabled items.
    */
   menuItemsEnabled: Record<string, boolean>;
+  menuButtonVariants: Record<string, ButtonVariant>;
   /**
    * How Build applies this config. 'create' for fresh scaffolds; 'update' or
    * 'recreate' only available when the wizard was populated from an existing
@@ -212,6 +215,7 @@ export interface SettingDef {
   min?:     number;
   max?:     number;
   unit?:    string;
+  showWhen?: Array<{ key: string; value: SettingValue }>;
 }
 
 /**
@@ -224,18 +228,18 @@ export interface SettingDef {
  *   ◌ = scheduled — value is persisted to CAPE but no page consumes it yet
  */
 const VIDEO_PAGE_SETTINGS: SettingDef[] = [
-  { key: 'mode', label: 'Mode', kind: 'select', default: 'loadingScreen',
+  { key: 'mode', label: 'Playback mode', kind: 'select', default: 'loadingScreen',
     options: [
       { value: 'intro',         label: 'Intro — plays once' },
       { value: 'loadingScreen', label: 'Loading screen — loops until game ready' },
     ],
     hint: '✓ Loading screen mode waits for the game to finish loading; intro plays once.',
   },
-  { key: 'alwaysSkip',       label: 'Always allow skip', kind: 'boolean', default: false,
+  { key: 'alwaysSkip',       label: 'Show skip immediately', kind: 'boolean', default: false,
     hint: '✓ Show the skip button immediately. Overrides minPlaybackSec and the loading-screen wait.' },
-  { key: 'minPlaybackSec',   label: 'Min playback',   kind: 'number', default: 3, min: 0, max: 30, unit: 'sec',
+  { key: 'minPlaybackSec',   label: 'Minimum watch time',   kind: 'number', default: 3, min: 0, max: 30, unit: 'sec', showWhen: [{ key: 'alwaysSkip', value: false }],
     hint: '✓ Don\'t allow skip before this many seconds. Ignored when "Always allow skip" is on.' },
-  { key: 'readyFallbackSec', label: 'Ready fallback', kind: 'number', default: 8, min: 1, max: 60, unit: 'sec',
+  { key: 'readyFallbackSec', label: 'Game-ready fallback', kind: 'number', default: 8, min: 1, max: 60, unit: 'sec', showWhen: [{ key: 'mode', value: 'loadingScreen' }, { key: 'alwaysSkip', value: false }],
     hint: '✓ Auto-allow skip if the game-ready signal never fires.' },
 ];
 
@@ -245,7 +249,7 @@ export const PAGE_SETTINGS_SCHEMA: Record<string, SettingDef[]> = {
   'loading-video': VIDEO_PAGE_SETTINGS,
   'ad-video': VIDEO_PAGE_SETTINGS,
   landing: [
-    { key: 'onboardingFirstRunOnly', label: 'Onboarding on first run only', kind: 'boolean', default: true,
+    { key: 'onboardingFirstRunOnly', label: 'Skip onboarding for returning players', kind: 'boolean', default: true,
       hint: '✓ Returning players skip onboarding and continue directly to the next route.' },
   ],
   onboarding: [
@@ -253,19 +257,19 @@ export const PAGE_SETTINGS_SCHEMA: Record<string, SettingDef[]> = {
       hint: '✓ Show a "Skip" link on each onboarding slide.' },
   ],
   register: [
-    { key: 'showInfix',     label: 'Show infix field',     kind: 'boolean', default: true,
+    { key: 'showInfix',     label: 'Show name infix field',     kind: 'boolean', default: true,
       hint: '✓ Useful for Dutch markets ("van", "de", etc).' },
-    { key: 'requireOptIns', label: 'Require all opt-ins', kind: 'boolean', default: true,
+    { key: 'requireOptIns', label: 'Require consent checkboxes', kind: 'boolean', default: true,
       hint: '✓ Block submission until all consent checkboxes are ticked.' },
   ],
   game: [
     { key: 'timerEnabled', label: 'Timer enabled',  kind: 'boolean', default: true,
       hint: '✓ Render a countdown overlay on the gameplay page.' },
-    { key: 'timerSec',     label: 'Timer duration', kind: 'number',  default: 60, min: 5, max: 600, unit: 'sec',
+    { key: 'timerSec',     label: 'Timer duration', kind: 'number',  default: 60, min: 5, max: 600, unit: 'sec', showWhen: [{ key: 'timerEnabled', value: true }],
       hint: '✓ Countdown duration. Game ends with score=0 if it expires.' },
   ],
   result: [
-    { key: 'autoNavSec', label: 'Auto-navigate after', kind: 'number', default: 0, min: 0, max: 120, unit: 'sec',
+    { key: 'autoNavSec', label: 'Auto-continue after', kind: 'number', default: 0, min: 0, max: 120, unit: 'sec',
       hint: '✓ For kiosk mode. 0 = disabled (user clicks Continue).' },
   ],
   voucher: [
@@ -369,14 +373,23 @@ export interface PageExit {
    * Required exits don't need this — their button is always rendered.
    */
   capeFlag?:    string;
+  defaultVariant?: ButtonVariant;
 }
+
+export const BUTTON_VARIANTS: Array<{ value: ButtonVariant; label: string }> = [
+  { value: 'primary',   label: 'Primary' },
+  { value: 'secondary', label: 'Secondary' },
+  { value: 'tertiary',  label: 'Tertiary' },
+  { value: 'dark',      label: 'Dark' },
+  { value: 'danger',    label: 'Danger' },
+];
 
 export const ALL_PAGES: PageMeta[] = [
   { id: 'landing',     label: 'Landing',     hint: 'Hero / brand splash with CTA.',     route: '/landing',
     exits: [
-      { key: 'next',        label: 'Primary CTA button',      token: 'NEXT_AFTER_LANDING' },
+      { key: 'next',        label: 'Primary CTA button',      token: 'NEXT_AFTER_LANDING', defaultVariant: 'primary' },
       { key: 'leaderboard', label: 'Leaderboard button',      token: 'LANDING_LEADERBOARD_ROUTE',
-        optional: true, defaultEnabled: false, capeFlag: 'showLeaderboardButton' },
+        optional: true, defaultEnabled: false, capeFlag: 'showLeaderboardButton', defaultVariant: 'secondary' },
     ] },
   { id: 'video',       label: 'Video',       hint: 'Intro / brand video, skippable.',   route: '/video',       requires: 'video',
     exits: [{ key: 'next', label: 'On end / skip',   token: 'NEXT_AFTER_VIDEO' }] },
@@ -387,23 +400,23 @@ export const ALL_PAGES: PageMeta[] = [
   { id: 'ad-video',          label: 'Ad video',          hint: 'Interstitial ad-style video page.',            route: '/ad-video',      requires: 'video',
     exits: [{ key: 'next', label: 'On end / skip',   token: 'NEXT_AFTER_AD_VIDEO' }] },
   { id: 'onboarding',  label: 'Onboarding',  hint: 'How-to-play steps, multi-slide.',   route: '/onboarding',
-    exits: [{ key: 'next', label: 'Final CTA',       token: 'NEXT_AFTER_ONBOARDING' }] },
+    exits: [{ key: 'next', label: 'Final CTA',       token: 'NEXT_AFTER_ONBOARDING', defaultVariant: 'primary' }] },
   { id: 'register',    label: 'Register',    hint: 'Player registration form.',         route: '/register',    requires: 'registration',
-    exits: [{ key: 'next', label: 'On submit',       token: 'NEXT_AFTER_REGISTER' }] },
+    exits: [{ key: 'next', label: 'On submit',       token: 'NEXT_AFTER_REGISTER', defaultVariant: 'primary' }] },
   { id: 'game',        label: 'Game',        hint: 'The actual game canvas.',           route: '/gameplay',
     exits: [{ key: 'next', label: 'On game end',     token: 'NEXT_AFTER_GAME' }] },
   { id: 'result',      label: 'Result',      hint: 'Score reveal / win / lose screen.', route: '/result',
     exits: [
-      { key: 'next',        label: 'Continue button',  token: 'NEXT_AFTER_RESULT' },
+      { key: 'next',        label: 'Continue button',  token: 'NEXT_AFTER_RESULT', defaultVariant: 'primary' },
       { key: 'playAgain',   label: 'Play again button',token: 'PLAY_AGAIN_ROUTE', defaultRule: 'first-in-flow',
-        optional: true, defaultEnabled: true,  capeFlag: 'showPlayAgainButton' },
+        optional: true, defaultEnabled: true,  capeFlag: 'showPlayAgainButton', defaultVariant: 'secondary' },
       { key: 'leaderboard', label: 'Leaderboard button', token: 'RESULT_LEADERBOARD_ROUTE',
-        optional: true, defaultEnabled: false, capeFlag: 'showLeaderboardButton' },
+        optional: true, defaultEnabled: false, capeFlag: 'showLeaderboardButton', defaultVariant: 'tertiary' },
     ] },
   { id: 'leaderboard', label: 'Leaderboard', hint: 'Top scores + personal best.',       route: '/leaderboard', requires: 'leaderboard',
-    exits: [{ key: 'next', label: 'CTA button',      token: 'NEXT_AFTER_LEADERBOARD' }] },
+    exits: [{ key: 'next', label: 'CTA button',      token: 'NEXT_AFTER_LEADERBOARD', defaultVariant: 'primary' }] },
   { id: 'voucher',     label: 'Voucher',     hint: 'Reward code / QR for the prize.',   route: '/voucher',     requires: 'voucher',
-    exits: [{ key: 'next', label: 'Done button',     token: 'NEXT_AFTER_VOUCHER' }] },
+    exits: [{ key: 'next', label: 'Done button',     token: 'NEXT_AFTER_VOUCHER', defaultVariant: 'primary' }] },
 ];
 
 export const ALL_PAGE_IDS: string[] = ALL_PAGES.map(p => p.id);
@@ -507,7 +520,7 @@ export interface MenuItemDef {
   id:             string;
   label:          string;
   target:         string;
-  kind:           'primary' | 'secondary' | 'ghost';
+  kind:           ButtonVariant;
   defaultEnabled: boolean;
 }
 
@@ -517,15 +530,31 @@ export const MENU_ITEMS: MenuItemDef[] = [
   { id: 'howToPlay',   label: 'How to play',    target: '/onboarding',  kind: 'secondary', defaultEnabled: true  },
   { id: 'leaderboard', label: 'Leaderboard',   target: '/leaderboard', kind: 'secondary', defaultEnabled: false },
   { id: 'voucher',     label: 'My voucher',     target: '/voucher',     kind: 'secondary', defaultEnabled: false },
-  { id: 'terms',       label: 'Terms',          target: '/terms',       kind: 'ghost',     defaultEnabled: true  },
-  { id: 'privacy',     label: 'Privacy',        target: '/privacy',     kind: 'ghost',     defaultEnabled: true  },
-  { id: 'faq',         label: 'FAQ',             target: '/faq',         kind: 'ghost',     defaultEnabled: false },
-  { id: 'leave',       label: 'Leave campaign', target: '/',            kind: 'ghost',     defaultEnabled: true  },
+  { id: 'terms',       label: 'Terms',          target: '/terms',       kind: 'tertiary',  defaultEnabled: true  },
+  { id: 'privacy',     label: 'Privacy',        target: '/privacy',     kind: 'tertiary',  defaultEnabled: true  },
+  { id: 'faq',         label: 'FAQ',             target: '/faq',         kind: 'tertiary',  defaultEnabled: false },
+  { id: 'leave',       label: 'Leave campaign', target: '/',            kind: 'danger',    defaultEnabled: true  },
 ];
 
 export function defaultMenuItemsEnabled(): Record<string, boolean> {
   const out: Record<string, boolean> = {};
   for (const item of MENU_ITEMS) out[item.id] = item.defaultEnabled;
+  return out;
+}
+
+export function defaultFlowButtonVariants(): Record<string, ButtonVariant> {
+  const out: Record<string, ButtonVariant> = {};
+  for (const page of ALL_PAGES) {
+    for (const exit of page.exits ?? []) {
+      out[`${page.id}.${exit.key}`] = exit.defaultVariant ?? 'primary';
+    }
+  }
+  return out;
+}
+
+export function defaultMenuButtonVariants(): Record<string, ButtonVariant> {
+  const out: Record<string, ButtonVariant> = {};
+  for (const item of MENU_ITEMS) out[item.id] = item.kind;
   return out;
 }
 
@@ -556,7 +585,9 @@ export const DEFAULT_CONFIG: ScaffoldConfig = {
   flowExits:          {},
   flowEntry:          undefined,
   flowEnabledExits:   defaultEnabledExits(),
+  flowButtonVariants: defaultFlowButtonVariants(),
   menuItemsEnabled:   defaultMenuItemsEnabled(),
+  menuButtonVariants: defaultMenuButtonVariants(),
   buildMode:          'create',
 };
 

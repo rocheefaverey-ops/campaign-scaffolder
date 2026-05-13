@@ -143,6 +143,10 @@ function isExitOn(config: ScaffoldConfig, id: string, exitKey: string, defaultEn
   return config.flowEnabledExits[`${id}.${exitKey}`] ?? defaultEnabled;
 }
 
+function exitVariant(config: ScaffoldConfig, id: string, exitKey: string, fallback: 'primary' | 'secondary' | 'tertiary' | 'dark' | 'danger') {
+  return config.flowButtonVariants[`${id}.${exitKey}`] ?? fallback;
+}
+
 // ─── Per-page renderers ──────────────────────────────────────────────────────
 
 function HeroBleed() {
@@ -176,7 +180,7 @@ function HamburgerSvg() {
 }
 
 function CtaButton({ kind = 'primary', label, onClick }:
-  { kind?: 'primary' | 'secondary' | 'ghost'; label: string; onClick?: () => void }
+  { kind?: 'primary' | 'secondary' | 'tertiary' | 'dark' | 'danger'; label: string; onClick?: () => void }
 ) {
   return (
     <button type="button" className={`pp-btn pp-btn--${kind}`} onClick={onClick}>
@@ -207,8 +211,8 @@ function LandingPreview({ config, instance, navigate, onMenu }: { config: Scaffo
         <div className="pp-bottom">
           <HeroStack kicker="LIVE EXPERIENCE" title="Welcome" body="Are you ready to play?" />
           <div className="pp-actions">
-            <CtaButton label="Play now" onClick={() => navigate(instance.id, 'next')} />
-            {showLeaderboard && <CtaButton kind="secondary" label="Leaderboard" onClick={() => navigate(instance.id, 'leaderboard')} />}
+            <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Play now" onClick={() => navigate(instance.id, 'next')} />
+            {showLeaderboard && <CtaButton kind={exitVariant(config, instance.id, 'leaderboard', 'secondary')} label="Leaderboard" onClick={() => navigate(instance.id, 'leaderboard')} />}
           </div>
         </div>
       </div>
@@ -218,7 +222,7 @@ function LandingPreview({ config, instance, navigate, onMenu }: { config: Scaffo
 
 // ─────────────── Onboarding ───────────────
 
-function OnboardingPreview({ instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
+function OnboardingPreview({ config, instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
   const [step, setStep] = useState(0);
   const STEPS = [
     { title: 'Match cards',    body: 'Tap two cards in a row to find a pair.' },
@@ -249,7 +253,7 @@ function OnboardingPreview({ instance, navigate, onMenu }: { config: ScaffoldCon
                 <button key={i} type="button" aria-label={`step ${i + 1}`} className={`pp-dot${i === step ? ' is-active' : ''}`} onClick={() => setStep(i)} />
               ))}
             </div>
-            <CtaButton label={isLast ? 'Start' : 'Continue'} onClick={onCta} />
+            <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label={isLast ? 'Start' : 'Continue'} onClick={onCta} />
           </div>
         </div>
       </div>
@@ -300,7 +304,7 @@ function RegisterPreview({ config, instance, navigate }: { config: ScaffoldConfi
           <Checkbox label="I'm 18 or older" />
           <Checkbox label="I accept the terms" />
           <Checkbox label="I accept the privacy policy" />
-          <CtaButton label="Register" onClick={() => navigate(instance.id, 'next')} />
+          <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Register" onClick={() => navigate(instance.id, 'next')} />
         </div>
       </div>
     </div>
@@ -344,7 +348,7 @@ function GamePreview({ config, instance, navigate }: { config: ScaffoldConfig; i
         <div className="pp-game-grid" aria-hidden>
           {Array.from({ length: 16 }).map((_, i) => <div key={i} className="pp-game-tile" />)}
         </div>
-        <CtaButton kind="ghost" label="Simulate game end" onClick={() => navigate(instance.id, 'next')} />
+        <CtaButton kind={exitVariant(config, instance.id, 'next', 'tertiary')} label="Simulate game end" onClick={() => navigate(instance.id, 'next')} />
       </div>
       <div className="pp-game-engine">{config.game}</div>
     </div>
@@ -369,9 +373,9 @@ function ResultPreview({ config, instance, navigate, onMenu }: { config: Scaffol
             <span className="pp-score-plate__rank">Rank #4</span>
           </div>
           <div className="pp-actions">
-            <CtaButton label="Continue" onClick={() => navigate(instance.id, 'next')} />
-            {showPlayAgain   && <CtaButton kind="secondary" label="Play again"  onClick={() => navigate(instance.id, 'playAgain', 'first')} />}
-            {showLeaderboard && <CtaButton kind="ghost"     label="Leaderboard" onClick={() => navigate(instance.id, 'leaderboard')} />}
+            <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />
+            {showPlayAgain   && <CtaButton kind={exitVariant(config, instance.id, 'playAgain', 'secondary')} label="Play again"  onClick={() => navigate(instance.id, 'playAgain', 'first')} />}
+            {showLeaderboard && <CtaButton kind={exitVariant(config, instance.id, 'leaderboard', 'tertiary')} label="Leaderboard" onClick={() => navigate(instance.id, 'leaderboard')} />}
           </div>
         </div>
       </div>
@@ -381,7 +385,7 @@ function ResultPreview({ config, instance, navigate, onMenu }: { config: Scaffol
 
 // ─────────────── Leaderboard ───────────────
 
-function LeaderboardPreview({ instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
+function LeaderboardPreview({ config, instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
   const mock = [
     { rank: 1, name: 'Alex P.',   score: 4830 },
     { rank: 2, name: 'Sam V.',    score: 4622 },
@@ -405,7 +409,7 @@ function LeaderboardPreview({ instance, navigate, onMenu }: { config: ScaffoldCo
               </li>
             ))}
           </ol>
-          <CtaButton label="Continue" onClick={() => navigate(instance.id, 'next')} />
+          <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />
         </div>
       </div>
     </div>
@@ -431,7 +435,7 @@ function VoucherPreview({ config, instance, navigate, onMenu }: { config: Scaffo
             <span className="pp-voucher__code">{code}</span>
             {showQr && <div className="pp-voucher__qr" aria-hidden>▦</div>}
           </div>
-          <CtaButton label="Done" onClick={() => navigate(instance.id, 'next')} />
+          <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Done" onClick={() => navigate(instance.id, 'next')} />
         </div>
       </div>
     </div>
@@ -466,7 +470,7 @@ function MenuPreview({ config, onClose, onNavigate }: {
             <button
               key={item.id}
               type="button"
-              className={`pp-btn pp-btn--${item.kind}`}
+              className={`pp-btn pp-btn--${config.menuButtonVariants[item.id] ?? item.kind}`}
               onClick={() => onNavigate(item.target)}
             >
               {item.label}

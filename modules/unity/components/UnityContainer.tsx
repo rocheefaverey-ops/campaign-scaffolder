@@ -20,10 +20,27 @@ interface UnityEnvironment {
   isLocal: boolean;
 }
 
+function unityFileUrl(baseUrl: string, file: string, timestamp: number): string {
+  const compression = process.env.NEXT_PUBLIC_UNITY_COMPRESSION ? `.${process.env.NEXT_PUBLIC_UNITY_COMPRESSION}` : '';
+  const noCache = process.env.NEXT_PUBLIC_UNITY_NO_CACHE === 'true';
+  const noCacheSuffix = noCache ? `?t=${timestamp}` : '';
+  return `${baseUrl}Build/${file}${compression}${noCacheSuffix}`;
+}
+
 async function resolveUnityEnvironment(
   baseUrl: string,
   gameName: string
 ): Promise<UnityEnvironment | null> {
+  const configuredVersion = process.env.NEXT_PUBLIC_UNITY_VERSION;
+  if (configuredVersion) {
+    const platform = process.env.NEXT_PUBLIC_UNITY_DEVICE_FILTER === 'true'
+      ? `${detectPlatform(navigator.userAgent)}/`
+      : '';
+    const url = `${baseUrl}/${gameName}/${configuredVersion}/${platform}`;
+    uLog.network('Unity environment resolved from env', { url, version: configuredVersion });
+    return { url, isLocal: process.env.NEXT_PUBLIC_ENV === 'local' };
+  }
+
   const versionUrl = `${baseUrl}/${gameName}/version.json`;
   uLog.network('Fetching version.json', { url: versionUrl });
 
@@ -72,6 +89,7 @@ export default function UnityContainer({ children }: UnityContainerProps) {
   const [environment, setEnvironment] = useState<UnityEnvironment | null>(null);
   const [loaderUrl, setLoaderUrl] = useState<string | null>(null);
   const [scriptReady, setScriptReady] = useState(false);
+  const [timestamp] = useState(() => Date.now());
 
   // Step 1: resolve version.json → build URL + platform
   useEffect(() => {
@@ -91,13 +109,13 @@ export default function UnityContainer({ children }: UnityContainerProps) {
         return;
       }
       setEnvironment(env);
-      setLoaderUrl(`${env.url}Build/Build.loader.js`);
+      setLoaderUrl(unityFileUrl(env.url, 'Build.loader.js', timestamp));
     });
 
     return () => {
       uLog.lifecycle('UnityContainer unmounted');
     };
-  }, []);
+  }, [timestamp]);
 
   // Step 2: once loader script is ready, render UnityGame provider
   // (UnityGame itself calls createUnityInstance when initializeUnity() is invoked)

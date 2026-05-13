@@ -94,16 +94,16 @@ export default function ResultPage() {
         </div>
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.5s 0.32s ease both' }}>
-          <Button className="w-full" size="lg" onClick={() => navigate('{{NEXT_AFTER_RESULT}}')}>
+          <Button variant={'{{BUTTON_VARIANT_RESULT_NEXT}}' as any} className="w-full" size="lg" onClick={() => navigate('{{NEXT_AFTER_RESULT}}')}>
             {cta}
           </Button>
           {showPlayAgain && (
-            <Button variant="secondary" className="w-full" size="lg" onClick={() => navigate('{{PLAY_AGAIN_ROUTE}}')}>
+            <Button variant={'{{BUTTON_VARIANT_RESULT_PLAY_AGAIN}}' as any} className="w-full" size="lg" onClick={() => navigate('{{PLAY_AGAIN_ROUTE}}')}>
               {retryLabel}
             </Button>
           )}
           {showLeaderboard && (
-            <Button variant="ghost" className="w-full" size="lg" onClick={() => navigate('{{RESULT_LEADERBOARD_ROUTE}}')}>
+            <Button variant={'{{BUTTON_VARIANT_RESULT_LEADERBOARD}}' as any} className="w-full" size="lg" onClick={() => navigate('{{RESULT_LEADERBOARD_ROUTE}}')}>
               {lbLabel}
             </Button>
           )}

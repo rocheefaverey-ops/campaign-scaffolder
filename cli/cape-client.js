@@ -47,9 +47,7 @@ const _HERO_MOB     = { url: 'https://storage-acceptance.bycape.io/account-60/up
 const _AMBIENT_BG   = { url: 'https://storage-acceptance.bycape.io/account-60/upload/8f1ef5bb-5f40-4af5-a006-50de236e6bff_ambient-bg.mp4',              extension: 'mp4',  title: 'ambient-bg',            fileName: 'ambient-bg.mp4',             size: 1244781,  type: 'video' };
 const _HEADER_VIDEO = { url: 'https://storage-acceptance.bycape.io/account-60/upload/8c9d3de1-bc42-4a8f-bc5f-e204a6cd1dc7_header-video.mp4',            extension: 'mp4',  title: 'header-video',          fileName: 'header-video.mp4',           size: 14254076, type: 'video' };
 const _VIDEO        = { url: 'https://storage-acceptance.bycape.io/account-60/upload/af4c37b4-6782-4948-9a86-e5adecb1664e_intro-livewall.mp4',          extension: 'mp4',  title: 'intro-livewall',        fileName: 'intro-livewall.mp4',         size: 7390553,  type: 'video' };
-const _FLOW_VIDEO        = { url: 'https://storage-acceptance.bycape.io/account-60/upload/159781c3-454b-494d-bdde-4fb3bb66f7ed_Flow_202605121624.mp4',          extension: 'mp4',  title: 'flow',                  fileName: 'Flow_202605121624.mp4',      size: 8838035,  type: 'video' };
-// TODO: upload brand-assets/video/background.mp4 via uploadAsset() and replace url + uuid below
-const _BACKGROUND_VIDEO  = { url: 'https://storage-acceptance.bycape.io/account-60/upload/REPLACE_WITH_UUID_background.mp4',                                   extension: 'mp4',  title: 'background',            fileName: 'background.mp4',             size: 0,        type: 'video' };
+const _BACKGROUND_VIDEO  = { url: 'https://storage-acceptance.bycape.io/account-60/upload/159781c3-454b-494d-bdde-4fb3bb66f7ed_Flow_202605121624.mp4',          extension: 'mp4',  title: 'background',            fileName: 'background.mp4',             size: 8838035,  type: 'video' };
 
 const TEMPLATE_ASSET_SEEDS = [
   // ── Global brand ──────────────────────────────────────────────────────────
@@ -60,14 +58,13 @@ const TEMPLATE_ASSET_SEEDS = [
 
   // ── Landing page ──────────────────────────────────────────────────────────
   { capeFile: _AMBIENT_BG,   fields: ['general.landing.background'] },
-  { capeFile: _BACKGROUND_VIDEO, fields: ['files.landing.backgroundImage'] },
-  { capeFile: _FLOW_VIDEO,       fields: ['files.landing.heroImage'] },
+  { capeFile: _BACKGROUND_VIDEO, fields: ['files.landing.backgroundImage', 'files.landing.heroImage'] },
   { capeFile: _LOGO_ZWART,   fields: ['general.landing.logo'] },
   { capeFile: _VIDEO,        fields: ['files.landing.heroVideo'] },
 
   // ── Onboarding page (up to 5 steps) ──────────────────────────────────────
   { capeFile: _AMBIENT_BG,   fields: ['general.onboarding.background'] },
-  { capeFile: _FLOW_VIDEO,   fields: [
+  { capeFile: _BACKGROUND_VIDEO,   fields: [
     'general.onboarding.heroImage',
     'files.onboarding.step1Image', 'files.onboarding.step2Image',
     'files.onboarding.step3Image', 'files.onboarding.step4Image',
@@ -77,11 +74,11 @@ const TEMPLATE_ASSET_SEEDS = [
 
   // ── Result page ───────────────────────────────────────────────────────────
   { capeFile: _AMBIENT_BG,   fields: ['general.result.background'] },
-  { capeFile: _FLOW_VIDEO,   fields: ['files.result.winImage', 'files.result.loseImage'] },
+  { capeFile: _BACKGROUND_VIDEO,   fields: ['files.result.winImage', 'files.result.loseImage'] },
   { capeFile: _LOGO_ZWART,   fields: ['general.result.logo'] },
 
   // ── Voucher page ──────────────────────────────────────────────────────────
-  { capeFile: _FLOW_VIDEO,   fields: ['files.voucher.voucherImage'] },
+  { capeFile: _BACKGROUND_VIDEO,   fields: ['files.voucher.voucherImage'] },
 
   // ── Video pages — default 'video' instance + named variants ───────────────
   // instanceId 'video'         → modelId 'video'
@@ -187,6 +184,23 @@ async function getCampaign(campaignId, tokens) {
 export async function checkAuth() {
   const tokens = await loadTokens();
   return tokens.authToken ? tokens : null;
+}
+
+/**
+ * Returns stored tokens if they are valid against CAPE, or null.
+ * Makes a lightweight API call to detect expired/invalid tokens before the
+ * scaffolder starts — avoids discovering a stale token only after campaign creation.
+ */
+export async function validateAuth() {
+  const tokens = await loadTokens();
+  if (!tokens?.authToken) return null;
+  try {
+    const { ok, data } = await apiPost('/resources/load', { resource: 'setup' }, tokens);
+    if (!ok || data?.error === 'tokenExpired' || data?.success === 0) return null;
+    return tokens;
+  } catch {
+    return null;
+  }
 }
 
 /**

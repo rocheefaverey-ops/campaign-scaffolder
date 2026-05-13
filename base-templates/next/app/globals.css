@@ -413,6 +413,7 @@ img {
   box-shadow: var(--shadow-lime);
 }
 
+.btn-dark,
 .btn-ink {
   background: var(--surface-ink);
   color: var(--text-inverse);
@@ -426,6 +427,7 @@ img {
   box-shadow: var(--shadow-card);
 }
 
+.btn-tertiary,
 .btn-ghost {
   background: transparent;
   color: var(--text-secondary);
@@ -443,6 +445,7 @@ img {
     filter: brightness(1.04);
     box-shadow: 0 18px 44px color-mix(in srgb, var(--color-primary) 55%, transparent);
   }
+  .btn-dark:hover,
   .btn-ink:hover {
     filter: brightness(1.08);
     box-shadow: 0 14px 32px rgba(14, 14, 14, 0.28);
@@ -452,6 +455,7 @@ img {
     color: var(--text-primary);
     box-shadow: 0 16px 28px rgba(14, 14, 14, 0.14);
   }
+  .btn-tertiary:hover,
   .btn-ghost:hover {
     color: var(--text-primary);
     background: rgba(14, 14, 14, 0.06);
@@ -979,10 +983,12 @@ input[type='radio'] {
     color: #fff;
   }
 }
+.campaign-screen--hero .btn-tertiary,
 .campaign-screen--hero .btn-ghost {
   color: rgba(255, 255, 255, 0.78);
 }
 @media (hover: hover) {
+  .campaign-screen--hero .btn-tertiary:hover,
   .campaign-screen--hero .btn-ghost:hover {
     color: #fff;
     background: rgba(255, 255, 255, 0.10);

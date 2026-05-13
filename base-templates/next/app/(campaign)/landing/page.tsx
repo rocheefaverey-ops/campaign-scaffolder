@@ -87,11 +87,11 @@ export default function LandingPage() {
         </div>
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.5s 0.28s ease both' }}>
-          <Button className="w-full" size="lg" onClick={handlePlay}>
+          <Button variant={'{{BUTTON_VARIANT_LANDING_NEXT}}' as any} className="w-full" size="lg" onClick={handlePlay}>
             {hasPlayed ? ctaReturning : cta}
           </Button>
           {(showLeaderboard || hasPlayed) && (
-            <Button variant="secondary" className="w-full" size="lg" onClick={() => navigate('{{LANDING_LEADERBOARD_ROUTE}}')}>
+            <Button variant={'{{BUTTON_VARIANT_LANDING_LEADERBOARD}}' as any} className="w-full" size="lg" onClick={() => navigate('{{LANDING_LEADERBOARD_ROUTE}}')}>
               {hasPlayed ? leaderboardReturnCta : leaderboardLabel}
             </Button>
           )}

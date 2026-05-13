@@ -151,6 +151,27 @@ export default function GameplayPage() {
     ctx.setData({ translations, playTutorial: !onboardingCompleted });
 
     startTransition(async () => {
+      if (process.env.NEXT_PUBLIC_UNITY_BOOT_SEQUENCE === 'single-message') {
+        const bootObject = process.env.NEXT_PUBLIC_UNITY_BOOT_OBJECT ?? 'Manager';
+        const bootMethod = process.env.NEXT_PUBLIC_UNITY_BOOT_METHOD ?? 'LoadScene';
+        await ctx.initializeUnity(true, false);
+        // Show canvas only when Unity fires 'ready' — ready fires after LoadScene
+        // is processed, not before. Showing the canvas first would flash a blank WebGL surface.
+        const showOnReady = () => {
+          ctx.removeEventListener('ready', showOnReady);
+          ctx.setUnityVisible(true);
+        };
+        ctx.addEventListener('ready', showOnReady);
+        ctx.sendMessage(bootObject, bootMethod, JSON.stringify({
+          environment: process.env.NEXT_PUBLIC_ENV ?? 'production',
+          muted: isMuted,
+          translations: {},
+          files: {},
+          lives: 3,
+        }));
+        return;
+      }
+
       ctx.setTargetScene(targetScene);
       await ctx.initializeUnity(true);
       // sendSetScene uses skipPreload:true — works for builds that don't fire
