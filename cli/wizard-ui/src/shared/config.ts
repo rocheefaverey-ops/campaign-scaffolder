@@ -307,8 +307,14 @@ export function defaultPageSettings(): PageSettings {
  * (PageMeta) and to find the source page.tsx to copy.
  */
 export interface PageInstance {
-  id:   string;
-  type: string;
+  id:    string;
+  type:  string;
+  route: string;
+}
+
+/** Returns the default URL slug for a page type, e.g. 'game' → '/gameplay'. */
+export function defaultRouteForType(type: string): string {
+  return ALL_PAGES.find(p => p.id === type)?.route ?? `/${type}`;
 }
 
 export interface PageMeta {
@@ -537,10 +543,10 @@ export const DEFAULT_CONFIG: ScaffoldConfig = {
   brand:              '',
   department:         '',
   pages:              [
-    { id: 'landing',    type: 'landing'    },
-    { id: 'onboarding', type: 'onboarding' },
-    { id: 'game',       type: 'game'       },
-    { id: 'result',     type: 'result'     },
+    { id: 'landing',    type: 'landing',    route: '/landing'    },
+    { id: 'onboarding', type: 'onboarding', route: '/onboarding' },
+    { id: 'game',       type: 'game',       route: '/gameplay'   },
+    { id: 'result',     type: 'result',     route: '/result'     },
   ],
   regMode:            'none',
   modules:            [],
