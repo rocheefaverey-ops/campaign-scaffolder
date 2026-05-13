@@ -7,10 +7,9 @@ const buttonVariants = cva(
     'relative inline-flex items-center justify-center',
     'min-h-[48px] rounded-full px-8 font-default font-bold',
     'text-sm uppercase tracking-wider',
-    'transition-all duration-200 ease-out',
+    'transition-[background-color,box-shadow,filter,opacity] duration-200 ease-out',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
     'disabled:pointer-events-none disabled:opacity-40',
-    'active:scale-[0.96]',
   ],
   {
     variants: {
