@@ -393,7 +393,7 @@ function loadAllManifests() {
 
 // ─── Arg parsing ─────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const args = { modules: [], pages: [], market: 'NL' };
+  const args = { modules: [], pages: [], routeOverrides: {}, market: 'NL' };
   for (const raw of argv.slice(2)) {
     const [key, ...rest] = raw.replace(/^--/, '').split('=');
     const val = rest.join('=');
@@ -415,6 +415,14 @@ function parseArgs(argv) {
     else if (key === 'recreate' || key === 'rebuild') args.recreate = true;
     else if (key === 'skip-install') args.skipInstall = true;
     else if (key === 'skip-git') args.skipGit = true;
+    else if (key === 'route') {
+      const colonIdx = val.indexOf(':');
+      if (colonIdx > 0) {
+        const id   = val.slice(0, colonIdx);
+        const slug = val.slice(colonIdx + 1);
+        args.routeOverrides[id] = slug.startsWith('/') ? slug : `/${slug}`;
+      }
+    }
   }
   return args;
 }
@@ -3732,6 +3740,17 @@ async function main() {
     };
   } else {
     options = await runWizard(args);
+  }
+
+  // Build routeMap from --route flags for non-interactive callers (wizard already
+  // includes routes in cfg.pages; this covers bare --page + --route invocations).
+  if (!options.routeMap) {
+    options.routeMap = Object.fromEntries(
+      (options.pages ?? []).map(id => [
+        id,
+        args.routeOverrides?.[id] ?? PAGE_ROUTES[id] ?? `/${id}`
+      ])
+    );
   }
 
   await enforceConfigValidation(options, { yes: args.yes });
