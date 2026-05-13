@@ -37,6 +37,18 @@ t('uses canonical routes for singleton pages', () => {
   assert.equal(routeFor('ad-video'), '/ad-video');
 });
 
+t('uses routeMap override when provided', () => {
+  const routeMap = { landing: '/home', game: '/play' };
+  assert.equal(routeFor('landing', routeMap), '/home');
+  assert.equal(routeFor('game', routeMap), '/play');
+  assert.equal(routeFor('result', routeMap), '/result');   // falls back to PAGE_ROUTES
+  assert.equal(routeFor('custom-page', routeMap), '/custom-page'); // falls back to /${id}
+});
+t('defaults to PAGE_ROUTES when routeMap is empty', () => {
+  assert.equal(routeFor('game', {}), '/gameplay');
+  assert.equal(routeFor('video-2', {}), '/video-2');
+});
+
 console.log('validateConfig()');
 t('rejects engine none with a game page', () => {
   const { errors } = validateConfig({ game: 'none', pages: ['landing', 'game', 'result'] });

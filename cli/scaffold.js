@@ -293,8 +293,8 @@ function pageModuleType(pageId) {
   return VIDEO_PAGE_IDS.has(pageId) ? 'video' : String(pageId);
 }
 
-export function routeFor(pageId) {
-  return PAGE_ROUTES[pageId] ?? `/${pageId}`;
+export function routeFor(pageId, routeMap = {}) {
+  return routeMap[pageId] ?? PAGE_ROUTES[pageId] ?? `/${pageId}`;
 }
 
 function inferPageTypes(pages) {
@@ -493,7 +493,7 @@ export function validateConfig({ game = 'none', pages = [], pageTypes = {}, modu
  *   {{LANDING_LEADERBOARD_ROUTE}}    landing.leaderboard destination
  *   {{RESULT_LEADERBOARD_ROUTE}}     result.leaderboard destination
  */
-function computeFlowTokens(pages, regMode = 'none', flowExits = {}, flowEntry = '', pageTypes = {}) {
+function computeFlowTokens(pages, regMode = 'none', flowExits = {}, flowEntry = '', pageTypes = {}, routeMap = {}) {
   let sequence = pages.length > 0 ? [...pages] : [...ALL_PAGES];
 
   const typeOf = (id) => pageTypes[id] ?? id;
@@ -516,7 +516,7 @@ function computeFlowTokens(pages, regMode = 'none', flowExits = {}, flowEntry = 
   /** Route of an page. Canonical singleton pages keep their real app route. */
   const routeOf = (id) => {
     if (!id) return '/';
-    return routeFor(id);
+    return routeFor(id, routeMap);
   };
   /** Find first page whose TYPE matches (for default-target heuristics). */
   const firstOfType = (type) => sequence.find(id => typeOf(id) === type);
@@ -1936,7 +1936,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   printPostScaffoldMessage({ projectName: name, capeId, market, modules: [], outputDir: _tsFinalFrontendDir, stack: 'tanstack', capeAutoPublished, capePublishedUrl });
 }
 
-async function scaffoldNext({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, menuItemsEnabled = {}, pageTypes = {}, _wizardMeta = null }) {
+async function scaffoldNext({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, menuItemsEnabled = {}, pageTypes = {}, _wizardMeta = null, routeMap = {} }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -2126,8 +2126,8 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
 
   // 3. Token replacement
   step(3, 'Replacing tokens...');
-  const flowTokens = computeFlowTokens(pages, regMode, flowExits, flowEntry, pageTypes);
-  const availableCampaignRoutes = pages.map((id) => routeFor(id));
+  const flowTokens = computeFlowTokens(pages, regMode, flowExits, flowEntry, pageTypes, routeMap);
+  const availableCampaignRoutes = pages.map((id) => routeFor(id, routeMap));
   const onboardingFirstRunOnly = landingOnboardingFirstRunOnly(_wizardMeta);
   const tokens = {
     '{{PROJECT_NAME}}':       name,
@@ -2147,13 +2147,13 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
   ok(`${replacedCount} file(s) updated`);
 
   // Log the flow so the developer can see it
-  const flowSequence = pages.map(p => routeFor(p));
+  const flowSequence = pages.map(p => routeFor(p, routeMap));
   ok(`Flow: ${flowSequence.join(' → ')}`);
 
   // 3b. Generate pages from page builder (overwrites static template pages)
   if (Object.keys(pageElementSelections).length > 0) {
     step('3b', 'Generating pages from page builder…');
-    const flowTokens = computeFlowTokens(pages, regMode, flowExits, flowEntry, pageTypes);
+    const flowTokens = computeFlowTokens(pages, regMode, flowExits, flowEntry, pageTypes, routeMap);
 
     // Helpers to get computed next-route from flow tokens
     const nextRoute  = (page) => flowTokens[`{{NEXT_AFTER_${page.toUpperCase()}}}`] ?? '/';
