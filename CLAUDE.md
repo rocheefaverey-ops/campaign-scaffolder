@@ -6,10 +6,14 @@ Universal Campaign Scaffolder for Livewall interactive campaign websites.
 
 ```
 campaign-scaffolder/
-├── base-template/     # Core Next.js project — always copied in full
+├── base-templates/    # Six lean engine-specific templates (one per stack selection)
+│   ├── next-unity/    # Next.js + Unity WebGL baked in
+│   ├── next-r3f/      # Next.js + React Three Fiber baked in
+│   ├── next-phaser/   # Next.js + Phaser 3 baked in
+│   ├── next-memory/   # Next.js + pure React (no engine)
+│   ├── next-none/     # Next.js CAPE-only (no game)
+│   └── tanstack-unity/# TanStack Start + Unity baked in
 └── modules/           # Optional module library — CLI copies per selection
-    ├── unity/         # Unity WebGL game (adapter + UnityCanvas + gameplay page)
-    ├── r3f/           # React Three Fiber game
     ├── leaderboard/   # Score table (tabs, pagination, personal best)
     ├── registration/  # Player registration form (fields + opt-ins)
     ├── scoring/       # create-session / end-session actions
@@ -18,7 +22,7 @@ campaign-scaffolder/
     └── cookie-consent/# Cookiebot consent banner
 
 > `DesignTokenInjector` (CAPE branding → CSS custom properties) is built into
-> the base template and always on. It is not an optional module.
+> every base template and always on. It is not an optional module.
 ```
 
 ## Module Structure Convention
