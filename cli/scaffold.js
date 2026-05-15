@@ -633,9 +633,9 @@ async function promptMarket(state, ask = promptOnce) {
 }
 
 async function promptEngine(state, ask = promptOnce) {
-  const raw = (await ask(`  ${c.cyan('Engine')} ${c.dim('(unity/r3f/phaser/pure-react/none)')}: `)).trim();
+  const raw = (await ask(`  ${c.cyan('Engine')} ${c.dim('(unity/r3f/phaser/pure-react/memory/none)')}: `)).trim();
   if (!raw) return state;
-  if (['unity', 'r3f', 'phaser', 'pure-react', 'none'].includes(raw)) {
+  if (['unity', 'r3f', 'phaser', 'pure-react', 'memory', 'none'].includes(raw)) {
     state.game = raw;
     if (raw !== 'unity') state.selectedGame = null;
   } else {
@@ -1961,7 +1961,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
   if (isUpdate) {
     step(1, 'Update mode — skipping base template copy.');
   } else {
-    const templateKey = `${stack}-${game || 'none'}`;
+    const templateKey = `${stack}-${game === 'pure-react' ? 'memory' : (game || 'none')}`;
     const templateDir = TEMPLATES[templateKey];
     if (!templateDir) throw new Error(`No template found for stack="${stack}" game="${game}". Valid keys: ${Object.keys(TEMPLATES).join(', ')}`);
     step(1, `Copying base template [${templateKey}]…`);
@@ -1990,7 +1990,9 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
   if (modules.length > 0) {
     step(2, 'Copying module files…');
 
-    for (const moduleId of modules) {
+    const DELETED_ENGINE_MODULES = new Set(['unity', 'r3f', 'phaser']);
+    const activeModules = modules.filter(m => !DELETED_ENGINE_MODULES.has(m));
+    for (const moduleId of activeModules) {
       try {
         const manifest  = loadManifest(moduleId);
         const moduleDir = join(MODULES_DIR, moduleId);
@@ -2341,7 +2343,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
   const scaffoldedConfig = {
     // Identity
     name,
-    stack: 'next',
+    stack,
     // CAPE config
     capeId,
     market,
