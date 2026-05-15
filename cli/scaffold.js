@@ -38,10 +38,14 @@ import { buildTanStackCapeFormat, buildNextCapeFormat } from './cape-format-buil
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
 const SCAFFOLDER_ROOT    = resolve(__dirname, '..');
-const NEXT_TEMPLATE      = join(SCAFFOLDER_ROOT, 'base-templates', 'next');
-const TANSTACK_TEMPLATE  = join(SCAFFOLDER_ROOT, 'base-templates', 'tanstack');
-// Kept as an alias so existing references still resolve during the transition.
-const TANSTACK_BOILERPLATE = TANSTACK_TEMPLATE;
+const TEMPLATES = {
+  'next-unity':    join(SCAFFOLDER_ROOT, 'base-templates', 'next-unity'),
+  'next-r3f':      join(SCAFFOLDER_ROOT, 'base-templates', 'next-r3f'),
+  'next-phaser':   join(SCAFFOLDER_ROOT, 'base-templates', 'next-phaser'),
+  'next-memory':   join(SCAFFOLDER_ROOT, 'base-templates', 'next-memory'),
+  'next-none':     join(SCAFFOLDER_ROOT, 'base-templates', 'next-none'),
+  'tanstack-unity':join(SCAFFOLDER_ROOT, 'base-templates', 'tanstack-unity'),
+};
 const MODULES_DIR        = join(SCAFFOLDER_ROOT, 'modules');
 
 // ─── CAPE campaign creation helper ───────────────────────────────────────────
@@ -1705,18 +1709,19 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   if (isUpdate) {
     step(1, 'Update mode — skipping boilerplate copy.');
   } else {
-    if (!existsSync(TANSTACK_TEMPLATE)) {
+    const templateDir = TEMPLATES['tanstack-unity'];
+    if (!existsSync(templateDir)) {
       throw new Error(
-        `TanStack base-template not found at:\n  ${TANSTACK_TEMPLATE}\n\n` +
+        `TanStack base-template not found at:\n  ${templateDir}\n\n` +
         `The scaffolder repo appears to be incomplete.`
       );
     }
     step(1, 'Copying TanStack base-template…');
     mkdirSync(frontendDir, { recursive: true });
-    cpSync(TANSTACK_TEMPLATE, frontendDir, {
+    cpSync(templateDir, frontendDir, {
       recursive: true,
       filter: (src) => {
-        const rel = relative(TANSTACK_TEMPLATE, src);
+        const rel = relative(templateDir, src);
         return !rel.startsWith('node_modules') && !rel.startsWith('.output') && !rel.startsWith('dist');
       },
     });
@@ -1945,7 +1950,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   printPostScaffoldMessage({ projectName: name, capeId, market, modules: [], outputDir: _tsFinalFrontendDir, stack: 'tanstack', capeAutoPublished, capePublishedUrl });
 }
 
-async function scaffoldNext({ name, capeId, market, game, pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowButtonVariants = {}, menuItemsEnabled = {}, menuButtonVariants = {}, pageTypes = {}, _wizardMeta = null, routeMap = {} }) {
+async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowButtonVariants = {}, menuItemsEnabled = {}, menuButtonVariants = {}, pageTypes = {}, _wizardMeta = null, routeMap = {} }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -1956,12 +1961,15 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
   if (isUpdate) {
     step(1, 'Update mode — skipping base template copy.');
   } else {
-    step(1, 'Copying base template…');
+    const templateKey = `${stack}-${game || 'none'}`;
+    const templateDir = TEMPLATES[templateKey];
+    if (!templateDir) throw new Error(`No template found for stack="${stack}" game="${game}". Valid keys: ${Object.keys(TEMPLATES).join(', ')}`);
+    step(1, `Copying base template [${templateKey}]…`);
     mkdirSync(frontendDir, { recursive: true });
-    cpSync(NEXT_TEMPLATE, frontendDir, {
+    cpSync(templateDir, frontendDir, {
       recursive: true,
       filter: (src) => {
-        const rel = relative(NEXT_TEMPLATE, src);
+        const rel = relative(templateDir, src);
         return !rel.startsWith('node_modules') && !rel.startsWith('.next');
       },
     });
@@ -1982,17 +1990,7 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
   if (modules.length > 0) {
     step(2, 'Copying module files…');
 
-    // Sort modules so engine-specific modules (unity, phaser, r3f) run first.
-    // Flow modules can then provide route-specific overrides on top.
-    const sortedModules = [...modules].sort((a, b) => {
-      const mA = loadManifest(a);
-      const mB = loadManifest(b);
-      const scoreA = mA.engine ? -10 : 0;
-      const scoreB = mB.engine ? -10 : 0;
-      return scoreA - scoreB;
-    });
-
-    for (const moduleId of sortedModules) {
+    for (const moduleId of modules) {
       try {
         const manifest  = loadManifest(moduleId);
         const moduleDir = join(MODULES_DIR, moduleId);
@@ -2042,26 +2040,6 @@ async function scaffoldNext({ name, capeId, market, game, pages, regMode, module
     }
   } else {
     step(2, 'No modules selected — skipping.');
-  }
-
-  // 2b. Unity layout patch — wrap children in <UnityContainer> so Unity persists across routes
-  if (modules.includes('unity')) {
-    const layoutPath = join(frontendDir, 'app', 'layout.tsx');
-    if (existsSync(layoutPath)) {
-      let layoutSrc = readFileSync(layoutPath, 'utf8');
-      if (!layoutSrc.includes('UnityContainer')) {
-        layoutSrc = layoutSrc.replace(
-          `import DesktopWrapper from '@components/_core/DesktopWrapper/DesktopWrapper';`,
-          `import DesktopWrapper from '@components/_core/DesktopWrapper/DesktopWrapper';\nimport UnityContainer from '@components/_modules/unity/UnityContainer';`,
-        );
-        layoutSrc = layoutSrc.replace(
-          `          <DesktopWrapper>\n            <div className="desktop-wrapper__app-shell">\n              {children}\n            </div>\n          </DesktopWrapper>`,
-          `          <DesktopWrapper>\n            <div className="desktop-wrapper__app-shell">\n              <UnityContainer>\n                {children}\n              </UnityContainer>\n            </div>\n          </DesktopWrapper>`,
-        );
-        writeFileSync(layoutPath, layoutSrc, 'utf8');
-        ok('UnityContainer injected into app/layout.tsx');
-      }
-    }
   }
 
   // 2b-ii. GTM layout patch — mount <GTMScript> as first child of <body>
@@ -3721,10 +3699,11 @@ async function main() {
   let options;
   if (isNonInteractive) {
     const stack = args.stack || 'next';
-    const pages = args.pages.length > 0 ? args.pages : (stack === 'tanstack' ? ['launch', 'tutorial', 'game', 'score'] : buildDefaultPages(args.game || ''));
+    const effectiveGame = args.game != null ? args.game : (stack === 'tanstack' ? 'unity' : '');
+    const pages = args.pages.length > 0 ? args.pages : (stack === 'tanstack' ? ['launch', 'tutorial', 'game', 'score'] : buildDefaultPages(effectiveGame));
     const pageTypes = inferPageTypes(pages);
-    const allModules = resolveModules(args.game || (stack === 'tanstack' ? 'unity' : ''), pages, args.modules);
-    const selectedGame = (args.game || 'unity') === 'unity'
+    const allModules = resolveModules(effectiveGame, pages, args.modules);
+    const selectedGame = effectiveGame === 'unity'
       ? (args.gameId ? getGame(args.gameId) : (getGamesByStack('unity', stack)[0] ?? null))
       : null;
     if (args.gameId && !selectedGame) {
@@ -3768,7 +3747,7 @@ async function main() {
       name:      args.name,
       capeId,
       market:    args.market,
-      game:      args.game || 'unity',
+      game:      effectiveGame,
       pages,
       regMode:   args.regMode || 'none',
       modules:   allModules,
