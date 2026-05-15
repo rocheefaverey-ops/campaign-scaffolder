@@ -1,0 +1,41 @@
+$cardWidth: 100%;
+$cardSpacing: 0px;
+
+.contentSlider {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  overflow: hidden;
+
+  .container {
+    display: flex;
+    position: relative;
+    flex-direction: row;
+    width: 100%;
+    flex: 1;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: $cardSpacing;
+    overflow: auto;
+
+    &::before, &::after {
+      content: '';
+      flex: 0 0 calc((100% - $cardWidth) / 2 - $cardSpacing);
+    }
+
+    .item {
+      min-height: 100%;
+      flex: 0 0 $cardWidth;
+      scroll-snap-align: center;
+      scroll-snap-stop: always;
+    }
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    scrollbar-width: none
+  }
+}

@@ -1,0 +1,46 @@
+.selectField {
+  width: 100%;
+  min-height: 48px;
+
+  .inputWrapper {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    height: 48px;
+    background-color: #EEE;
+
+    select {
+      height: 100%;
+      flex: 1;
+      font-family: $fontScala;
+      font-size: 14px;
+      background-color: #EEE;
+      padding: 0 36px 0 16px;
+      -webkit-appearance: none;
+      color: $secondaryColor;
+
+      option {
+        background-color: white;
+        color: black;
+      }
+
+      &.pristine {
+        color: rgba($secondaryColor, 0.5);
+      }
+    }
+
+    .inputIcon {
+      position: absolute;
+      width: 12px;
+      height: auto;
+      right: 12px;
+      pointer-events: none;
+    }
+
+    &.error {
+      border-bottom: 1px solid $formErrorColor;
+    }
+  }
+}

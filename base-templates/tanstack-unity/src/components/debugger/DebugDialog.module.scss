@@ -1,0 +1,178 @@
+.debuggerOverlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  background-color: rgba(#000, 0.5);
+  overflow: hidden;
+  z-index: 100;
+
+  .debuggerDialog {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 8%;
+
+    .debuggerContent {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background-color: #FFF;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      color: #000;
+      width: 100%;
+      max-width: 800px;
+      max-height: 80%;
+      padding: 24px 0;
+      gap: 16px;
+      overflow: auto;
+      user-select: text;
+
+      .close {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+
+      .title {
+        font-weight: bold;
+        margin-bottom: 4px;
+        padding: 0 16px;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .noData {
+        padding: 0 16px;
+      }
+
+      .pageData {
+        width: 100%;
+
+        .pageContainer {
+          padding: 0 16px;
+          gap: 4px;
+
+          .pageEntry {
+            .label {
+              font-style: italic;
+            }
+
+            .data {
+              margin-left: 4px;
+              word-wrap: break-word;
+            }
+          }
+        }
+      }
+
+      .deviceData {
+        width: 100%;
+
+        .deviceContainer {
+          padding: 0 16px;
+          gap: 4px;
+
+          .deviceEntry {
+            .label {
+              font-style: italic;
+            }
+
+            .data {
+              margin-left: 4px;
+            }
+          }
+        }
+      }
+
+      .logData {
+        width: 100%;
+
+        .logContainer {
+          .logEntry {
+            word-wrap: anywhere;
+            white-space: pre-line;
+            padding: 4px 16px;
+
+            &.error {
+              color: red;
+            }
+
+            &.warn {
+              color: darkorange;
+            }
+
+            &.info {
+              color: blue;
+            }
+
+            .time {
+              font-size: 12px;
+            }
+
+            .message {
+              margin-left: 4px;
+            }
+
+            .stack {
+              font-size: 12px;
+
+              .stackExpandToggle {
+                text-decoration: underline;
+                cursor: pointer;
+                font-size: 12px;
+                margin-top: 2px;
+              }
+
+              .stackData {
+                margin-top: 4px;
+                margin-left: 12px;
+              }
+            }
+
+            &.expanded {
+              background-color: #EEE;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.longPressPreview {
+  position: absolute;
+  background-color: #000;
+  pointer-events: none;
+}
+
+.buttonDebug {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+  background-color: #FFF;
+  border-radius: 50%;
+  right: 16px;
+  bottom: 16px;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
+  z-index: 99;
+
+  .buttonDebugIcon {
+    width: 28px;
+    height: auto;
+  }
+}
+

@@ -1,0 +1,46 @@
+.styledText {
+  display: block;
+  font-family: $fontScala;
+  font-size: 14px;
+  color: $primaryTextColor;
+  text-align: center;
+
+  //Alignment
+  &.left {
+    text-align: left;
+  }
+  &.right {
+    text-align: right;
+  }
+
+  //Types
+  &.header {
+    font-size: 36px;
+    font-weight: 900;
+  }
+
+  &.title {
+    font-size: 24px;
+    font-weight: 900;
+  }
+
+  &.subtitle {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  &.description {
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  &.caption {
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  //Alternate
+  &.alternate {
+    color: $secondaryTextColor;
+  }
+}

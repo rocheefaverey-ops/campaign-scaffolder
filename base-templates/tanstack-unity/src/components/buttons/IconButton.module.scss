@@ -1,0 +1,13 @@
+.iconButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  background-color: $tertiaryColor;
+  border-radius: 50%;
+
+  .icon {
+    width: 24px;
+    height: auto;
+  }
+}

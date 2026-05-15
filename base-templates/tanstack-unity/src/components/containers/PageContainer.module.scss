@@ -1,0 +1,55 @@
+.pageContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex: 1;
+  overflow: auto;
+}
+
+// Scrollbar
+@media screen and (min-width: $mobileThreshold) {
+  .pageContainer {
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+    &::-webkit-scrollbar-track {
+      background: rgba($primaryColor, 0.2);
+    }
+    &::-webkit-scrollbar-thumb {
+      background: $secondaryColor;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background: $secondaryColor;
+    }
+  }
+
+  ::view-transition-old(page) {
+    border-radius: $desktopBorderRadius;
+  }
+
+  ::view-transition-new(page) {
+    border-radius: $desktopBorderRadius;
+  }
+}
+
+
+// View transitioning
+::view-transition-old(page) {
+  animation: pageFadeOut $baseFadeDuration ease both;
+  overflow: hidden;
+}
+
+::view-transition-new(page) {
+  animation: pageFadeIn $baseFadeDuration ease both;
+  overflow: hidden;
+}
+
+@keyframes pageFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes pageFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

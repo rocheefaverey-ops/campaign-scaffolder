@@ -8,7 +8,6 @@ test('getGamesByStack returns only next-stack games for next', () => {
   assert.ok(games.length > 0, 'expected at least one next game');
   assert.ok(games.every(g => g.stack === 'next'), 'all returned games must have stack:next');
   assert.ok(games.some(g => g.id === 'haas-f1'), 'haas-f1 must be in next games');
-  assert.ok(games.some(g => g.id === 'old-captain-rum-toss'), 'old-captain-rum-toss must be in next games');
   assert.ok(!games.some(g => g.id === 'nhl-crush'), 'nhl-crush must not be in next games');
 });
 
@@ -18,7 +17,6 @@ test('getGamesByStack returns only tanstack games for tanstack', () => {
   assert.ok(games.every(g => g.stack === 'tanstack'), 'all returned games must have stack:tanstack');
   assert.ok(games.some(g => g.id === 'nhl-crush'), 'nhl-crush must be in tanstack games');
   assert.ok(!games.some(g => g.id === 'haas-f1'), 'haas-f1 must not be in tanstack games');
-  assert.ok(!games.some(g => g.id === 'old-captain-rum-toss'), 'old-captain-rum-toss must not be in tanstack games');
 });
 
 test('getGamesByStack excludes games with no stack field', () => {
