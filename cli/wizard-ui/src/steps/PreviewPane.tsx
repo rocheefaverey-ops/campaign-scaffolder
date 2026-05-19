@@ -87,12 +87,12 @@ export default function PreviewPane({ config }: Props) {
       </div>
 
       <div className="preview-pane__frame-wrap">
-        <PhoneFrame route={menuOpen ? '/menu' : `/${inst.id}`}>
+        <PhoneFrame route={menuOpen ? '/menu' : inst.route}>
           {menuOpen
             ? <MenuPreview config={config} onClose={() => setMenuOpen(false)} onNavigate={(target) => {
                 // If the user picks a menu item that points to a page in the
                 // flow, jump the preview to that tab; otherwise just close.
-                const idx = config.pages.findIndex(p => `/${p.id}` === target);
+                const idx = config.pages.findIndex(p => p.route === target || `/${p.id}` === target);
                 if (idx >= 0) setActiveIdx(idx);
                 setMenuOpen(false);
               }} />
@@ -122,15 +122,18 @@ type NavFn = (instId: string, exitKey: string, defaultRule?: 'next' | 'first') =
 
 function PageRenderer({ config, instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
   switch (instance.type) {
-    case 'landing':     return <LandingPreview     config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
-    case 'onboarding':  return <OnboardingPreview  config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
-    case 'video':       return <VideoPreview       config={config} instance={instance} navigate={navigate} />;
-    case 'register':    return <RegisterPreview    config={config} instance={instance} navigate={navigate} />;
-    case 'game':        return <GamePreview        config={config} instance={instance} navigate={navigate} />;
-    case 'result':      return <ResultPreview      config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
-    case 'leaderboard': return <LeaderboardPreview config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
-    case 'voucher':     return <VoucherPreview     config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
-    default:            return <PlaceholderPreview instance={instance} />;
+    case 'landing':       return <LandingPreview      config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
+    case 'tutorial':      return <TutorialPreview     config={config} instance={instance} navigate={navigate} />;
+    case 'video':
+    case 'intro-video':
+    case 'ad-video':      return <VideoPreview        config={config} instance={instance} navigate={navigate} />;
+    case 'loading-video': return <LoadingVideoPreview config={config} instance={instance} navigate={navigate} />;
+    case 'register':      return <RegisterPreview     config={config} instance={instance} navigate={navigate} />;
+    case 'game':          return <GamePreview         config={config} instance={instance} navigate={navigate} />;
+    case 'result':        return <ResultPreview       config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
+    case 'leaderboard':   return <LeaderboardPreview  config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
+    case 'voucher':       return <VoucherPreview      config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
+    default:              return <PlaceholderPreview  instance={instance} />;
   }
 }
 
@@ -202,6 +205,7 @@ function HeroStack({ kicker, title, body }: { kicker?: string; title: string; bo
 // ─────────────── Landing ───────────────
 
 function LandingPreview({ config, instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
+  const showTutorial    = isExitOn(config, instance.id, 'tutorial',    false);
   const showLeaderboard = isExitOn(config, instance.id, 'leaderboard', false);
   return (
     <div className="pp pp--hero">
@@ -212,6 +216,7 @@ function LandingPreview({ config, instance, navigate, onMenu }: { config: Scaffo
           <HeroStack kicker="LIVE EXPERIENCE" title="Welcome" body="Are you ready to play?" />
           <div className="pp-actions">
             <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Play now" onClick={() => navigate(instance.id, 'next')} />
+            {showTutorial    && <CtaButton kind={exitVariant(config, instance.id, 'tutorial',    'secondary')} label="Tutorial"    onClick={() => navigate(instance.id, 'tutorial')} />}
             {showLeaderboard && <CtaButton kind={exitVariant(config, instance.id, 'leaderboard', 'secondary')} label="Leaderboard" onClick={() => navigate(instance.id, 'leaderboard')} />}
           </div>
         </div>
@@ -220,41 +225,30 @@ function LandingPreview({ config, instance, navigate, onMenu }: { config: Scaffo
   );
 }
 
-// ─────────────── Onboarding ───────────────
-
-function OnboardingPreview({ config, instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
+function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn }) {
   const [step, setStep] = useState(0);
   const STEPS = [
-    { title: 'Match cards',    body: 'Tap two cards in a row to find a pair.' },
-    { title: 'Beat the clock', body: 'Score as many matches as you can.' },
-    { title: 'Win prizes',     body: 'Climb the leaderboard for rewards.' },
+    { title: 'Step 1', body: 'Instructions for step 1.' },
+    { title: 'Step 2', body: 'Instructions for step 2.' },
+    { title: 'Step 3', body: 'Instructions for step 3.' },
   ];
   const isLast = step === STEPS.length - 1;
-  const onCta = () => {
-    if (isLast) navigate(instance.id, 'next');
-    else setStep(step + 1);
-  };
   return (
-    <div className="pp pp--hero">
-      <HeroBleed />
-      <div className="pp-shell">
-        <div className="pp-header pp-header--with-close">
-          <img src="/logo-livewall-wordmark.svg" alt="logo" className="pp-wordmark" />
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button type="button" className="pp-menu" aria-label="Menu" onClick={onMenu}><HamburgerSvg /></button>
-            <button type="button" className="pp-close" aria-label="Close" onClick={() => navigate(instance.id, 'next')}>×</button>
-          </div>
+    <div className="pp pp--form">
+      <div className="pp-shell pp-shell--center">
+        <HeroStack kicker="TUTORIAL" title={STEPS[step].title} body={STEPS[step].body} />
+        <div className="pp-dots">
+          {STEPS.map((_, i) => (
+            <button key={i} type="button" aria-label={`step ${i + 1}`} className={`pp-dot${i === step ? ' is-active' : ''}`} onClick={() => setStep(i)} />
+          ))}
         </div>
-        <div className="pp-bottom">
-          <HeroStack kicker="HOW TO PLAY" title={STEPS[step].title} body={STEPS[step].body} />
-          <div className="pp-actions">
-            <div className="pp-dots">
-              {STEPS.map((_, i) => (
-                <button key={i} type="button" aria-label={`step ${i + 1}`} className={`pp-dot${i === step ? ' is-active' : ''}`} onClick={() => setStep(i)} />
-              ))}
-            </div>
-            <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label={isLast ? 'Start' : 'Continue'} onClick={onCta} />
-          </div>
+        <div className="pp-actions">
+          <CtaButton
+            kind={exitVariant(config, instance.id, 'next', 'primary')}
+            label={isLast ? 'Start' : 'Next'}
+            onClick={() => isLast ? navigate(instance.id, 'next') : setStep(step + 1)}
+          />
+          <CtaButton kind="secondary" label="Skip" onClick={() => navigate(instance.id, 'next')} />
         </div>
       </div>
     </div>
@@ -281,6 +275,23 @@ function VideoPreview({ config, instance, navigate }: { config: ScaffoldConfig; 
           {alwaysSkip ? 'Skip →' : `Skip (${minSec}s)`}
         </button>
       )}
+    </div>
+  );
+}
+
+function LoadingVideoPreview({ config, instance, navigate }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn }) {
+  const s = instSettings(config, instance.id);
+  const alwaysSkip  = Boolean(s.alwaysSkip);
+  const fallbackSec = (s.readyFallbackSec ?? 8) as number;
+  return (
+    <div className="pp pp--video">
+      <div className="pp-video-stage">
+        <span className="pp-video-icon" style={{ animation: 'spin 1.2s linear infinite' }}>⟳</span>
+        <span className="pp-video-loading">Loading game…</span>
+      </div>
+      <button type="button" className="pp-video-skip" onClick={() => navigate(instance.id, 'next')}>
+        {alwaysSkip ? 'Skip →' : `Skip (${fallbackSec}s fallback)`}
+      </button>
     </div>
   );
 }
