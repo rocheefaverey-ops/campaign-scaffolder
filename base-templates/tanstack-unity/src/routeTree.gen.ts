@@ -10,9 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TutorialRouteImport } from './routes/tutorial'
-import { Route as ScoreRouteImport } from './routes/score'
+import { Route as ResultRouteImport } from './routes/result'
 import { Route as RegisterRouteImport } from './routes/register'
-import { Route as LaunchRouteImport } from './routes/launch'
+import { Route as LandingRouteImport } from './routes/landing'
 import { Route as GameRouteImport } from './routes/game'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiUnityRouteImport } from './routes/api/unity'
@@ -23,9 +23,9 @@ const TutorialRoute = TutorialRouteImport.update({
   path: '/tutorial',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ScoreRoute = ScoreRouteImport.update({
-  id: '/score',
-  path: '/score',
+const ResultRoute = ResultRouteImport.update({
+  id: '/result',
+  path: '/result',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -33,9 +33,9 @@ const RegisterRoute = RegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LaunchRoute = LaunchRouteImport.update({
-  id: '/launch',
-  path: '/launch',
+const LandingRoute = LandingRouteImport.update({
+  id: '/landing',
+  path: '/landing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GameRoute = GameRouteImport.update({
@@ -62,9 +62,9 @@ const ApiCapeRoute = ApiCapeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/game': typeof GameRoute
-  '/launch': typeof LaunchRoute
+  '/landing': typeof LandingRoute
   '/register': typeof RegisterRoute
-  '/score': typeof ScoreRoute
+  '/result': typeof ResultRoute
   '/tutorial': typeof TutorialRoute
   '/api/cape': typeof ApiCapeRoute
   '/api/unity': typeof ApiUnityRoute
@@ -72,9 +72,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/game': typeof GameRoute
-  '/launch': typeof LaunchRoute
+  '/landing': typeof LandingRoute
   '/register': typeof RegisterRoute
-  '/score': typeof ScoreRoute
+  '/result': typeof ResultRoute
   '/tutorial': typeof TutorialRoute
   '/api/cape': typeof ApiCapeRoute
   '/api/unity': typeof ApiUnityRoute
@@ -83,9 +83,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/game': typeof GameRoute
-  '/launch': typeof LaunchRoute
+  '/landing': typeof LandingRoute
   '/register': typeof RegisterRoute
-  '/score': typeof ScoreRoute
+  '/result': typeof ResultRoute
   '/tutorial': typeof TutorialRoute
   '/api/cape': typeof ApiCapeRoute
   '/api/unity': typeof ApiUnityRoute
@@ -95,9 +95,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/game'
-    | '/launch'
+    | '/landing'
     | '/register'
-    | '/score'
+    | '/result'
     | '/tutorial'
     | '/api/cape'
     | '/api/unity'
@@ -105,9 +105,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/game'
-    | '/launch'
+    | '/landing'
     | '/register'
-    | '/score'
+    | '/result'
     | '/tutorial'
     | '/api/cape'
     | '/api/unity'
@@ -115,9 +115,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/game'
-    | '/launch'
+    | '/landing'
     | '/register'
-    | '/score'
+    | '/result'
     | '/tutorial'
     | '/api/cape'
     | '/api/unity'
@@ -126,9 +126,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   GameRoute: typeof GameRoute
-  LaunchRoute: typeof LaunchRoute
+  LandingRoute: typeof LandingRoute
   RegisterRoute: typeof RegisterRoute
-  ScoreRoute: typeof ScoreRoute
+  ResultRoute: typeof ResultRoute
   TutorialRoute: typeof TutorialRoute
   ApiCapeRoute: typeof ApiCapeRoute
   ApiUnityRoute: typeof ApiUnityRoute
@@ -143,11 +143,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TutorialRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/score': {
-      id: '/score'
-      path: '/score'
-      fullPath: '/score'
-      preLoaderRoute: typeof ScoreRouteImport
+    '/result': {
+      id: '/result'
+      path: '/result'
+      fullPath: '/result'
+      preLoaderRoute: typeof ResultRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -157,11 +157,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/launch': {
-      id: '/launch'
-      path: '/launch'
-      fullPath: '/launch'
-      preLoaderRoute: typeof LaunchRouteImport
+    '/landing': {
+      id: '/landing'
+      path: '/landing'
+      fullPath: '/landing'
+      preLoaderRoute: typeof LandingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/game': {
@@ -198,9 +198,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   GameRoute: GameRoute,
-  LaunchRoute: LaunchRoute,
+  LandingRoute: LandingRoute,
   RegisterRoute: RegisterRoute,
-  ScoreRoute: ScoreRoute,
+  ResultRoute: ResultRoute,
   TutorialRoute: TutorialRoute,
   ApiCapeRoute: ApiCapeRoute,
   ApiUnityRoute: ApiUnityRoute,
