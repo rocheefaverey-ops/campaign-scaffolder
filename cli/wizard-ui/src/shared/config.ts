@@ -249,12 +249,12 @@ export const PAGE_SETTINGS_SCHEMA: Record<string, SettingDef[]> = {
   'loading-video': VIDEO_PAGE_SETTINGS,
   'ad-video': VIDEO_PAGE_SETTINGS,
   landing: [
-    { key: 'onboardingFirstRunOnly', label: 'Skip onboarding for returning players', kind: 'boolean', default: true,
-      hint: '✓ Returning players skip onboarding and continue directly to the next route.' },
+    { key: 'onboardingFirstRunOnly', label: 'Skip tutorial for returning players', kind: 'boolean', default: true,
+      hint: '✓ Returning players skip the tutorial and continue directly to the next route.' },
   ],
-  onboarding: [
+  tutorial: [
     { key: 'allowSkip', label: 'Allow skip', kind: 'boolean', default: false,
-      hint: '✓ Show a "Skip" link on each onboarding slide.' },
+      hint: '✓ Show a "Skip" link on each tutorial slide.' },
   ],
   register: [
     { key: 'showInfix',     label: 'Show name infix field',     kind: 'boolean', default: true,
@@ -385,44 +385,67 @@ export const BUTTON_VARIANTS: Array<{ value: ButtonVariant; label: string }> = [
 ];
 
 export const ALL_PAGES: PageMeta[] = [
-  { id: 'landing',     label: 'Landing',     hint: 'Hero / brand splash with CTA.',     route: '/landing',
+  { id: 'landing',     label: 'Landing',     hint: 'Hero / brand splash with CTA.',             route: '/landing',
     exits: [
-      { key: 'next',        label: 'Primary CTA button',      token: 'NEXT_AFTER_LANDING', defaultVariant: 'primary' },
-      { key: 'leaderboard', label: 'Leaderboard button',      token: 'LANDING_LEADERBOARD_ROUTE',
+      { key: 'next',        label: 'Primary CTA button',   token: 'NEXT_AFTER_LANDING',          defaultVariant: 'primary' },
+      { key: 'tutorial',    label: 'Tutorial button',      token: 'LANDING_TUTORIAL_ROUTE',
+        optional: true, defaultEnabled: false, capeFlag: 'showTutorialButton',    defaultVariant: 'secondary' },
+      { key: 'leaderboard', label: 'Leaderboard button',   token: 'LANDING_LEADERBOARD_ROUTE',
         optional: true, defaultEnabled: false, capeFlag: 'showLeaderboardButton', defaultVariant: 'secondary' },
     ] },
-  { id: 'video',       label: 'Video',       hint: 'Intro / brand video, skippable.',   route: '/video',       requires: 'video',
-    exits: [{ key: 'next', label: 'On end / skip',   token: 'NEXT_AFTER_VIDEO' }] },
-  { id: 'intro-video',       label: 'Intro video',       hint: 'Intro brand video before the game starts.',   route: '/intro-video',       requires: 'video',
-    exits: [{ key: 'next', label: 'On end / skip',   token: 'NEXT_AFTER_INTRO_VIDEO' }] },
-  { id: 'loading-video',     label: 'Loading video',     hint: 'Looping loading screen until the game is ready.', route: '/loading-video', requires: 'video',
-    exits: [{ key: 'next', label: 'On end / skip',   token: 'NEXT_AFTER_LOADING_VIDEO' }] },
-  { id: 'ad-video',          label: 'Ad video',          hint: 'Interstitial ad-style video page.',            route: '/ad-video',      requires: 'video',
-    exits: [{ key: 'next', label: 'On end / skip',   token: 'NEXT_AFTER_AD_VIDEO' }] },
-  { id: 'onboarding',  label: 'Onboarding',  hint: 'How-to-play steps, multi-slide.',   route: '/onboarding',
-    exits: [{ key: 'next', label: 'Final CTA',       token: 'NEXT_AFTER_ONBOARDING', defaultVariant: 'primary' }] },
-  { id: 'register',    label: 'Register',    hint: 'Player registration form.',         route: '/register',    requires: 'registration',
+  { id: 'video',       label: 'Video',       hint: 'Intro / brand video, skippable.',           route: '/video',         requires: 'video',
+    exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_VIDEO' }] },
+  { id: 'intro-video',   label: 'Intro video',   hint: 'Intro brand video before the game starts.', route: '/intro-video',   requires: 'video',
+    exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_INTRO_VIDEO' }] },
+  { id: 'loading-video', label: 'Loading video', hint: 'Looping loading screen until the game is ready.', route: '/loading-video', requires: 'video',
+    exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_LOADING_VIDEO' }] },
+  { id: 'ad-video',      label: 'Ad video',      hint: 'Interstitial ad-style video page.',         route: '/ad-video',      requires: 'video',
+    exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_AD_VIDEO' }] },
+  { id: 'tutorial',    label: 'Tutorial',    hint: 'How-to-play steps / slides before gameplay.',route: '/tutorial',
+    exits: [{ key: 'next', label: 'Start / Final CTA', token: 'NEXT_AFTER_TUTORIAL', defaultVariant: 'primary' }] },
+  { id: 'register',    label: 'Register',    hint: 'Player registration form.',                 route: '/register',      requires: 'registration',
     exits: [{ key: 'next', label: 'On submit',       token: 'NEXT_AFTER_REGISTER', defaultVariant: 'primary' }] },
-  { id: 'game',        label: 'Game',        hint: 'The actual game canvas.',           route: '/gameplay',
+  { id: 'game',        label: 'Game',        hint: 'The actual game canvas.',                   route: '/gameplay',
     exits: [{ key: 'next', label: 'On game end',     token: 'NEXT_AFTER_GAME' }] },
-  { id: 'result',      label: 'Result',      hint: 'Score reveal / win / lose screen.', route: '/result',
+  { id: 'result',      label: 'Result',      hint: 'Score reveal / win / lose screen.',         route: '/result',
     exits: [
-      { key: 'next',        label: 'Continue button',  token: 'NEXT_AFTER_RESULT', defaultVariant: 'primary' },
-      { key: 'playAgain',   label: 'Play again button',token: 'PLAY_AGAIN_ROUTE', defaultRule: 'first-in-flow',
-        optional: true, defaultEnabled: true,  capeFlag: 'showPlayAgainButton', defaultVariant: 'secondary' },
-      { key: 'leaderboard', label: 'Leaderboard button', token: 'RESULT_LEADERBOARD_ROUTE',
-        optional: true, defaultEnabled: false, capeFlag: 'showLeaderboardButton', defaultVariant: 'tertiary' },
+      { key: 'next',        label: 'Continue button',     token: 'NEXT_AFTER_RESULT',         defaultVariant: 'primary' },
+      { key: 'playAgain',   label: 'Play again button',   token: 'PLAY_AGAIN_ROUTE',          defaultRule: 'first-in-flow',
+        optional: true, defaultEnabled: true,  capeFlag: 'showPlayAgainButton',    defaultVariant: 'secondary' },
+      { key: 'leaderboard', label: 'Leaderboard button',  token: 'RESULT_LEADERBOARD_ROUTE',
+        optional: true, defaultEnabled: false, capeFlag: 'showLeaderboardButton',  defaultVariant: 'tertiary' },
     ] },
-  { id: 'leaderboard', label: 'Leaderboard', hint: 'Top scores + personal best.',       route: '/leaderboard', requires: 'leaderboard',
+  { id: 'leaderboard', label: 'Leaderboard', hint: 'Top scores + personal best.',               route: '/leaderboard',   requires: 'leaderboard',
     exits: [{ key: 'next', label: 'CTA button',      token: 'NEXT_AFTER_LEADERBOARD', defaultVariant: 'primary' }] },
-  { id: 'voucher',     label: 'Voucher',     hint: 'Reward code / QR for the prize.',   route: '/voucher',     requires: 'voucher',
-    exits: [{ key: 'next', label: 'Done button',     token: 'NEXT_AFTER_VOUCHER', defaultVariant: 'primary' }] },
+  { id: 'voucher',     label: 'Voucher',     hint: 'Reward code / QR for the prize.',           route: '/voucher',       requires: 'voucher',
+    exits: [{ key: 'next', label: 'Done button',     token: 'NEXT_AFTER_VOUCHER',     defaultVariant: 'primary' }] },
 ];
 
 export const ALL_PAGE_IDS: string[] = ALL_PAGES.map(p => p.id);
 
 export function pageMeta(id: string): PageMeta | undefined {
   return ALL_PAGES.find(p => p.id === id);
+}
+
+export function pagesForStack(_stack: Stack): PageMeta[] {
+  return ALL_PAGES;
+}
+
+export function defaultPagesForStack(stack: Stack): PageInstance[] {
+  if (stack === 'tanstack') {
+    return [
+      { id: 'landing',  type: 'landing',  route: '/landing'  },
+      { id: 'tutorial', type: 'tutorial', route: '/tutorial' },
+      { id: 'game',     type: 'game',     route: '/game'     },
+      { id: 'result',   type: 'result',   route: '/result'   },
+    ];
+  }
+  return [
+    { id: 'landing',    type: 'landing',    route: '/landing'    },
+    { id: 'tutorial',   type: 'tutorial',   route: '/tutorial'   },
+    { id: 'game',       type: 'game',       route: '/gameplay'   },
+    { id: 'result',     type: 'result',     route: '/result'     },
+  ];
 }
 
 export interface StackOption {
@@ -527,7 +550,7 @@ export interface MenuItemDef {
 export const MENU_ITEMS: MenuItemDef[] = [
   { id: 'home',        label: 'Home',           target: '/landing',     kind: 'primary',   defaultEnabled: true  },
   { id: 'resume',      label: 'Resume game',    target: '/gameplay',    kind: 'secondary', defaultEnabled: false },
-  { id: 'howToPlay',   label: 'How to play',    target: '/onboarding',  kind: 'secondary', defaultEnabled: true  },
+  { id: 'howToPlay',   label: 'How to play',    target: '/tutorial',    kind: 'secondary', defaultEnabled: true  },
   { id: 'leaderboard', label: 'Leaderboard',   target: '/leaderboard', kind: 'secondary', defaultEnabled: false },
   { id: 'voucher',     label: 'My voucher',     target: '/voucher',     kind: 'secondary', defaultEnabled: false },
   { id: 'terms',       label: 'Terms',          target: '/terms',       kind: 'tertiary',  defaultEnabled: true  },
@@ -571,12 +594,7 @@ export const DEFAULT_CONFIG: ScaffoldConfig = {
   timezone:           'Europe/Brussels',
   brand:              '',
   department:         '',
-  pages:              [
-    { id: 'landing',    type: 'landing',    route: '/landing'    },
-    { id: 'onboarding', type: 'onboarding', route: '/onboarding' },
-    { id: 'game',       type: 'game',       route: '/gameplay'   },
-    { id: 'result',     type: 'result',     route: '/result'     },
-  ],
+  pages:              defaultPagesForStack('next'),
   regMode:            'none',
   modules:            [],
   gtmId:              '',
