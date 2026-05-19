@@ -25,9 +25,8 @@ export const Route = createFileRoute('/game')({
   loader: async ({ context }) => await loadGameData(context.language),
 });
 
-// TODO: Implement Unity <-> API support
 function Game() {
-  const { copy: sharedCopy } = useLoaderData({ from: '__root__' });
+  const { copy: sharedCopy, sceneKey } = useLoaderData({ from: '__root__' });
   const { copy } = Route.useLoaderData();
   const { setResult } = useUnityStore();
   const { sendMessage, setData, setTargetScene, fullBoot, startGame, addEventListener, removeEventListener, setUnityVisible, showLoader } = useUnity();
@@ -45,7 +44,7 @@ function Game() {
   const endListener = useCallback((data: string) => {
     console.info('GAME ENDED', data);
     setResult(data);
-    void router.navigate({ to: '/score', replace: true });
+    void router.navigate({ to: '/result', replace: true });
   }, []);
 
   const apiListener = useCallback((data: string) => {
@@ -142,7 +141,7 @@ function Game() {
     // Start full boot
     startTransition(async () => {
       setData({ translations: sharedCopy.game });
-      setTargetScene('example'); // TODO: Replace with actual scene name
+      setTargetScene(sceneKey);
       await fullBoot();
       setUnityVisible(true);
 
@@ -154,7 +153,7 @@ function Game() {
     });
 
     // Prefetch score route
-    void router.preloadRoute({ to: '/score' });
+    void router.preloadRoute({ to: '/result' });
 
     return () => {
       setUnityVisible(false);

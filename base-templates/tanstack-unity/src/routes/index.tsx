@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { createFileRoute, useLoaderData, useRouter } from '@tanstack/react-router';
 import { useEffect, useRef, useTransition } from 'react';
 import styles from './index.module.scss';
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
@@ -11,6 +11,7 @@ export const Route = createFileRoute('/')({
 
 function App() {
   const router = useRouter();
+  const { sceneKey } = useLoaderData({ from: '__root__' });
   const { setTargetScene, initializeUnity } = useUnity();
   const [_, startTransition] = useTransition();
   const initialized = useRef(false);
@@ -23,16 +24,16 @@ function App() {
     initialized.current = true;
 
     startTransition(async () => {
-      setTargetScene('example'); // TODO: Replace with actual scene name
+      setTargetScene(sceneKey);
 
       // Preload next route
-      await router.preloadRoute({ to: '/launch' });
+      await router.preloadRoute({ to: '/landing' });
 
       // Initialize Unity
       await initializeUnity();
 
       // Navigate to launch after Unity loading
-      router.navigate({ to: '/launch', replace: true });
+      router.navigate({ to: '/landing', replace: true });
     });
   }, []);
 
