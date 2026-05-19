@@ -184,13 +184,13 @@ function publishPage() {
 
 // ── TanStack page tabs ────────────────────────────────────────────────────────
 
-function tsLaunchTab(els) {
+function tsLandingTab(els) {
   const items = [];
-  if (els.includes('title'))       items.push(textML('copy.launch.title',       'Title',       'ts-launch-title',       'Welcome!'));
-  if (els.includes('description')) items.push(textML('copy.launch.description', 'Description', 'ts-launch-description', 'Get ready to play.'));
-  if (els.includes('cta-play'))    items.push(textML('copy.launch.buttonStart', 'Play Button', 'ts-launch-btnstart',    'Play now'));
+  if (els.includes('title'))       items.push(textML('copy.landing.title',       'Title',       'ts-landing-title',       'Welcome!'));
+  if (els.includes('description')) items.push(textML('copy.landing.description', 'Description', 'ts-landing-description', 'Get ready to play.'));
+  if (els.includes('cta-play'))    items.push(textML('copy.landing.buttonStart', 'Play Button', 'ts-landing-btnstart',    'Play now'));
   if (items.length === 0) return null;
-  return tab('ts-launch-tab', 'Launch', 'launch', [block('ts-launch-copy-block', 'Copy', items)], true);
+  return tab('ts-landing-tab', 'Landing', 'landing', [block('ts-landing-copy-block', 'Copy', items)], true);
 }
 
 function tsTutorialTab(els, stepCount) {
@@ -209,14 +209,14 @@ function tsTutorialTab(els, stepCount) {
   return tab('ts-tutorial-tab', 'Tutorial', 'tutorial', [block('ts-tutorial-copy-block', 'Copy', items)], true);
 }
 
-function tsScoreTab(els) {
+function tsResultTab(els) {
   const items = [];
-  if (els.includes('title'))          items.push(textML('copy.score.title',          'Title',             'ts-score-title',       'Your score'));
-  if (els.includes('description'))    items.push(textML('copy.score.description',    'Description',       'ts-score-description', 'Well played!'));
-  if (els.includes('cta-register'))   items.push(textML('copy.score.buttonRegister', 'Register Button',   'ts-score-btnreg',      'Register to win'));
-  if (els.includes('cta-play-again')) items.push(textML('copy.score.buttonPlayAgain','Play Again Button', 'ts-score-btnagain',    'Play again'));
+  if (els.includes('title'))          items.push(textML('copy.result.title',          'Title',             'ts-result-title',       'Your score'));
+  if (els.includes('description'))    items.push(textML('copy.result.description',    'Description',       'ts-result-description', 'Well played!'));
+  if (els.includes('cta-register'))   items.push(textML('copy.result.buttonRegister', 'Register Button',   'ts-result-btnreg',      'Register to win'));
+  if (els.includes('cta-play-again')) items.push(textML('copy.result.buttonPlayAgain','Play Again Button', 'ts-result-btnagain',    'Play again'));
   if (items.length === 0) return null;
-  return tab('ts-score-tab', 'Score', 'score', [block('ts-score-copy-block', 'Copy', items)], true);
+  return tab('ts-result-tab', 'Result', 'result', [block('ts-result-copy-block', 'Copy', items)], true);
 }
 
 function tsRegisterTab(els) {
@@ -770,8 +770,8 @@ export function buildNextCapeFormat({
 export function buildTanStackCapeFormat({ pages, tsPageElementSelections = {} }) {
   const pageTabs = [];
 
-  if (pages.includes('launch')) {
-    const t = tsLaunchTab(tsPageElementSelections['launch'] ?? []);
+  if (pages.includes('landing')) {
+    const t = tsLandingTab(tsPageElementSelections['landing'] ?? []);
     if (t) pageTabs.push(t);
   }
   if (pages.includes('tutorial')) {
@@ -779,8 +779,8 @@ export function buildTanStackCapeFormat({ pages, tsPageElementSelections = {} })
     const t = tsTutorialTab(tsPageElementSelections['tutorial'] ?? [], stepCount);
     if (t) pageTabs.push(t);
   }
-  if (pages.includes('score')) {
-    const t = tsScoreTab(tsPageElementSelections['score'] ?? []);
+  if (pages.includes('result')) {
+    const t = tsResultTab(tsPageElementSelections['result'] ?? []);
     if (t) pageTabs.push(t);
   }
   if (pages.includes('register')) {

@@ -12,7 +12,7 @@
  *   node cli/scaffold.js \
  *     --name=hema-handdoek-2025 --cape-id=54031 --market=NL \
  *     --game=unity \
- *     --page=landing --page=onboarding --page=game --page=result --page=leaderboard \
+ *     --page=landing --page=tutorial --page=game --page=result --page=leaderboard \
  *     --reg-mode=gate \
  *     --module=registration --module=leaderboard --module=audio \
  *     --gtm-id=GTM-XXXXXX \
@@ -174,7 +174,7 @@ async function runCapeCreateFlow(ask, projectName, market, autoTitle = null, for
     // 3 = Header + Desktop & Loading + Menu (the always-on shell). Anything
     // less than that means we built only the shell, no per-page tabs.
     console.log(`  ${c.yellow('⚠')}  Generated CAPE format only has ${pageTabCount} page tab(s) — looks like the shell only.`);
-    console.log(`  ${c.dim('   Check that your wizard pages map to known types (video, landing, onboarding, result, leaderboard, register, voucher, game).')}`);
+    console.log(`  ${c.dim('   Check that your wizard pages map to known types (video, landing, tutorial, result, leaderboard, register, voucher, game).')}`);
   }
 
   // Persist the exact format we're about to push to a stable temp file. If
@@ -385,7 +385,7 @@ function computeFlowTokens(pages, regMode = 'none', flowExits = {}, flowEntry = 
   } else {
     tokens['{{PLAY_AGAIN_ROUTE}}'] =
       routeOf(firstOfType('game')) ||
-      routeOf(firstOfType('onboarding')) ||
+      routeOf(firstOfType('tutorial')) ||
       routeOf(sequence[0]);
   }
 
@@ -1033,7 +1033,7 @@ async function runWizard(pre) {
   printRouteTable(pages);
 
   // 5b. Page builder — ask what elements each page should have
-  const BUILDABLE = ['landing', 'onboarding', 'result', 'menu'];
+  const BUILDABLE = ['landing', 'tutorial', 'result', 'menu'];
   const pageElementSelections = {};
 
   // Always build menu (header button always points to /menu)
@@ -1072,7 +1072,7 @@ async function runWizard(pre) {
     }
 
     // Step-list: ask how many steps
-    if (pageElementSelections[page].includes('step-list') && page === 'onboarding') {
+    if (pageElementSelections[page].includes('step-list') && page === 'tutorial') {
       const sv = (await ask(`  ${c.cyan('How many how-to-play steps?')} ${c.dim('[default: 3]')}: `)).trim();
       const n  = parseInt(sv, 10);
       pageElementSelections[`${page}__stepCount`] = (!isNaN(n) && n > 0) ? n : 3;
@@ -2018,7 +2018,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     '{{AVAILABLE_CAMPAIGN_ROUTES}}': availableCampaignRoutes.join('|'),
     '{{BUTTON_VARIANT_LANDING_NEXT}}':        buttonVariant('landing', 'next', 'primary'),
     '{{BUTTON_VARIANT_LANDING_LEADERBOARD}}': buttonVariant('landing', 'leaderboard', 'secondary'),
-    '{{BUTTON_VARIANT_ONBOARDING_NEXT}}':     buttonVariant('onboarding', 'next', 'primary'),
+    '{{BUTTON_VARIANT_TUTORIAL_NEXT}}':        buttonVariant('tutorial', 'next', 'primary'),
     '{{BUTTON_VARIANT_REGISTER_NEXT}}':       buttonVariant('register', 'next', 'primary'),
     '{{BUTTON_VARIANT_RESULT_NEXT}}':         buttonVariant('result', 'next', 'primary'),
     '{{BUTTON_VARIANT_RESULT_PLAY_AGAIN}}':   buttonVariant('result', 'playAgain', 'secondary'),
@@ -2054,16 +2054,16 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
 
     const PAGE_DIR = join(frontendDir, 'app', '(campaign)');
     const BUILDABLE_TO_DIR = {
-      landing:    'landing',
-      onboarding: 'onboarding',
-      gameplay:   'gameplay',
-      result:     'result',
-      menu:       'menu',
+      landing:  'landing',
+      tutorial: 'tutorial',
+      gameplay: 'gameplay',
+      result:   'result',
+      menu:     'menu',
     };
 
     let generated = 0;
     for (const [page, elements] of Object.entries(pageElementSelections)) {
-      if (page.includes('__')) continue; // skip meta keys like onboarding__stepCount
+      if (page.includes('__')) continue; // skip meta keys like tutorial__stepCount
       const dirName = BUILDABLE_TO_DIR[page];
       if (!dirName) continue;
 
