@@ -3,24 +3,24 @@
  *
  * Page builder for the TanStack (unity-tanstack-boilerplate) stack.
  * Generates route files (.tsx) and loader files (.ts) matching the
- * exact patterns used in unity-tanstack-boilerplate/frontend/src/routes/.
+ * exact patterns used in base-templates/tanstack-unity/frontend/src.
  *
  * Usage:
  *   import { TS_PAGE_ELEMENTS, TS_PAGE_DEFAULTS, buildTsPage } from './tanstack-page-builder.js';
  *
- *   const { route, loader } = buildTsPage('launch', ['logo', 'title', 'cta-play']);
+ *   const { route, loader } = buildTsPage('landing', ['logo', 'title', 'cta-play']);
  */
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const TS_ALL_PAGES = ['launch', 'tutorial', 'game', 'register', 'score'];
+export const TS_ALL_PAGES = ['landing', 'tutorial', 'game', 'register', 'result'];
 
 export const TS_PAGE_ROUTES = {
-  launch:   '/launch',
+  landing:  '/landing',
   tutorial: '/tutorial',
   game:     '/game',
   register: '/register',
-  score:    '/score',
+  result:   '/result',
 };
 
 // ─── Element catalogue ────────────────────────────────────────────────────────
@@ -30,27 +30,27 @@ export const TS_ELEMENT_CATALOGUE = {
   'logo': {
     label: 'Logo image',
     description: 'Brand logo from static asset (logo.png)',
-    pages: ['launch'],
+    pages: ['landing'],
   },
   'title': {
     label: 'Title',
     description: 'Main heading from CAPE copy',
-    pages: ['launch', 'score'],
+    pages: ['landing', 'result'],
   },
   'description': {
     label: 'Description',
     description: 'Body text from CAPE copy',
-    pages: ['launch', 'score'],
+    pages: ['landing', 'result'],
   },
   'cta-play': {
     label: 'Play button',
     description: 'Primary CTA — navigates to /game',
-    pages: ['launch'],
+    pages: ['landing'],
   },
   'cta-tutorial': {
     label: 'Tutorial button',
     description: 'Secondary link button to /tutorial',
-    pages: ['launch'],
+    pages: ['landing'],
   },
   // ── Tutorial ─────────────────────────────────────────────────────────────────
   'steps': {
@@ -63,26 +63,26 @@ export const TS_ELEMENT_CATALOGUE = {
     description: 'Close icon button — skips directly to game',
     pages: ['tutorial'],
   },
-  // ── Score ─────────────────────────────────────────────────────────────────────
+  // ── Result ────────────────────────────────────────────────────────────────────
   'confetti': {
     label: 'Confetti animation',
     description: 'Full-screen confetti particle overlay',
-    pages: ['score'],
+    pages: ['result'],
   },
   'play-time': {
     label: 'Play time / score display',
     description: 'Shows game result (playTime) from Unity store',
-    pages: ['score'],
+    pages: ['result'],
   },
   'cta-register': {
     label: 'Register button',
     description: 'Primary CTA linking to /register',
-    pages: ['score'],
+    pages: ['result'],
   },
   'cta-play-again': {
     label: 'Play again button',
-    description: 'Alternate link button back to /launch',
-    pages: ['score'],
+    description: 'Alternate link button back to /landing',
+    pages: ['result'],
   },
   // ── Register ─────────────────────────────────────────────────────────────────
   'reg-title': {
@@ -133,24 +133,24 @@ export const TS_ELEMENT_CATALOGUE = {
 };
 
 export const TS_PAGE_DEFAULTS = {
-  launch:   ['logo', 'title', 'description', 'cta-play', 'cta-tutorial'],
+  landing:  ['logo', 'title', 'description', 'cta-play', 'cta-tutorial'],
   tutorial: ['steps', 'skip'],
   game:     [],
   register: ['reg-title', 'reg-description', 'field-name', 'field-email', 'field-country', 'field-optin-1', 'cta-back'],
-  score:    ['confetti', 'play-time', 'title', 'description', 'cta-register'],
+  result:   ['confetti', 'play-time', 'title', 'description', 'cta-register'],
 };
 
 export const TS_PAGE_ELEMENTS = {
-  launch:   ['logo', 'title', 'description', 'cta-play', 'cta-tutorial'],
+  landing:  ['logo', 'title', 'description', 'cta-play', 'cta-tutorial'],
   tutorial: ['steps', 'skip'],
   game:     [],
   register: ['reg-title', 'reg-description', 'field-name', 'field-email', 'field-password', 'field-country', 'field-optin-1', 'field-optin-2', 'cta-back'],
-  score:    ['confetti', 'play-time', 'title', 'description', 'cta-register', 'cta-play-again'],
+  result:   ['confetti', 'play-time', 'title', 'description', 'cta-register', 'cta-play-again'],
 };
 
-// ─── Launch page ──────────────────────────────────────────────────────────────
+// ─── Landing page ─────────────────────────────────────────────────────────────
 
-function buildLaunchRoute(els) {
+function buildLandingRoute(els) {
   const hasLogo    = els.includes('logo');
   const hasTitle   = els.includes('title');
   const hasDesc    = els.includes('description');
@@ -164,9 +164,9 @@ function buildLaunchRoute(els) {
     `import { PageContainer } from '~/components/containers/PageContainer.tsx';`,
     (hasTitle || hasDesc) ? `import { StyledText } from '~/components/texts/StyledText.tsx';` : '',
     (hasCta || hasTutBtn) ? `import { StyledButton } from '~/components/buttons/StyledButton.tsx';` : '',
-    `import { loadLaunchData } from '~/routes/-loaders/launchLoader.ts';`,
+    `import { loadLandingData } from '~/loaders/LandingLoader.ts';`,
     hasCta    ? `import { useGameNavigation } from '~/hooks/useGameNavigation.ts';` : '',
-    `import styles from './launch.module.scss';`,
+    `import styles from './landing.module.scss';`,
   ].filter(Boolean).join('\n');
 
   const body = [
@@ -179,18 +179,18 @@ function buildLaunchRoute(els) {
 
   return `${lines}
 
-export const Route = createFileRoute('/launch')({
-  component: Launch,
-  loader: async ({ context }) => await loadLaunchData(context.language),
+export const Route = createFileRoute('/landing')({
+  component: Landing,
+  loader: async ({ context }) => await loadLandingData(context.language),
 });
 
-function Launch() {
+function Landing() {
   const { copy } = Route.useLoaderData();
   ${hasLogo ? `const { logoPlaceholder } = useLoaderData({ from: '__root__' });` : ''}
   ${hasCta  ? `const { isPending, navigate } = useGameNavigation();` : ''}
 
   return (
-    <PageContainer className={styles.launch}>
+    <PageContainer className={styles.landing}>
 ${body}
     </PageContainer>
   );
@@ -198,23 +198,23 @@ ${body}
 `;
 }
 
-function buildLaunchLoader(els) {
+function buildLandingLoader(els) {
   const hasTitle = els.includes('title');
   const hasDesc  = els.includes('description');
   const hasCta   = els.includes('cta-play');
 
   const vars  = [hasTitle && 'title', hasDesc && 'description', hasCta && 'button'].filter(Boolean);
   const paths = [
-    hasTitle && `    ['launch', 'title'],`,
-    hasDesc  && `    ['launch', 'description'],`,
-    hasCta   && `    ['launch', 'buttonStart'],`,
+    hasTitle && `    ['landing', 'title'],`,
+    hasDesc  && `    ['landing', 'description'],`,
+    hasCta   && `    ['landing', 'buttonStart'],`,
   ].filter(Boolean).join('\n');
 
   const copy = vars.map(v => `      ${v},`).join('\n');
 
   return `import { getCapeCopy } from '~/server/cape/CapeProvider.ts';
 
-export async function loadLaunchData(language: string) {
+export async function loadLandingData(language: string) {
   const [${vars.join(', ')}] = await getCapeCopy(language, [
 ${paths}
   ]);
@@ -243,7 +243,7 @@ import type { IContentSliderHandle } from '~/components/slider/ContentSlider.tsx
 ${hasSteps ? `import { ContentSlider } from '~/components/slider/ContentSlider.tsx';` : ''}
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
 import LogoVisual from '~/assets/images/logo.svg';
-import { loadTutorialData } from '~/routes/-loaders/tutorialLoader.ts';
+import { loadTutorialData } from '~/loaders/TutorialLoader.ts';
 import { useGameNavigation } from '~/hooks/useGameNavigation.ts';
 ${hasSkip ? `import { IconButton } from '~/components/buttons/IconButton.tsx';` : ''}
 import styles from './tutorial.module.scss';
@@ -306,16 +306,16 @@ ${stepsReturn}
 `;
 }
 
-// ─── Score page ───────────────────────────────────────────────────────────────
+// ─── Result page ──────────────────────────────────────────────────────────────
 
-function buildScoreRoute(els, pages = []) {
+function buildResultRoute(els, pages = []) {
   const hasConfetti   = els.includes('confetti');
   const hasPlayTime   = els.includes('play-time');
   const hasTitle      = els.includes('title');
   const hasDesc       = els.includes('description');
   const hasCtaReg     = els.includes('cta-register');
   const hasCtaAgain   = els.includes('cta-play-again');
-  const registerRoute = pages.includes('register') ? '/register' : '/launch';
+  const registerRoute = pages.includes('register') ? '/register' : '/landing';
 
   const body = [
     hasConfetti ? `      <ConfettiOverlay config={confettiConfig} visual={'confetti'} visualCount={2} />` : '',
@@ -323,7 +323,7 @@ function buildScoreRoute(els, pages = []) {
     hasTitle    ? `      <StyledText type={'title'} marginTop={8} alternate>{copy.title}</StyledText>` : '',
     hasDesc     ? `      <StyledText type={'description'} marginTop={8} alternate>{copy.description}</StyledText>` : '',
     hasCtaReg   ? `      <StyledButton linkOptions={{ to: '${registerRoute}' }} marginTop={16}>{copy.buttonRegister || 'Play Again'}</StyledButton>` : '',
-    hasCtaAgain ? `      <StyledButton linkOptions={{ to: '/launch' }} marginTop={8} alternate>{copy.buttonPlayAgain}</StyledButton>` : '',
+    hasCtaAgain ? `      <StyledButton linkOptions={{ to: '/landing' }} marginTop={8} alternate>{copy.buttonPlayAgain}</StyledButton>` : '',
   ].filter(Boolean).join('\n');
 
   return `import { createFileRoute } from '@tanstack/react-router';
@@ -332,15 +332,15 @@ import { PageContainer } from '~/components/containers/PageContainer.tsx';
 ${hasPlayTime ? `import { useUnityStore } from '~/hooks/stores/useUnityStore.ts';` : ''}
 import { StyledText } from '~/components/texts/StyledText.tsx';
 ${(hasCtaReg || hasCtaAgain) ? `import { StyledButton } from '~/components/buttons/StyledButton.tsx';` : ''}
-import { loadScoreData } from '~/routes/-loaders/scoreLoader.ts';
-import styles from './score.module.scss';
+import { loadResultData } from '~/loaders/ResultLoader.ts';
+import styles from './result.module.scss';
 
-export const Route = createFileRoute('/score')({
-  component: Score,
-  loader: async ({ context }) => await loadScoreData(context.language),
+export const Route = createFileRoute('/result')({
+  component: Result,
+  loader: async ({ context }) => await loadResultData(context.language),
 });
 
-function Score() {
+function Result() {
   ${hasPlayTime ? `const result = useUnityStore((state) => state.result);` : ''}
   const { copy } = Route.useLoaderData();
   ${hasConfetti ? `
@@ -352,7 +352,7 @@ function Score() {
   }), []);` : ''}
 
   return (
-    <PageContainer className={styles.score}>
+    <PageContainer className={styles.result}>
 ${body}
     </PageContainer>
   );
@@ -360,7 +360,7 @@ ${body}
 `;
 }
 
-function buildScoreLoader(els) {
+function buildResultLoader(els) {
   const hasTitle    = els.includes('title');
   const hasDesc     = els.includes('description');
   const hasCtaReg   = els.includes('cta-register');
@@ -368,15 +368,15 @@ function buildScoreLoader(els) {
 
   const vars  = [hasTitle && 'title', hasDesc && 'description', hasCtaReg && 'buttonRegister', hasCtaAgain && 'buttonPlayAgain'].filter(Boolean);
   const paths = [
-    hasTitle    && `    ['score', 'title'],`,
-    hasDesc     && `    ['score', 'description'],`,
-    hasCtaReg   && `    ['score', 'buttonRegister'],`,
-    hasCtaAgain && `    ['score', 'buttonPlayAgain'],`,
+    hasTitle    && `    ['result', 'title'],`,
+    hasDesc     && `    ['result', 'description'],`,
+    hasCtaReg   && `    ['result', 'buttonRegister'],`,
+    hasCtaAgain && `    ['result', 'buttonPlayAgain'],`,
   ].filter(Boolean).join('\n');
 
   return `import { getCapeCopy } from '~/server/cape/CapeProvider.ts';
 
-export async function loadScoreData(language: string) {
+export async function loadResultData(language: string) {
   const [${vars.join(', ')}] = await getCapeCopy(language, [
 ${paths}
   ]);
@@ -422,7 +422,7 @@ ${(hasTitle || hasDesc) ? `import { StyledText } from '~/components/texts/Styled
 import { DynamicForm } from '~/components/forms/DynamicForm.tsx';
 import { sleep } from '~/utils/Helper.ts';
 ${hasBack ? `import { StyledButton } from '~/components/buttons/StyledButton.tsx';` : ''}
-import { loadRegisterData } from '~/routes/-loaders/registerLoader.ts';
+import { loadRegisterData } from '~/loaders/RegisterLoader.ts';
 
 export const Route = createFileRoute('/register')({
   component: Register,
@@ -446,7 +446,7 @@ ${fields}
       setError('');
       try {
         await sleep(2000);
-        router.navigate({ to: '/launch' });
+        router.navigate({ to: '/landing' });
       } catch (e) {
         console.error('Error during form submission:', e);
         setError(copy.genericError);
@@ -459,7 +459,7 @@ ${fields}
       ${hasTitle ? `<StyledText type={'title'} alternate>{copy.title}</StyledText>` : ''}
       ${hasDesc  ? `<StyledText type={'description'} marginTop={8} alternate>{copy.description}</StyledText>` : ''}
       <DynamicForm formData={formData} buttonText={copy.button} errorText={error} loading={isPending} onSubmit={(data) => processForm(data)} />
-      ${hasBack  ? `<StyledButton linkOptions={{ to: '/launch' }} marginTop={8} alternate>Back</StyledButton>` : ''}
+      ${hasBack  ? `<StyledButton linkOptions={{ to: '/landing' }} marginTop={8} alternate>Back</StyledButton>` : ''}
     </PageContainer>
   );
 }
@@ -551,7 +551,7 @@ ${copyFields}
 /**
  * Generate a route file and loader file for a TanStack page.
  *
- * @param {'launch'|'tutorial'|'score'|'register'} pageType
+ * @param {'landing'|'tutorial'|'result'|'register'} pageType
  * @param {string[]} elements  — element IDs from TS_PAGE_ELEMENTS[pageType]
  * @param {object}   opts      — { stepCount }
  * @returns {{ route: string, loader: string }}
@@ -560,9 +560,9 @@ export function buildTsPage(pageType, elements, opts = {}) {
   const stepCount = opts.stepCount ?? 3;
   const pages = opts.pages ?? [];
   switch (pageType) {
-    case 'launch':   return { route: buildLaunchRoute(elements),   loader: buildLaunchLoader(elements) };
+    case 'landing':  return { route: buildLandingRoute(elements),  loader: buildLandingLoader(elements) };
     case 'tutorial': return { route: buildTutorialRoute(elements, stepCount), loader: buildTutorialLoader(elements, stepCount) };
-    case 'score':    return { route: buildScoreRoute(elements, pages),    loader: buildScoreLoader(elements) };
+    case 'result':   return { route: buildResultRoute(elements, pages),   loader: buildResultLoader(elements) };
     case 'register': return { route: buildRegisterRoute(elements), loader: buildRegisterLoader(elements) };
     default: throw new Error(`Unknown TanStack page type: ${pageType}`);
   }

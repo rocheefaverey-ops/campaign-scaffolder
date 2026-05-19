@@ -1612,9 +1612,9 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
       .replace(`color: $whiteColor;`, `color: var(--lw-text, #{$blackColor});`)
       .replace(`color: $blackColor;`, `color: var(--lw-text, #{$blackColor});`),
     // Page backgrounds — use CSS custom property so Cape branding overrides them
-    [join(frontendDir, 'src', 'routes', 'launch.module.scss')]: (c) => c
+    [join(frontendDir, 'src', 'routes', 'landing.module.scss')]: (c) => c
       .replace(`background-color: $whiteColor;`, `background-color: var(--lw-bg, #{$whiteColor});`),
-    [join(frontendDir, 'src', 'routes', 'score.module.scss')]: (c) => c
+    [join(frontendDir, 'src', 'routes', 'result.module.scss')]: (c) => c
       .replace(`background-color: $whiteColor;`, `background-color: var(--lw-bg, #{$whiteColor});`),
     [join(frontendDir, 'src', 'routes', 'register.module.scss')]: (c) => c
       .replace(`background-color: $whiteColor;`, `background-color: var(--lw-bg, #{$whiteColor});`),
@@ -1724,15 +1724,12 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   }
 
   // 3b. Remove excluded pages + generate page builder output
-  // Non-interactive CLI uses Next.js-style names (landing/onboarding/result);
-  // TanStack internals use their own names (launch/tutorial/score). Normalize first.
-  const NEXT_TO_TS_PAGE = { landing: 'launch', onboarding: 'tutorial', result: 'score' };
-  const normalizedPages = pages.map(p => NEXT_TO_TS_PAGE[p] ?? p);
+  const normalizedPages = pages;
 
-  const BUILDABLE_TS = ['launch', 'tutorial', 'score', 'register'];
-  const ROUTE_FILES  = { launch: 'launch.tsx', tutorial: 'tutorial.tsx', game: 'game.tsx', register: 'register.tsx', score: 'score.tsx' };
-  const LOADER_FILES = { launch: 'LaunchLoader.ts', tutorial: 'TutorialLoader.ts', register: 'RegisterLoader.ts', score: 'ScoreLoader.ts' };
-  const LEGACY_LOADER_FILES = { launch: 'launchLoader.ts', tutorial: 'tutorialLoader.ts', register: 'registerLoader.ts', score: 'scoreLoader.ts' };
+  const BUILDABLE_TS = ['landing', 'tutorial', 'result', 'register'];
+  const ROUTE_FILES  = { landing: 'landing.tsx', tutorial: 'tutorial.tsx', game: 'game.tsx', register: 'register.tsx', result: 'result.tsx' };
+  const LOADER_FILES = { landing: 'LandingLoader.ts', tutorial: 'TutorialLoader.ts', register: 'RegisterLoader.ts', result: 'ResultLoader.ts' };
+  const LEGACY_LOADER_FILES = { landing: 'landingLoader.ts', tutorial: 'tutorialLoader.ts', register: 'registerLoader.ts', result: 'resultLoader.ts' };
   const routesDir  = join(frontendDir, 'src', 'routes');
   const loadersDir = join(frontendDir, 'src', 'loaders');
   const legacyLoadersDir = join(routesDir, '-loaders');
@@ -1885,6 +1882,9 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
           // sense when another module is also installed (e.g. unity's
           // video-page override needs the video module to provide VideoIntro).
           if (file.requires && !modules.includes(file.requires)) {
+            continue;
+          }
+          if (file.stacks && !file.stacks.includes(stack)) {
             continue;
           }
           const srcPath  = join(moduleDir, file.src);
@@ -2631,7 +2631,7 @@ function writeChecklistFile(outputDir, cfg) {
     register: '/register', game: '/gameplay', result: '/result',
     leaderboard: '/leaderboard', voucher: '/voucher',
     // TanStack
-    launch: '/launch', tutorial: '/tutorial', score: '/score',
+    tutorial: '/tutorial',
   };
 
   if (cfg.pages?.length > 0) {
