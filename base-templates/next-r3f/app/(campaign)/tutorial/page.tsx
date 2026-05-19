@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,26 +9,26 @@ import { getCapeText, getCapeImage, getCapeBoolean, buildCopyResolver, buildImag
 import Button from '@components/_core/Button/Button';
 
 /**
- * Onboarding page — layout adapts to how many steps CAPE has populated:
+ * Tutorial page — layout adapts to how many steps CAPE has populated:
  *
  *   0–1 populated steps  →  single-panel layout (just headline + body + CTA),
  *                           identical DNA to the landing page.
  *   2+ populated steps   →  multi-slide carousel with dot pagination, per-slide
- *                           hero image (CAPE: files.onboarding.step{N}Image),
+ *                           hero image (CAPE: files.tutorial.step{N}Image),
  *                           "Continue" CTA on intermediate slides, the final
- *                           CTA (copy.onboarding.cta) on the last slide.
+ *                           CTA (copy.tutorial.cta) on the last slide.
  *
  * A step counts as "populated" when its `step{N}Title` returns non-empty —
  * we read with a literal '' fallback (instead of the bracketed placeholder)
  * so missing CAPE keys collapse rather than render as junk.
  */
-export default function OnboardingPage() {
+export default function TutorialPage() {
   const router       = useRouter();
   const navigate     = useSafeNavigation();
   const { capeData } = useCapeData();
-  const instanceId   = useInstanceId('onboarding');
-  const t   = buildCopyResolver(capeData, 'onboarding', instanceId);
-  const img = buildImageResolver(capeData, 'onboarding', instanceId);
+  const instanceId   = useInstanceId('tutorial');
+  const t   = buildCopyResolver(capeData, 'tutorial', instanceId);
+  const img = buildImageResolver(capeData, 'tutorial', instanceId);
 
   // Always-on visuals (mirror landing)
   const bgUrl   = img('background')
@@ -43,7 +43,7 @@ export default function OnboardingPage() {
 
   // Default tutorial content used when the CAPE schema doesn't define
   // step{N}Title/Body fields (this campaign's cape-format.json only declares
-  // kicker/headline/subline/cta for onboarding). Each entry is overridden
+  // kicker/headline/subline/cta for tutorial). Each entry is overridden
   // per-step by `copy.{instanceId}.step{N}Title` / `step${N}Body` once the
   // campaign manager adds those fields and populates them.
   //
@@ -62,11 +62,11 @@ export default function OnboardingPage() {
       title: t(`step${n}Title`, dflt?.title ?? ''),
       body:  t(`step${n}Body`,  dflt?.body  ?? ''),
       image: getCapeImage(capeData, `files.${instanceId}.step${n}Image`)
-          || getCapeImage(capeData, `files.onboarding.step${n}Image`),
+          || getCapeImage(capeData, `files.tutorial.step${n}Image`),
     };
   }).filter(s => s.title.trim().length > 0);
 
-  const headline  = t('headline', '[copy.onboarding.headline]');
+  const headline  = t('headline', '[copy.tutorial.headline]');
   const subline   = t('subline',  '');
   const kicker    = t('kicker',   'How to play');
   const ctaFinal  = t('cta',      "Let's go");
@@ -87,7 +87,7 @@ export default function OnboardingPage() {
   const showBody     = isMulti ? currentStep.body  : (steps[0]?.body  || subline);
   const showCta      = isMulti && !isLastSlide ? ctaNext : ctaFinal;
 
-  const advance = () => navigate('{{NEXT_AFTER_ONBOARDING}}');
+  const advance = () => navigate('{{NEXT_AFTER_TUTORIAL}}');
   const onCtaClick = () => {
     if (!isMulti || isLastSlide) advance();
     else setSlideIdx(i => Math.min(i + 1, steps.length - 1));
@@ -123,7 +123,7 @@ export default function OnboardingPage() {
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.4s 0.18s ease both' }}>
           {isMulti && (
-            <div className="campaign-pagination" role="tablist" aria-label="Onboarding progress">
+            <div className="campaign-pagination" role="tablist" aria-label="Tutorial progress">
               {steps.map((_, i) => (
                 <button
                   key={i}
@@ -136,7 +136,7 @@ export default function OnboardingPage() {
               ))}
             </div>
           )}
-          <Button variant={'{{BUTTON_VARIANT_ONBOARDING_NEXT}}' as any} className="w-full" size="lg" onClick={onCtaClick}>
+          <Button variant={'{{BUTTON_VARIANT_TUTORIAL_NEXT}}' as any} className="w-full" size="lg" onClick={onCtaClick}>
             {showCta}
           </Button>
           {allowSkip && !isLastSlide && (
@@ -144,7 +144,7 @@ export default function OnboardingPage() {
               type="button"
               onClick={advance}
               className="campaign-skip"
-              aria-label="Skip onboarding"
+              aria-label="Skip tutorial"
             >
               Skip →
             </button>
