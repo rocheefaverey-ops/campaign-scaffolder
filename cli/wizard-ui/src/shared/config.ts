@@ -332,7 +332,7 @@ export interface PageMeta {
    * Buttons / navigations the page emits. Each exit's destination is
    * separately configurable in the wizard, so flow routing isn't strictly
    * linear — `result.next` could go to voucher, `result.playAgain` could
-   * skip back to onboarding, etc.
+   * skip back to tutorial, etc.
    */
   exits?:     PageExit[];
 }
@@ -520,7 +520,7 @@ export const STACK_OPTIONS: StackOption[] = [
     hint: 'CAPE only — registration / voucher flows',
     references: ['Registration-only sweepstakes campaigns'],
     strengths: [
-      'No game canvas at all — onboarding, register, voucher, leaderboard',
+      'No game canvas at all — tutorial, register, voucher, leaderboard',
       'Use for "win a prize by signing up" experiences',
       'Lightest possible scaffold',
     ],

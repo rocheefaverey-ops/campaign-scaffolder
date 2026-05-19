@@ -34,6 +34,39 @@ import { TS_PAGE_ELEMENTS, TS_PAGE_DEFAULTS, TS_ELEMENT_CATALOGUE, TS_ALL_PAGES,
 import { getGamesByEngine, getGamesByStack, getGame, gameEnvLines, gameLabel } from './game-registry.js';
 import { checkAuth, validateAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, seedTemplateAssets, publishCampaign } from './cape-client.js';
 import { buildTanStackCapeFormat, buildNextCapeFormat } from './cape-format-builder.js';
+import {
+  ALL_PAGES,
+  EXPLICIT_VIDEO_PAGES,
+  GAME_ENGINES,
+  LOCAL_WIZARD_PAGE_SETTINGS,
+  PAGE_ROUTES,
+  VALID_MARKETS,
+  basePageType,
+  buildDefaultPages,
+  buildLanguagesMap,
+  inferPageTypes,
+  landingOnboardingFirstRunOnly,
+  pageModuleType,
+  routeFor,
+} from './core/page-config.js';
+import {
+  MODULES_DIR,
+  OPTIONAL_MODULE_IDS,
+  PAGE_REQUIRES_MODULE,
+  loadManifest,
+  moduleSupportedByPages,
+  resolveImplied,
+} from './core/module-registry.js';
+import { validateArgs, validateConfig } from './core/validation.js';
+import {
+  runDoctor,
+  validateAllGameManifests,
+  validateAllModuleManifests,
+  validateGameManifestFile,
+  validateModuleManifestFile,
+} from './core/health.js';
+
+export { PAGE_ROUTES, basePageType, routeFor, validateConfig };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -46,7 +79,6 @@ const TEMPLATES = {
   'next-none':     join(SCAFFOLDER_ROOT, 'base-templates', 'next-none'),
   'tanstack-unity':join(SCAFFOLDER_ROOT, 'base-templates', 'tanstack-unity'),
 };
-const MODULES_DIR        = join(SCAFFOLDER_ROOT, 'modules');
 
 // ─── CAPE campaign creation helper ───────────────────────────────────────────
 
@@ -240,165 +272,16 @@ const c = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const GAME_ENGINES = ['unity', 'r3f', 'phaser', 'memory', 'video', 'pure-react'];
-
-const ALL_PAGES = ['landing', 'intro-video', 'onboarding', 'loading-video', 'game', 'result', 'ad-video', 'register', 'leaderboard', 'voucher'];
-const VIDEO_PAGE_IDS = new Set(['video', 'intro-video', 'loading-video', 'ad-video']);
-const EXPLICIT_VIDEO_PAGES = ['intro-video', 'loading-video', 'ad-video'];
-
-const VALID_MARKETS = new Set(['NL', 'BE', 'FR', 'DE', 'UK', 'ES', 'IT', 'PL', 'AT', 'CH', 'LU', 'DK', 'SE', 'NO', 'FI']);
-
-/**
- * Mirror of buildCapeLanguagesMap in cli/wizard-ui/src/shared/config.ts.
- * Builds the CAPE-shaped languages map: { "EN": "EN - English", ... }.
- */
-const ISO_LANGUAGE_NAMES = {
-  EN: 'English', NL: 'Dutch', 'NL-BE': 'Flemish', DE: 'German', 'DE-AT': 'Austrian German',
-  'DE-CH': 'Swiss German', FR: 'French', 'FR-BE': 'French (Belgium)', 'FR-CH': 'French (Switzerland)',
-  IT: 'Italian', ES: 'Spanish', PT: 'Portuguese', 'PT-BR': 'Portuguese (Brazil)', GA: 'Irish',
-  SV: 'Swedish', NO: 'Norwegian', DA: 'Danish', FI: 'Finnish', IS: 'Icelandic',
-  PL: 'Polish', CS: 'Czech', SK: 'Slovak', HU: 'Hungarian', RO: 'Romanian', BG: 'Bulgarian',
-  HR: 'Croatian', SR: 'Serbian', SL: 'Slovenian', EL: 'Greek', RU: 'Russian', UK: 'Ukrainian',
-  TR: 'Turkish', ET: 'Estonian', LV: 'Latvian', LT: 'Lithuanian',
-  ZH: 'Chinese', 'ZH-TW': 'Chinese (Traditional)', JA: 'Japanese', KO: 'Korean',
-  VI: 'Vietnamese', TH: 'Thai', ID: 'Indonesian', MS: 'Malay', HI: 'Hindi', BN: 'Bengali',
-  AR: 'Arabic', HE: 'Hebrew', FA: 'Persian', SW: 'Swahili',
-};
-function buildLanguagesMap(codes) {
-  const out = {};
-  for (const code of codes) {
-    out[code] = `${code} - ${ISO_LANGUAGE_NAMES[code] ?? code}`;
-  }
-  return out;
-}
-
-/** Names that would conflict with framework directories or reserved paths */
-const RESERVED_NAMES = new Set(['next', 'app', 'api', 'src', 'public', 'node_modules', 'build', 'dist', 'test', 'tests', 'frontend', 'backend', 'scaffolder', 'campaign-scaffolder', 'livewall']);
-
-export const PAGE_ROUTES = {
-  landing:     '/landing',
-  video:       '/video',
-  'intro-video':   '/intro-video',
-  'loading-video': '/loading-video',
-  'ad-video':      '/ad-video',
-  onboarding:  '/onboarding',
-  register:    '/register',
-  game:        '/gameplay',
-  result:      '/result',
-  leaderboard: '/leaderboard',
-  voucher:     '/voucher',
-};
-
-export function basePageType(pageId) {
-  return String(pageId);
-}
-
-function pageModuleType(pageId) {
-  return VIDEO_PAGE_IDS.has(pageId) ? 'video' : String(pageId);
-}
-
-export function routeFor(pageId, routeMap = {}) {
-  return routeMap[pageId] ?? PAGE_ROUTES[pageId] ?? `/${pageId}`;
-}
-
-function inferPageTypes(pages) {
-  return {};
-}
-
-/** Pages that require a specific module to be present */
-const PAGE_REQUIRES_MODULE = {
-  register:    'registration',
-  leaderboard: 'leaderboard',
-  voucher:     'voucher',
-  video:       'video',
-};
-
-const OPTIONAL_MODULE_IDS = ['leaderboard', 'registration', 'scoring', 'audio', 'cookie-consent', 'gtm'];
-const GLOBAL_OPTIONAL_MODULES = new Set(['audio', 'cookie-consent', 'gtm']);
-const MODULE_PAGE_SUPPORT = {
-  leaderboard: new Set(['leaderboard']),
-  registration: new Set(['register']),
-  scoring: new Set(['game', 'result', 'register', 'leaderboard']),
-  voucher: new Set(['voucher']),
-  video: new Set(['video']),
-};
-const LOCAL_WIZARD_PAGE_SETTINGS = new Set(['onboardingFirstRunOnly']);
-
-function moduleSupportedByPages(moduleId, pages) {
-  if (GLOBAL_OPTIONAL_MODULES.has(moduleId)) return true;
-  const supportedTypes = MODULE_PAGE_SUPPORT[moduleId];
-  if (!supportedTypes) return false;
-  const pageTypes = new Set((pages ?? []).map((p) => pageModuleType(p)));
-  for (const type of supportedTypes) {
-    if (pageTypes.has(type)) return true;
-  }
-  return false;
-}
-
-/** Modules that imply other modules */
-function resolveImplied(selectedModules) {
-  const manifests = loadAllManifests();
-  const resolved  = new Set(selectedModules);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const id of [...resolved]) {
-      const m = manifests[id];
-      if (m?.implies) {
-        for (const dep of m.implies) {
-          if (!resolved.has(dep)) { resolved.add(dep); changed = true; }
-        }
-      }
-    }
-  }
-  return [...resolved];
-}
-
 // ─── Manifest helpers ─────────────────────────────────────────────────────────
-const _manifestCache = {};
-
-function validateManifest(manifest, moduleId) {
-  const base = `Manifest validation failed for module "${moduleId}"`;
-  if (!manifest.id)              throw new Error(`${base}: missing required field "id"`);
-  if (!manifest.name)            throw new Error(`${base}: missing required field "name"`);
-  if (!Array.isArray(manifest.files)) throw new Error(`${base}: "files" must be an array`);
-  for (let i = 0; i < manifest.files.length; i++) {
-    const f = manifest.files[i];
-    if (!f.src)  throw new Error(`${base}: files[${i}] missing "src"`);
-    if (!f.dest) throw new Error(`${base}: files[${i}] missing "dest"`);
-  }
-}
-
-function loadManifest(moduleId) {
-  if (_manifestCache[moduleId]) return _manifestCache[moduleId];
-  const p = join(MODULES_DIR, moduleId, 'manifest.json');
-  if (!existsSync(p)) throw new Error(`Manifest not found: ${p}`);
-  let manifest;
-  try {
-    manifest = JSON.parse(readFileSync(p, 'utf8'));
-  } catch (e) {
-    throw new Error(`Invalid JSON in manifest ${p}: ${e.message}`);
-  }
-  validateManifest(manifest, moduleId);
-  _manifestCache[moduleId] = manifest;
-  return manifest;
-}
-
-function loadAllManifests() {
-  const all = {};
-  const dirs = readdirSync(MODULES_DIR).filter(d =>
-    statSync(join(MODULES_DIR, d)).isDirectory()
-  );
-  for (const id of dirs) {
-    try { all[id] = loadManifest(id); } catch { /* skip */ }
-  }
-  return all;
-}
-
 // ─── Arg parsing ─────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const args = { modules: [], pages: [], routeOverrides: {}, market: 'NL' };
+  const args = { modules: [], pages: [], routeOverrides: {}, market: 'NL', positionals: [] };
   for (const raw of argv.slice(2)) {
+    if (!raw.startsWith('--')) {
+      if (!args.command) args.command = raw;
+      else args.positionals.push(raw);
+      continue;
+    }
     const [key, ...rest] = raw.replace(/^--/, '').split('=');
     const val = rest.join('=');
     if      (key === 'module')   args.modules.push(val);
@@ -430,65 +313,6 @@ function parseArgs(argv) {
     }
   }
   return args;
-}
-
-/**
- * Validates CLI args after parseArgs().
- * Throws with a clear message for each invalid value so non-interactive
- * runs (CI, scripts) fail fast before any files are written.
- */
-function validateArgs(args) {
-  if (args.name) {
-    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(args.name)) {
-      throw new Error(`Invalid project name "${args.name}". Use lowercase letters, numbers, and hyphens only (e.g. hema-handdoek-2025).`);
-    }
-    if (RESERVED_NAMES.has(args.name)) {
-      throw new Error(`"${args.name}" is a reserved name. Choose a project-specific slug (e.g. hema-handdoek-2025).`);
-    }
-  }
-  if (args.capeId && !/^\d+$/.test(args.capeId)) {
-    throw new Error(`Invalid CAPE ID "${args.capeId}". CAPE IDs are numeric strings (e.g. 54031).`);
-  }
-  if (args.market && !VALID_MARKETS.has(args.market.toUpperCase())) {
-    throw new Error(`Unknown market "${args.market}". Valid markets: ${[...VALID_MARKETS].join(', ')}.`);
-  }
-}
-
-export function validateConfig({ game = 'none', pages = [], pageTypes = {}, modules = [] }) {
-  const errors = [];
-  const warnings = [];
-  const engine = game || 'none';
-  const pageIds = (pages ?? []).map((p) => typeof p === 'string' ? p : p?.id).filter(Boolean);
-  const typeOf = (id) => pageTypes[id] ?? basePageType(id);
-
-  let hasGamePage = false;
-  for (const pageId of pageIds) {
-    let pageType;
-    try {
-      pageType = typeOf(pageId);
-    } catch (err) {
-      errors.push(err instanceof Error ? err.message : String(err));
-      continue;
-    }
-    if (pageType === 'game') hasGamePage = true;
-  }
-
-  if (engine === 'none' && hasGamePage) {
-    errors.push('`game` page requires an engine. Add --engine=unity|r3f|phaser or remove the `game` page.');
-  }
-  if (engine !== 'none' && !hasGamePage) {
-    warnings.push(`Engine "${engine}" selected but no \`game\` page is in the flow. The runtime won't render.`);
-  }
-
-  const policy = moduleSelectionPolicy(pageIds, engine);
-  const allowedExtras = new Set([...policy.required, ...policy.selectable]);
-  for (const moduleId of modules ?? []) {
-    if (GAME_ENGINES.includes(moduleId)) continue;
-    if (allowedExtras.has(moduleId)) continue;
-    warnings.push(`Ignoring module "${moduleId}" because no selected page supports it.`);
-  }
-
-  return { errors, warnings };
 }
 
 // ─── Flow computation ─────────────────────────────────────────────────────────
@@ -888,6 +712,8 @@ async function runWizard(pre) {
   if (stack === 'tanstack') {
     // 3b. Unity game type: existing (CDN URL), NHL-Crush example, or new
     const NHL_CRUSH_CDN = 'https://lw-wave-nhlcrush-unity-test.lwcf5.nl';
+    const defaultTanstackGame = getGamesByStack('unity', 'tanstack')[0] ?? null;
+    let selectedGame = pre.selectedGame ?? (pre.unityCdnUrl ? null : defaultTanstackGame);
     let unityCdnUrl = pre.unityCdnUrl ?? '';
     if (!pre.isUpdate && !unityCdnUrl) {
       console.log('');
@@ -898,10 +724,13 @@ async function runWizard(pre) {
       const ut = (await ask(`  ${c.cyan('Select')} ${c.dim('[1-3, default: 1]')}: `)).trim();
       const utn = parseInt(ut, 10) || 1;
       if (utn === 1) {
-        unityCdnUrl = NHL_CRUSH_CDN;
+        unityCdnUrl = selectedGame?.cdn?.baseUrl || selectedGame?.env?.UNITY_BASE_URL || NHL_CRUSH_CDN;
         console.log(`      ${c.green('✔')} CDN: ${c.dim(unityCdnUrl)}`);
       } else if (utn === 2) {
+        selectedGame = null;
         unityCdnUrl = (await ask(`  ${c.cyan('CDN URL')} ${c.dim('(e.g. https://cdn.example.com/Build)')}: `)).trim();
+      } else {
+        selectedGame = null;
       }
       // utn === 3 → leave empty
     }
@@ -1138,7 +967,7 @@ async function runWizard(pre) {
       }
     }
 
-    return { stack, name, capeId, market, game: 'unity', pages: tsPages, regMode: 'none', modules: [], gtmId, iframe: false, outputDir, tsPageElementSelections, unityCdnUrl, capeAutoPublished, capePublishedUrl, isUpdate: pre.isUpdate ?? false };
+    return { stack, name, capeId, market, game: 'unity', pages: tsPages, regMode: 'none', modules: [], gtmId, iframe: false, outputDir, tsPageElementSelections, selectedGame, unityCdnUrl, capeAutoPublished, capePublishedUrl, isUpdate: pre.isUpdate ?? false };
   }
 
   // 4b. Game picker — shown when Unity is chosen but no specific game was pre-selected
@@ -1518,13 +1347,6 @@ async function runWizard(pre) {
   return { stack: 'next', name, capeId, market, game, pages, regMode, modules: allModules, gtmId, iframe, outputDir, pageElementSelections, selectedGame, capeAutoPublished, capePublishedUrl, isUpdate: pre.isUpdate ?? false, pageTypes: inferPageTypes(pages) };
 }
 
-function buildDefaultPages(game) {
-  const pages = ['landing', 'onboarding'];
-  if (game && game !== 'video') pages.push('game', 'result');
-  if (game === 'video') pages.push('intro-video');
-  return pages;
-}
-
 function autoModulesForPages(pages, game = '') {
   const mods = new Set();
   const pageTypes = (pages ?? []).map((p) => pageModuleType(p));
@@ -1579,11 +1401,6 @@ function resolveModules(game, pages, extraModules) {
   }
   // Resolve implies chains
   return resolveImplied([...all]);
-}
-
-function landingOnboardingFirstRunOnly(wizardMeta) {
-  const raw = wizardMeta?.pageSettings?.landing?.onboardingFirstRunOnly;
-  return typeof raw === 'boolean' ? raw : true;
 }
 
 async function enforceConfigValidation(options, { yes = false } = {}) {
@@ -1698,7 +1515,7 @@ async function scaffold(options) {
   releaseLock(lockPath);
 }
 
-async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], gtmId = '', tsPageElementSelections = {}, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false }) {
+async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], gtmId = '', tsPageElementSelections = {}, selectedGame = null, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -1753,6 +1570,29 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   writeFileSync(join(imagesDir, 'logo-icon.svg'), ICON_SVG, 'utf8');
 
   // Patch boilerplate file references from logo.png → svg variants + brand fixes
+  const patchTanstackRootLoaderBranding = (content) => {
+    let nextContent = content.replace(/logo\.png/g, 'logo.svg');
+    if (nextContent.includes('branding')) return nextContent; // idempotent
+
+    return nextContent
+      .replace(
+        `const [game, [desktopDesc, desktopQr, loadTitle, loadDesc1, loadDesc2, loadDesc3], gtmId, logoPH, unityEnv] = await Promise.all([`,
+        `const [game, [desktopDesc, desktopQr, loadTitle, loadDesc1, loadDesc2, loadDesc3], gtmId, logoPH, unityEnv, [lwPrimary, lwBg, lwText, lwTheme]] = await Promise.all([`,
+      )
+      .replace(
+        `const [game, [desktopDesc, desktopQr, loadTitle, loadDesc1, loadDesc2, loadDesc3], menuProps, gtmId, logoPlaceholder, unityEnv] = await Promise.all([`,
+        `const [game, [desktopDesc, desktopQr, loadTitle, loadDesc1, loadDesc2, loadDesc3], menuProps, gtmId, logoPlaceholder, unityEnv, [lwPrimary, lwBg, lwText, lwTheme]] = await Promise.all([`,
+      )
+      .replace(
+        `    getUnityEnvironment(),\n  ]);`,
+        `    getUnityEnvironment(),\n    getCapeProperty([\n      { type: 'settings', path: ['branding', 'primaryColor'] },\n      { type: 'settings', path: ['branding', 'backgroundColor'] },\n      { type: 'settings', path: ['branding', 'textColor'] },\n      { type: 'settings', path: ['branding', 'themeColor'] },\n    ]),\n  ]);`,
+      )
+      .replace(
+        `    baseUrl: getBaseUrl(),\n  };`,
+        `    baseUrl: getBaseUrl(),\n    branding: {\n      primaryColor: lwPrimary.asString('#C4FF00'),\n      backgroundColor: lwBg.asString('#FFFFFF'),\n      textColor: lwText.asString('#000000'),\n      themeColor: lwTheme.asString('#000000'),\n    },\n  };`,
+      );
+  };
+
   const logoPatchMap = {
     [join(frontendDir, 'src', 'components', 'containers', 'ViewContainer.tsx')]: (c) => c.replace(/logo\.png/g, 'logo-icon.svg'),
     // Add data URI passthrough so inlined SVGs don't produce warnings
@@ -1785,23 +1625,8 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
     [join(frontendDir, 'src', 'routes', 'voucher.module.scss')]: (c) => c
       .replace(`background-color: $whiteColor;`, `background-color: var(--lw-bg, #{$whiteColor});`),
     // rootLoader — rename logo.png → logo.svg + add branding color fetch from Cape settings
-    [join(frontendDir, 'src', 'routes', '-loaders', 'rootLoader.ts')]: (c) => {
-      c = c.replace(/logo\.png/g, 'logo.svg');
-      if (c.includes('branding')) return c; // idempotent
-      return c
-        .replace(
-          `const [game, [desktopDesc, desktopQr, loadTitle, loadDesc1, loadDesc2, loadDesc3], gtmId, logoPH, unityEnv] = await Promise.all([`,
-          `const [game, [desktopDesc, desktopQr, loadTitle, loadDesc1, loadDesc2, loadDesc3], gtmId, logoPH, unityEnv, [lwPrimary, lwBg, lwText, lwTheme]] = await Promise.all([`,
-        )
-        .replace(
-          `    getUnityEnvironment(),\n  ]);`,
-          `    getUnityEnvironment(),\n    getCapeProperty([\n      { type: 'settings', path: ['branding', 'primaryColor'] },\n      { type: 'settings', path: ['branding', 'backgroundColor'] },\n      { type: 'settings', path: ['branding', 'textColor'] },\n      { type: 'settings', path: ['branding', 'themeColor'] },\n    ]),\n  ]);`,
-        )
-        .replace(
-          `    baseUrl: getBaseUrl(),\n  };`,
-          `    baseUrl: getBaseUrl(),\n    branding: {\n      primaryColor: lwPrimary.asString('#C4FF00'),\n      backgroundColor: lwBg.asString('#FFFFFF'),\n      textColor: lwText.asString('#000000'),\n      themeColor: lwTheme.asString('#000000'),\n    },\n  };`,
-        );
-    },
+    [join(frontendDir, 'src', 'loaders', 'RootLoader.ts')]: patchTanstackRootLoaderBranding,
+    [join(frontendDir, 'src', 'routes', '-loaders', 'rootLoader.ts')]: patchTanstackRootLoaderBranding,
     // __root.tsx — inject CSS custom properties from Cape branding onto #app
     [join(frontendDir, 'src', 'routes', '__root.tsx')]: (c) => {
       if (c.includes('--lw-primary')) return c; // idempotent
@@ -1830,7 +1655,40 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   // 3. Pre-fill .env
   step(3, 'Pre-filling .env…');
   const _envDist    = join(frontendDir, 'env.dist');
-  const _envExample = join(frontendDir, '.env.example'); // legacy fallback
+  const _envExample = join(frontendDir, '.env.example');
+  const tanstackGameEnv = Object.fromEntries(
+    gameEnvLines(selectedGame, 'tanstack').map((line) => {
+      const idx = line.indexOf('=');
+      return idx === -1 ? [line, ''] : [line.slice(0, idx), line.slice(idx + 1)];
+    })
+  );
+  const unityBaseUrl = unityCdnUrl || tanstackGameEnv.UNITY_BASE_URL || '';
+  const unityGameName = tanstackGameEnv.UNITY_GAME_NAME || 'Game';
+  const unitySceneKey = tanstackGameEnv.UNITY_SCENE_KEY || selectedGame?.boot?.defaultScene || '';
+  const unityDesktopDpr = tanstackGameEnv.VITE_UNITY_DESKTOP_DPR || '2';
+  const unityMinDpr = tanstackGameEnv.VITE_UNITY_MIN_DPR || '1.5';
+  const unityMaxDpr = tanstackGameEnv.VITE_UNITY_MAX_DPR || '3';
+  if (!existsSync(_envExample) && existsSync(_envDist)) {
+    let exampleContent = readFileSync(_envDist, 'utf8')
+      .replace(/^APP_ENV=.*/m,                     'APP_ENV=development')
+      .replace(/^VITE_ENVIRONMENT=.*/m,            'VITE_ENVIRONMENT=development')
+      .replace(/^API_URL=.*/m,                     `API_URL=https://wave-${name}-api-acc.lwdev.nl`)
+      .replace(/^VITE_API_URL=.*/m,                `VITE_API_URL=https://wave-${name}-api-acc.lwdev.nl`)
+      .replace(/^API_SESSION_SECRET=.*/m,          'API_SESSION_SECRET=replace-with-a-random-local-secret')
+      .replace(/^UNITY_BASE_URL=.*/m,              `UNITY_BASE_URL=${unityBaseUrl}`)
+      .replace(/^UNITY_GAME_NAME=.*/m,             `UNITY_GAME_NAME=${unityGameName}`)
+      .replace(/^UNITY_SCENE_KEY=.*/m,             `UNITY_SCENE_KEY=${unitySceneKey}`)
+      .replace(/^VITE_UNITY_DESKTOP_DPR=.*/m,      `VITE_UNITY_DESKTOP_DPR=${unityDesktopDpr}`)
+      .replace(/^VITE_UNITY_MIN_DPR=.*/m,          `VITE_UNITY_MIN_DPR=${unityMinDpr}`)
+      .replace(/^VITE_UNITY_MAX_DPR=.*/m,          `VITE_UNITY_MAX_DPR=${unityMaxDpr}`)
+      .replace(/^GCP_REPORTING_NAME=.*/m,          'GCP_REPORTING_NAME=')
+      .replace(/^LOG_TO_GCP=.*/m,                  'LOG_TO_GCP=0')
+      .replace(/^LOG_STRUCTURED_CONSOLE=.*/m,      'LOG_STRUCTURED_CONSOLE=0')
+      .replace(/^CAPE_CAMPAIGN_ID=.*/m,            `CAPE_CAMPAIGN_ID=${capeId}`)
+      .replace(/^CAPE_CAMPAIGN_MARKET=.*/m,        `CAPE_CAMPAIGN_MARKET=${market}`);
+    writeFileSync(_envExample, exampleContent, 'utf8');
+    ok('.env.example created with safe placeholders');
+  }
   const envSrc  = existsSync(_envDist) ? _envDist : existsSync(_envExample) ? _envExample : null;
   const envDest = join(frontendDir, '.env');
   if (envSrc && !existsSync(envDest)) {
@@ -1839,10 +1697,16 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
     envContent = envContent
       // Replace CI/CD shell-variable references with dev-friendly values
       .replace(/^VITE_ENVIRONMENT=\$\S*/m,          'VITE_ENVIRONMENT=development')
+      .replace(/^APP_ENV=.*/m,                      'APP_ENV=development')
       .replace(/^API_URL=(\$\S*)?$/m,               `API_URL=https://wave-${name}-api-acc.lwdev.nl`)
       .replace(/^VITE_API_URL=(\$\S*)?$/m,          `VITE_API_URL=https://wave-${name}-api-acc.lwdev.nl`)
       .replace(/^API_SESSION_SECRET=(\$\S*)?$/m,    `API_SESSION_SECRET=${devSecret}`)
-      .replace(/^UNITY_BASE_URL=.*/m,               `UNITY_BASE_URL=${unityCdnUrl || ''}`)
+      .replace(/^UNITY_BASE_URL=.*/m,               `UNITY_BASE_URL=${unityBaseUrl}`)
+      .replace(/^UNITY_GAME_NAME=.*/m,              `UNITY_GAME_NAME=${unityGameName}`)
+      .replace(/^UNITY_SCENE_KEY=.*/m,              `UNITY_SCENE_KEY=${unitySceneKey}`)
+      .replace(/^VITE_UNITY_DESKTOP_DPR=.*/m,       `VITE_UNITY_DESKTOP_DPR=${unityDesktopDpr}`)
+      .replace(/^VITE_UNITY_MIN_DPR=.*/m,           `VITE_UNITY_MIN_DPR=${unityMinDpr}`)
+      .replace(/^VITE_UNITY_MAX_DPR=.*/m,           `VITE_UNITY_MAX_DPR=${unityMaxDpr}`)
       .replace(/^GCP_REPORTING_NAME=\$\S*/m,        'GCP_REPORTING_NAME=')
       // Disable GCP logging for local dev
       .replace(/^LOG_TO_GCP=.*/m,                    'LOG_TO_GCP=0')
@@ -1867,9 +1731,11 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
 
   const BUILDABLE_TS = ['launch', 'tutorial', 'score', 'register'];
   const ROUTE_FILES  = { launch: 'launch.tsx', tutorial: 'tutorial.tsx', game: 'game.tsx', register: 'register.tsx', score: 'score.tsx' };
-  const LOADER_FILES = { launch: 'launchLoader.ts', tutorial: 'tutorialLoader.ts', register: 'registerLoader.ts', score: 'scoreLoader.ts' };
+  const LOADER_FILES = { launch: 'LaunchLoader.ts', tutorial: 'TutorialLoader.ts', register: 'RegisterLoader.ts', score: 'ScoreLoader.ts' };
+  const LEGACY_LOADER_FILES = { launch: 'launchLoader.ts', tutorial: 'tutorialLoader.ts', register: 'registerLoader.ts', score: 'scoreLoader.ts' };
   const routesDir  = join(frontendDir, 'src', 'routes');
-  const loadersDir = join(routesDir, '-loaders');
+  const loadersDir = join(frontendDir, 'src', 'loaders');
+  const legacyLoadersDir = join(routesDir, '-loaders');
 
   if (pages.length > 0) {
     step('3b', 'Configuring pages…');
@@ -1877,9 +1743,20 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
 
     for (const page of BUILDABLE_TS) {
       if (normalizedPages.includes(page)) continue;
-      for (const f of [join(routesDir, ROUTE_FILES[page]), join(loadersDir, LOADER_FILES[page])]) {
+      for (const f of [join(routesDir, ROUTE_FILES[page]), join(loadersDir, LOADER_FILES[page]), join(legacyLoadersDir, LEGACY_LOADER_FILES[page])]) {
         if (existsSync(f)) { try { rmSync(f); removed++; } catch { /* non-fatal */ } }
       }
+    }
+    if (existsSync(legacyLoadersDir)) {
+      const legacyFiles = readdirSync(legacyLoadersDir);
+      for (const file of legacyFiles) {
+        if (Object.values(LEGACY_LOADER_FILES).includes(file)) {
+          try { rmSync(join(legacyLoadersDir, file)); removed++; } catch { /* non-fatal */ }
+        }
+      }
+      try {
+        if (readdirSync(legacyLoadersDir).length === 0) rmSync(legacyLoadersDir, { recursive: true });
+      } catch { /* non-fatal */ }
     }
     if (removed > 0) ok(`${removed} excluded page file(s) removed`);
 
@@ -1926,7 +1803,8 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
     capeAutoPublished: capeAutoPublished || undefined,
     capePublishedUrl: capePublishedUrl || undefined,
     // Unity game
-    unityCdnUrl: unityCdnUrl || undefined,
+    selectedGame: selectedGame ? { id: selectedGame.id ?? selectedGame.name, name: selectedGame.name, description: selectedGame.description } : undefined,
+    unityCdnUrl: unityBaseUrl || undefined,
     // Pages & element selections
     pages,
     tsPageElementSelections,
@@ -2305,20 +2183,20 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
   } else {
     step(7, 'Installing dependencies…');
     try {
-      execSync('npm install', { cwd: frontendDir, stdio: 'inherit' });
+      execSync('pnpm install', { cwd: frontendDir, stdio: 'inherit' });
       ok('base dependencies installed');
     } catch {
-      warn('npm install failed — run manually in the project directory');
+      warn('pnpm install failed — run manually in the project directory');
     }
     if (prod.length > 0) {
-      console.log(`      ${c.dim('npm install ' + prod.join(' '))}`);
-      try { execSync(`npm install ${prod.join(' ')}`, { cwd: frontendDir, stdio: 'inherit' }); ok(`prod: ${prod.join(', ')}`); }
-      catch { warn(`run manually: npm install ${prod.join(' ')}`); }
+      console.log(`      ${c.dim('pnpm add ' + prod.join(' '))}`);
+      try { execSync(`pnpm add ${prod.join(' ')}`, { cwd: frontendDir, stdio: 'inherit' }); ok(`prod: ${prod.join(', ')}`); }
+      catch { warn(`run manually: pnpm add ${prod.join(' ')}`); }
     }
     if (dev.length > 0) {
-      console.log(`      ${c.dim('npm install --save-dev ' + dev.join(' '))}`);
-      try { execSync(`npm install --save-dev ${dev.join(' ')}`, { cwd: frontendDir, stdio: 'inherit' }); ok(`dev: ${dev.join(', ')}`); }
-      catch { warn(`run manually: npm install --save-dev ${dev.join(' ')}`); }
+      console.log(`      ${c.dim('pnpm add -D ' + dev.join(' '))}`);
+      try { execSync(`pnpm add -D ${dev.join(' ')}`, { cwd: frontendDir, stdio: 'inherit' }); ok(`dev: ${dev.join(', ')}`); }
+      catch { warn(`run manually: pnpm add -D ${dev.join(' ')}`); }
     }
   }
 
@@ -3026,12 +2904,12 @@ function writeChecklistFile(outputDir, cfg) {
   // ── Smoke tests ──────────────────────────────────────────────────────────────
   sep();
   h2('Smoke Tests');
-  note('Run `npm run dev:full-mock` to test everything locally without external dependencies (no backend, no CAPE CDN, no Unity CDN needed).');
+  note('Run `pnpm dev:full-mock` to test everything locally without external dependencies (no backend, no CAPE CDN, no Unity CDN needed).');
   br();
   h3('General');
-  chk('`npm run dev:full-mock` starts without errors  *(uses mock API + mock CAPE + mock game bridge)*');
-  chk('`npm run dev` starts without errors  *(requires real .env values)*');
-  chk('No TypeScript errors: `npm run ts-compile` (or `npx tsc --noEmit`)');
+  chk('`pnpm dev:full-mock` starts without errors  *(uses mock API + mock CAPE + mock game bridge)*');
+  chk('`pnpm dev` starts without errors  *(requires real .env values)*');
+  chk('No TypeScript errors: `pnpm ts-compile` (or `pnpm exec tsc --noEmit`)');
   chk('No console errors on first page load');
   chk('Navigation flows through all pages in correct order');
   br();
@@ -3313,8 +3191,77 @@ async function runUpdateWizard(existing, args) {
 }
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
+function runValidateCommand(targets = []) {
+  let results;
+  if (!targets.length || targets.includes('all')) {
+    results = [...validateAllGameManifests(), ...validateAllModuleManifests()];
+  } else {
+    results = targets.flatMap((target) => {
+      const filePath = resolve(target);
+      if (filePath.endsWith('game.json')) return [validateGameManifestFile(filePath)];
+      if (filePath.endsWith('manifest.json')) return [validateModuleManifestFile(filePath)];
+      if (existsSync(join(filePath, 'game.json'))) return [validateGameManifestFile(join(filePath, 'game.json'))];
+      if (existsSync(join(filePath, 'manifest.json'))) return [validateModuleManifestFile(join(filePath, 'manifest.json'))];
+      return [{ type: 'unknown', filePath, errors: ['Expected a game.json, manifest.json, or directory containing one'], warnings: [] }];
+    });
+  }
+  return {
+    ok: results.every((result) => result.errors.length === 0),
+    results,
+  };
+}
+
+function printValidationResults(results) {
+  console.log('');
+  console.log(`  ${c.bold('Validation')}`);
+  for (const result of results) {
+    const ok = result.errors.length === 0;
+    const icon = ok ? c.green('OK') : c.red('ERR');
+    console.log(`  ${icon} ${c.cyan(result.filePath)}`);
+    for (const warning of result.warnings) {
+      console.log(`      ${c.yellow('warning:')} ${warning}`);
+    }
+    for (const error of result.errors) {
+      console.log(`      ${c.red('error:')} ${error}`);
+    }
+  }
+  const errorCount = results.reduce((sum, result) => sum + result.errors.length, 0);
+  const warningCount = results.reduce((sum, result) => sum + result.warnings.length, 0);
+  console.log(`\n  ${errorCount === 0 ? c.green('OK') : c.red('Failed')} ${c.dim(`${results.length} file(s), ${errorCount} error(s), ${warningCount} warning(s)`)}`);
+}
+
+function printDoctorReport(report) {
+  console.log('');
+  console.log(`  ${c.bold('Scaffolder Doctor')}`);
+  for (const check of report.checks) {
+    const icon = check.ok ? c.green('OK') : c.red('ERR');
+    console.log(`  ${icon} ${check.label}`);
+    for (const warning of check.warnings) {
+      console.log(`      ${c.yellow('warning:')} ${warning}`);
+    }
+    for (const error of check.errors) {
+      console.log(`      ${c.red('error:')} ${error}`);
+    }
+  }
+  console.log(`\n  ${report.ok ? c.green('OK') : c.red('Failed')}`);
+}
+
 async function main() {
   const args = parseArgs(process.argv);
+
+  if (args.command === 'doctor') {
+    const report = runDoctor();
+    printDoctorReport(report);
+    if (!report.ok) process.exit(1);
+    return;
+  }
+
+  if (args.command === 'validate') {
+    const report = runValidateCommand(args.positionals);
+    printValidationResults(report.results);
+    if (!report.ok) process.exit(1);
+    return;
+  }
 
   // ── Recreate mode: delete + re-scaffold from .scaffolded ─────────────────────
   if (args.recreate) {
@@ -3429,6 +3376,9 @@ async function main() {
         routeMap[entry] = PAGE_ROUTES[entry] ?? `/${entry}`;
       } else if (entry && typeof entry === 'object' && entry.id) {
         pageIds.push(entry.id);
+        if (entry.type && typeof entry.type === 'string' && entry.type !== entry.id) {
+          pageTypes[entry.id] = entry.type;
+        }
         routeMap[entry.id] = entry.route ?? PAGE_ROUTES[entry.id] ?? `/${entry.id}`;
       }
     }
@@ -3451,20 +3401,25 @@ async function main() {
       const autoTitle = (cfg.capeTitle && cfg.capeTitle.trim())
         ? cfg.capeTitle.trim()
         : cfg.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      // The wizard sends Next-style page ids (landing, onboarding, result, …)
-      // for BOTH stacks — TanStack's legacy launch/tutorial/score vocabulary
-      // is only used by the interactive CLI path. So both stacks route to
-      // buildNextCapeFormat here; the CAPE schema for these pages is
-      // stack-agnostic (only the file-system routes differ).
-      const cfgFormat = buildNextCapeFormat({
-        instances:         pageIds.map(id => ({ id, type: pageTypes[id] ?? id })),
-        pageTypes,
-        pageElementSelections: cfg.pageElementSelections ?? {},
-        modules:               resolveModules(cfg.game ?? 'unity', pageIds.map(id => pageTypes[id] ?? id), cfg.modules ?? []),
-        flowEnabledExits:      cfg.flowEnabledExits ?? {},
-        menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
-        iframe:                cfg.iframe ?? false,
-      });
+      const cfgFormat = cfg.stack === 'tanstack'
+        ? buildTanStackCapeFormat({
+            pages: pageIds,
+            tsPageElementSelections: {
+              ...Object.fromEntries(pageIds
+                .filter((id) => TS_PAGE_DEFAULTS[id])
+                .map((id) => [id, TS_PAGE_DEFAULTS[id]])),
+              ...(cfg.tsPageElementSelections ?? {}),
+            },
+          })
+        : buildNextCapeFormat({
+            instances:         pageIds.map(id => ({ id, type: pageTypes[id] ?? id })),
+            pageTypes,
+            pageElementSelections: cfg.pageElementSelections ?? {},
+            modules:               resolveModules(cfg.game ?? 'unity', pageIds.map(id => pageTypes[id] ?? id), cfg.modules ?? []),
+            flowEnabledExits:      cfg.flowEnabledExits ?? {},
+            menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
+            iframe:                cfg.iframe ?? false,
+          });
       console.log(`\n  ${c.bold('Creating CAPE campaign...')}`);
       const created = await runCapeCreateFlow(null, cfg.name, market, autoTitle, false, cfgFormat);
       capeId            = created.campaignId;
@@ -3480,7 +3435,7 @@ async function main() {
     // gameplay placeholder in place because the phaser module never gets
     // copied.
     const game           = cfg.game ?? 'unity';
-    const selectedGame   = cfg.gameId ? getGame(cfg.gameId) : null;
+    const selectedGame   = cfg.gameId ? getGame(cfg.gameId) : (cfg.stack === 'tanstack' && game === 'unity' ? (getGamesByStack('unity', 'tanstack')[0] ?? null) : null);
     if (cfg.gameId && !selectedGame) {
       throw new Error(`Unknown gameId "${cfg.gameId}". Expected a games/{id}/game.json manifest.`);
     }
@@ -3702,7 +3657,7 @@ async function main() {
   if (isNonInteractive) {
     const stack = args.stack || 'next';
     const effectiveGame = args.game != null ? args.game : (stack === 'tanstack' ? 'unity' : '');
-    const pages = args.pages.length > 0 ? args.pages : (stack === 'tanstack' ? ['launch', 'tutorial', 'game', 'score'] : buildDefaultPages(effectiveGame));
+    const pages = args.pages.length > 0 ? args.pages : (stack === 'tanstack' ? ['landing', 'tutorial', 'game', 'result'] : buildDefaultPages(effectiveGame));
     const pageTypes = inferPageTypes(pages);
     const allModules = resolveModules(effectiveGame, pages, args.modules);
     const selectedGame = effectiveGame === 'unity'

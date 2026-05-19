@@ -68,7 +68,7 @@ const fullFlow = buildNextCapeFormat({
   instances: [
     { id: 'intro-video',   type: 'intro-video'   },
     { id: 'landing',       type: 'landing'       },
-    { id: 'onboarding',    type: 'onboarding'    },
+    { id: 'tutorial',      type: 'tutorial'      },
     { id: 'loading-video', type: 'loading-video' },
     { id: 'register',      type: 'register'      },
     { id: 'game',          type: 'game'          },
@@ -86,7 +86,7 @@ const fullFlow = buildNextCapeFormat({
 const fullTabs = fullFlow.interfaceSetup.pages.find((p) => p.path === 'pages').tabs.map((t) => t.path);
 const expectedFullTabs = [
   'header', 'desktop',
-  'intro-video', 'landing', 'onboarding', 'loading-video',
+  'intro-video', 'landing', 'tutorial', 'loading-video',
   'register', 'result', 'ad-video', 'leaderboard', 'voucher',
   'menu',
 ];

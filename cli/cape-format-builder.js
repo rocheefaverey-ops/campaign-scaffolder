@@ -647,7 +647,7 @@ const VIDEO_PAGE_IDS = new Set(['video', 'intro-video', 'loading-video', 'ad-vid
 
 export const KNOWN_PAGE_TYPES = new Set([
   'video', 'intro-video', 'loading-video', 'ad-video',
-  'landing', 'onboarding', 'result',
+  'landing', 'tutorial', 'result',
   'leaderboard', 'register', 'voucher', 'game',
 ]);
 
@@ -706,7 +706,7 @@ export function buildNextCapeFormat({
       case 'landing':
         pageTabs.push(nextLandingTab(inst.id, els, flowEnabledExits));
         break;
-      case 'onboarding': {
+      case 'tutorial': {
         const stepCount = pageElementSelections[`${type}__stepCount`] ?? 3;
         pageTabs.push(nextOnboardingTab(inst.id, els, stepCount));
         break;
