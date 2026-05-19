@@ -1,7 +1,6 @@
-import { getCapeCopy, getCapeProperty } from '~/server/cape/CapeProvider.ts';
+import { getCapeProperty } from '~/server/cape/CapeProvider.ts';
 
 export async function loadVideoData(language: string) {
-  const [headline] = await getCapeCopy(language, [['video', 'headline']]);
   const [videoAsset, minPlaybackProp, alwaysSkipProp, readyFallbackProp] = await Promise.all([
     getCapeProperty({ type: 'general', path: ['video', 'introVideo'] }),
     getCapeProperty({ type: 'settings', path: ['pages', 'video', 'minPlaybackSec'] }),
@@ -10,7 +9,6 @@ export async function loadVideoData(language: string) {
   ]);
 
   return {
-    copy: { headline },
     videoUrl:         videoAsset.asFile()?.url ?? null,
     minPlaybackSec:   minPlaybackProp.asNumber()  ?? 3,
     alwaysSkip:       alwaysSkipProp.asBoolean()  ?? false,

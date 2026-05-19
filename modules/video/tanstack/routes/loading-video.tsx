@@ -19,20 +19,26 @@ function LoadingVideoPage() {
   const booted = useRef(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (alwaysSkip) { setCanSkip(true); return; }
 
     // Start Unity boot in background; navigate when ready
     if (!booted.current) {
       booted.current = true;
       fullBoot()
-        .then(() => navigate())
-        .catch(() => setCanSkip(true));
+        .then(() => { if (!cancelled) navigate(); })
+        .catch(() => { if (!cancelled) setCanSkip(true); });
     }
 
     // Fallback: allow skip if Unity never signals ready
-    fallbackRef.current = setTimeout(() => setCanSkip(true), readyFallbackSec * 1000);
-    return () => { if (fallbackRef.current) clearTimeout(fallbackRef.current); };
-  }, []);
+    fallbackRef.current = setTimeout(() => { if (!cancelled) setCanSkip(true); }, readyFallbackSec * 1000);
+
+    return () => {
+      cancelled = true;
+      if (fallbackRef.current) clearTimeout(fallbackRef.current);
+    };
+  }, [navigate, alwaysSkip, fullBoot, readyFallbackSec]);
 
   return (
     <PageContainer className="campaign-screen campaign-screen--video">

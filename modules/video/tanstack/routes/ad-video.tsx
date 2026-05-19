@@ -20,7 +20,7 @@ function AdVideoPage() {
     if (alwaysSkip) return;
     timerRef.current = setTimeout(() => setCanSkip(true), minPlaybackSec * 1000);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []);
+  }, [navigate, videoUrl, alwaysSkip, minPlaybackSec]);
 
   return (
     <PageContainer className="campaign-screen campaign-screen--video">
