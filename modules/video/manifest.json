@@ -9,15 +9,40 @@
     },
     {
       "src": "app/(campaign)/video/page.tsx",
-      "dest": "app/(campaign)/video/page.tsx"
+      "dest": "app/(campaign)/video/page.tsx",
+      "stacks": ["next"]
+    },
+    {
+      "src": "tanstack/loaders/VideoLoader.ts",
+      "dest": "src/loaders/VideoLoader.ts",
+      "stacks": ["tanstack"]
+    },
+    {
+      "src": "tanstack/routes/video.tsx",
+      "dest": "src/routes/video.tsx",
+      "stacks": ["tanstack"]
+    },
+    {
+      "src": "tanstack/routes/intro-video.tsx",
+      "dest": "src/routes/intro-video.tsx",
+      "stacks": ["tanstack"]
+    },
+    {
+      "src": "tanstack/routes/loading-video.tsx",
+      "dest": "src/routes/loading-video.tsx",
+      "stacks": ["tanstack"]
+    },
+    {
+      "src": "tanstack/routes/ad-video.tsx",
+      "dest": "src/routes/ad-video.tsx",
+      "stacks": ["tanstack"]
     }
   ],
   "envVars": [],
   "packages": [],
   "notes": [
-    "Video src is read from CAPE path: general.video.introVideo (assetSelector field).",
-    "Add an assetSelector field at model=general.video.introVideo to the campaign format.",
-    "If the field is missing from CAPE, the page auto-skips straight to {{NEXT_AFTER_VIDEO}}.",
-    "The page auto-navigates to {{NEXT_AFTER_VIDEO}} when the video ends or the user taps Skip."
+    "Video src is read from CAPE: general.video.introVideo.",
+    "loading-video loops until Unity fires the game-ready signal via fullBoot(); readyFallbackSec controls the auto-skip fallback.",
+    "video / intro-video / ad-video navigate on end or skip after minPlaybackSec."
   ]
 }
