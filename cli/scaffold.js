@@ -737,7 +737,7 @@ async function runWizard(pre) {
 
     // 4. Page selection
     let tsPages = pre.pages.length > 0 ? pre.pages : null;
-    const tsDefaultPages = ['launch', 'tutorial', 'game', 'score'];
+    const tsDefaultPages = ['landing', 'tutorial', 'game', 'result'];
     if (!tsPages) {
       console.log('');
       console.log(`  ${c.bold('Campaign pages')} ${c.dim('(comma-separated numbers):')}`);
@@ -757,7 +757,7 @@ async function runWizard(pre) {
     printRouteTable(tsPages);
 
     // 5. Page builder — element selection per page
-    const BUILDABLE_TS = ['launch', 'tutorial', 'score', 'register'];
+    const BUILDABLE_TS = ['landing', 'tutorial', 'result', 'register'];
     const tsPageElementSelections = {};
     for (const page of tsPages.filter(p => BUILDABLE_TS.includes(p))) {
       const available = TS_PAGE_ELEMENTS[page] ?? [];
@@ -2986,7 +2986,7 @@ async function runUpdateWizard(existing, args) {
   const pageElDefs    = stack === 'tanstack' ? TS_PAGE_DEFAULTS  : PAGE_DEFAULTS;
   const elCatalogue   = stack === 'tanstack' ? TS_ELEMENT_CATALOGUE : ELEMENT_CATALOGUE;
   const buildablePages = stack === 'tanstack'
-    ? ['launch', 'tutorial', 'score', 'register']
+    ? ['landing', 'tutorial', 'result', 'register']
     : ['landing', 'onboarding', 'result', 'menu'];
 
   console.log('');
