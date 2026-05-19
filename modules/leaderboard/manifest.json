@@ -16,12 +16,29 @@
       "dest": "components/_modules/Leaderboard/LeaderboardTabs.tsx"
     },
     {
-      "src": "actions/get-leaderboard/action.ts",
-      "dest": "app/actions/get-leaderboard/action.ts"
+      "src": "next/actions/get-leaderboard/action.ts",
+      "dest": "app/actions/get-leaderboard/action.ts",
+      "stacks": ["next"]
     },
     {
       "src": "app/(campaign)/leaderboard/page.tsx",
-      "dest": "app/(campaign)/leaderboard/page.tsx"
+      "dest": "app/(campaign)/leaderboard/page.tsx",
+      "stacks": ["next"]
+    },
+    {
+      "src": "tanstack/server/getLeaderboard.ts",
+      "dest": "src/server/api/endpoints/Leaderboard.ts",
+      "stacks": ["tanstack"]
+    },
+    {
+      "src": "tanstack/loaders/LeaderboardLoader.ts",
+      "dest": "src/loaders/LeaderboardLoader.ts",
+      "stacks": ["tanstack"]
+    },
+    {
+      "src": "tanstack/routes/leaderboard.tsx",
+      "dest": "src/routes/leaderboard.tsx",
+      "stacks": ["tanstack"]
     }
   ],
   "envVars": [],
