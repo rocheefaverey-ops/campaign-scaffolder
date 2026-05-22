@@ -1887,6 +1887,22 @@ export function useGameNavigation() {
     ok(`GTM ID set in ${gtmReplaced} file(s)`);
   }
 
+  // 3d. Install dependencies — matches the scaffoldNext behaviour so the
+  // tanstack output is runnable straight out of the scaffold without an
+  // extra manual `pnpm install`. The wizard's auto-run toggle relies on
+  // this; CLI users still benefit (no surprise missing node_modules).
+  if (skipInstall) {
+    step('3d', 'Skipping dependency install.');
+  } else {
+    step('3d', 'Installing dependencies…');
+    try {
+      execSync('pnpm install', { cwd: frontendDir, stdio: 'inherit' });
+      ok('dependencies installed');
+    } catch {
+      warn('pnpm install failed — run manually: cd frontend && pnpm install');
+    }
+  }
+
   // 4. Git
   if (isUpdate) {
     step(4, 'Committing scaffold update…');
