@@ -163,6 +163,28 @@ export async function getDoctorReport(): Promise<DoctorResult | null> {
   }
 }
 
+export interface FrontendPreviewResult {
+  ok: boolean;
+  url?: string;
+  outputDir?: string;
+  error?: string;
+}
+
+export async function startFrontendPreview(config: ScaffoldConfig): Promise<FrontendPreviewResult> {
+  try {
+    const res = await fetch('/api/frontend-preview/start', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(config),
+    });
+    const data = await res.json().catch(() => ({})) as FrontendPreviewResult;
+    if (!res.ok) return { ok: false, error: data.error ?? `Preview failed (${res.status})` };
+    return data;
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Network error.' };
+  }
+}
+
 // ─── CAPE auth ───────────────────────────────────────────────────────────────
 
 export interface AuthStatus {

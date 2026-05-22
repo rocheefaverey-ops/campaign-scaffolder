@@ -244,7 +244,6 @@ const VIDEO_PAGE_SETTINGS: SettingDef[] = [
 ];
 
 export const PAGE_SETTINGS_SCHEMA: Record<string, SettingDef[]> = {
-  video: VIDEO_PAGE_SETTINGS,
   'intro-video': VIDEO_PAGE_SETTINGS,
   'loading-video': VIDEO_PAGE_SETTINGS,
   'ad-video': VIDEO_PAGE_SETTINGS,
@@ -253,6 +252,12 @@ export const PAGE_SETTINGS_SCHEMA: Record<string, SettingDef[]> = {
       hint: '✓ Returning players skip the tutorial and continue directly to the next route.' },
   ],
   tutorial: [
+    { key: 'screenLayout', label: 'Screen layout', kind: 'select', default: 'fullBleedHero',
+      options: [
+        { value: 'fullBleedHero', label: 'Full bleed hero' },
+        { value: 'card',          label: 'Card screen' },
+      ],
+      hint: 'Choose whether the tutorial sits directly on the campaign hero image or inside a centered card.' },
     { key: 'allowSkip', label: 'Allow skip', kind: 'boolean', default: false,
       hint: '✓ Show a "Skip" link on each tutorial slide.' },
   ],
@@ -393,8 +398,6 @@ export const ALL_PAGES: PageMeta[] = [
       { key: 'leaderboard', label: 'Leaderboard button',   token: 'LANDING_LEADERBOARD_ROUTE',
         optional: true, defaultEnabled: false, capeFlag: 'showLeaderboardButton', defaultVariant: 'secondary' },
     ] },
-  { id: 'video',       label: 'Video',       hint: 'Intro / brand video, skippable.',           route: '/video',         requires: 'video',
-    exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_VIDEO' }] },
   { id: 'intro-video',   label: 'Intro video',   hint: 'Intro brand video before the game starts.', route: '/intro-video',   requires: 'video',
     exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_INTRO_VIDEO' }] },
   { id: 'loading-video', label: 'Loading video', hint: 'Looping loading screen until the game is ready.', route: '/loading-video', requires: 'video',

@@ -158,14 +158,13 @@ function buildLandingRoute(els) {
   const hasTutBtn  = els.includes('cta-tutorial');
 
   const lines = [
-    `import { createFileRoute, useLoaderData } from '@tanstack/react-router';`,
+    `import { createFileRoute, useLoaderData, useRouter } from '@tanstack/react-router';`,
     hasLogo   ? `import { SmartImage } from '~/components/visuals/SmartImage.tsx';` : '',
     hasLogo   ? `import VisualImage from '~/assets/images/logo.svg';` : '',
     `import { PageContainer } from '~/components/containers/PageContainer.tsx';`,
     (hasTitle || hasDesc) ? `import { StyledText } from '~/components/texts/StyledText.tsx';` : '',
     (hasCta || hasTutBtn) ? `import { StyledButton } from '~/components/buttons/StyledButton.tsx';` : '',
     `import { loadLandingData } from '~/loaders/LandingLoader.ts';`,
-    hasCta    ? `import { useGameNavigation } from '~/hooks/useGameNavigation.ts';` : '',
     `import styles from './landing.module.scss';`,
   ].filter(Boolean).join('\n');
 
@@ -173,8 +172,8 @@ function buildLandingRoute(els) {
     hasLogo   ? `      <SmartImage src={VisualImage} alt={'logo'} width={240} aspectRatio={2} placeholder={logoPlaceholder} />` : '',
     hasTitle  ? `      <StyledText type={'title'} marginTop={16} alternate>{copy.title}</StyledText>` : '',
     hasDesc   ? `      <StyledText type={'description'} marginTop={8} alternate>{copy.description}</StyledText>` : '',
-    hasCta    ? `      <StyledButton marginTop={16} loading={isPending} onClick={navigate}>{copy.button}</StyledButton>` : '',
-    hasTutBtn ? `      <StyledButton marginTop={8} linkOptions={{ to: '/tutorial' }} alternate>Tutorial</StyledButton>` : '',
+    hasCta    ? `      <StyledButton marginTop={16} loading={isPending} onClick={() => navigate(nextRoute)}>{copy.button}</StyledButton>` : '',
+    hasTutBtn ? `      {showTutorialButton && <StyledButton marginTop={8} onClick={() => navigate(tutorialRoute)} alternate>Tutorial</StyledButton>}` : '',
   ].filter(Boolean).join('\n');
 
   return `${lines}
@@ -187,7 +186,12 @@ export const Route = createFileRoute('/landing')({
 function Landing() {
   const { copy } = Route.useLoaderData();
   ${hasLogo ? `const { logoPlaceholder } = useLoaderData({ from: '__root__' });` : ''}
-  ${hasCta  ? `const { isPending, navigate } = useGameNavigation();` : ''}
+  const router = useRouter();
+  const nextRoute = '{{NEXT_AFTER_LANDING}}';
+  const tutorialRoute = '{{LANDING_TUTORIAL_ROUTE}}';
+  const showTutorialButton = JSON.parse('{{SHOW_LANDING_TUTORIAL_BUTTON}}') as boolean;
+  const isPending = false;
+  const navigate = (to: string) => void router.navigate({ to: to as never, replace: true });
 
   return (
     <PageContainer className={styles.landing}>
@@ -236,7 +240,7 @@ function buildTutorialRoute(els, stepCount) {
 
   const stepsArr = Array.from({ length: stepCount }, (_, i) => `    { image: LogoVisual, ...copy.step${i + 1} },`).join('\n');
 
-  return `import { createFileRoute } from '@tanstack/react-router';
+  return `import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useCallback, useRef } from 'react';
 import type { IContentSliderItem } from '~/components/slider/ContentSliderItem.tsx';
 import type { IContentSliderHandle } from '~/components/slider/ContentSlider.tsx';
@@ -244,7 +248,6 @@ ${hasSteps ? `import { ContentSlider } from '~/components/slider/ContentSlider.t
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
 import LogoVisual from '~/assets/images/logo.svg';
 import { loadTutorialData } from '~/loaders/TutorialLoader.ts';
-import { useGameNavigation } from '~/hooks/useGameNavigation.ts';
 ${hasSkip ? `import { IconButton } from '~/components/buttons/IconButton.tsx';` : ''}
 import styles from './tutorial.module.scss';
 
@@ -255,7 +258,10 @@ export const Route = createFileRoute('/tutorial')({
 
 function Tutorial() {
   const { copy } = Route.useLoaderData();
-  const { isPending, navigate } = useGameNavigation();
+  const router = useRouter();
+  const nextRoute = '{{NEXT_AFTER_TUTORIAL}}';
+  const isPending = false;
+  const navigate = () => void router.navigate({ to: nextRoute as never, replace: true });
   ${hasSteps ? `const contentRef = useRef<IContentSliderHandle>(null);` : ''}
 
   ${hasSteps ? `const data: Array<IContentSliderItem> = [
@@ -315,18 +321,17 @@ function buildResultRoute(els, pages = []) {
   const hasDesc       = els.includes('description');
   const hasCtaReg     = els.includes('cta-register');
   const hasCtaAgain   = els.includes('cta-play-again');
-  const registerRoute = pages.includes('register') ? '/register' : '/landing';
 
   const body = [
     hasConfetti ? `      <ConfettiOverlay config={confettiConfig} visual={'confetti'} visualCount={2} />` : '',
     hasPlayTime ? `      <StyledText type={'header'} alternate>{result.playTime}</StyledText>` : '',
     hasTitle    ? `      <StyledText type={'title'} marginTop={8} alternate>{copy.title}</StyledText>` : '',
     hasDesc     ? `      <StyledText type={'description'} marginTop={8} alternate>{copy.description}</StyledText>` : '',
-    hasCtaReg   ? `      <StyledButton linkOptions={{ to: '${registerRoute}' }} marginTop={16}>{copy.buttonRegister || 'Play Again'}</StyledButton>` : '',
-    hasCtaAgain ? `      <StyledButton linkOptions={{ to: '/landing' }} marginTop={8} alternate>{copy.buttonPlayAgain}</StyledButton>` : '',
+    hasCtaReg   ? `      <StyledButton onClick={() => navigate(nextRoute)} marginTop={16}>{copy.buttonRegister || 'Continue'}</StyledButton>` : '',
+    hasCtaAgain ? `      {showPlayAgainButton && <StyledButton onClick={() => navigate(playAgainRoute)} marginTop={8} alternate>{copy.buttonPlayAgain || 'Play again'}</StyledButton>}` : '',
   ].filter(Boolean).join('\n');
 
-  return `import { createFileRoute } from '@tanstack/react-router';
+  return `import { createFileRoute, useRouter } from '@tanstack/react-router';
 ${hasConfetti ? `import { useMemo } from 'react';\nimport type { IConfettiConfig } from '~/components/confetti/engine/ConfettiEngine.ts';\nimport { ConfettiOverlay } from '~/components/confetti/ConfettiOverlay.tsx';` : ''}
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
 ${hasPlayTime ? `import { useUnityStore } from '~/hooks/stores/useUnityStore.ts';` : ''}
@@ -343,6 +348,11 @@ export const Route = createFileRoute('/result')({
 function Result() {
   ${hasPlayTime ? `const result = useUnityStore((state) => state.result);` : ''}
   const { copy } = Route.useLoaderData();
+  const router = useRouter();
+  const nextRoute = '{{NEXT_AFTER_RESULT}}';
+  const playAgainRoute = '{{PLAY_AGAIN_ROUTE}}';
+  const showPlayAgainButton = JSON.parse('{{SHOW_RESULT_PLAY_AGAIN_BUTTON}}') as boolean;
+  const navigate = (to: string) => void router.navigate({ to: to as never, replace: true });
   ${hasConfetti ? `
   const confettiConfig: IConfettiConfig = useMemo(() => ({
     maxParticleCount: 30, spawnRate: 500,
@@ -433,6 +443,8 @@ function Register() {
   const { copy } = Route.useLoaderData();
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const nextRoute = '{{NEXT_AFTER_REGISTER}}';
+  const backRoute = '{{FLOW_ENTRY}}';
   const [error, setError] = useState<string>('');
   ${hasCountry ? `const countryOptions = { NL: 'Netherlands', BE: 'Belgium', DE: 'Germany', FR: 'France', UK: 'United Kingdom', US: 'United States' };` : ''}
 
@@ -446,7 +458,7 @@ ${fields}
       setError('');
       try {
         await sleep(2000);
-        router.navigate({ to: '/landing' });
+        router.navigate({ to: nextRoute as never, replace: true });
       } catch (e) {
         console.error('Error during form submission:', e);
         setError(copy.genericError);
@@ -459,7 +471,7 @@ ${fields}
       ${hasTitle ? `<StyledText type={'title'} alternate>{copy.title}</StyledText>` : ''}
       ${hasDesc  ? `<StyledText type={'description'} marginTop={8} alternate>{copy.description}</StyledText>` : ''}
       <DynamicForm formData={formData} buttonText={copy.button} errorText={error} loading={isPending} onSubmit={(data) => processForm(data)} />
-      ${hasBack  ? `<StyledButton linkOptions={{ to: '/landing' }} marginTop={8} alternate>Back</StyledButton>` : ''}
+      ${hasBack  ? `<StyledButton onClick={() => router.navigate({ to: backRoute as never, replace: true })} marginTop={8} alternate>Back</StyledButton>` : ''}
     </PageContainer>
   );
 }

@@ -50,7 +50,10 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body, #root { height: 100%; }
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
 
 body {
   font-family: var(--font-body);
@@ -61,9 +64,11 @@ body {
 }
 
 .app {
-  height: 100%;
+  height: 100dvh;
+  min-height: 0;
   display: grid;
   grid-template-rows: auto 1fr auto;
+  overflow: hidden;
 }
 
 .app__head {
@@ -149,16 +154,16 @@ body {
   max-width: 1120px; width: 100%;
   margin: 0 auto;
   display: flex; flex-direction: column; gap: 24px;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .app__foot {
   padding: 12px 32px;
   border-top: 1px solid var(--color-line);
   background: #FAFDF5;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  /* Keep footer always visible even when main content scrolls */
-  position: sticky;
-  bottom: 0;
+  flex-shrink: 0;
   z-index: 10;
 }
 
@@ -747,6 +752,25 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   margin: 0;
   font-size: 12.5px;
 }
+.preview-pane__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.preview-pane__actions .btn {
+  padding: 7px 12px;
+  font-size: 12px;
+}
+.preview-pane__link {
+  color: var(--color-text-soft);
+  font-size: 12px;
+  text-decoration: none;
+}
+.preview-pane__link:hover { color: var(--color-text); }
+.preview-pane__head .banner {
+  grid-column: 1 / -1;
+}
 
 .preview-pane__tabs {
   display: flex; gap: 4px;
@@ -784,6 +808,34 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   background: var(--color-primary);
   color: var(--color-text);
 }
+.preview-pane__tab-text {
+  display: inline-flex; flex-direction: column;
+  line-height: 1.1; text-align: left;
+}
+.preview-pane__tab-label { font-size: 12px; }
+.preview-pane__tab-route {
+  font-size: 10px;
+  color: var(--color-text-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: -0.01em;
+}
+.preview-pane__tab.is-active .preview-pane__tab-route {
+  color: var(--color-text);
+  opacity: 0.7;
+}
+
+/* Subtle slide-up + fade on page change. Triggered by a keyed wrapper in
+   PreviewPane so React remounts the subtree per tab switch. */
+.preview-pane__page {
+  display: contents;
+}
+.preview-pane__page > * {
+  animation: preview-page-in 180ms ease-out both;
+}
+@keyframes preview-page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 .preview-pane__frame-wrap {
   display: flex; justify-content: center; align-items: flex-start;
@@ -817,6 +869,12 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   background: #FAFAFA;
   border-radius: 28px;
   overflow: hidden;
+}
+.frontend-preview-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
 }
 .phone-frame__route {
   position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%);
@@ -971,6 +1029,45 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   transition: width 0.18s ease, background 0.18s ease;
 }
 .pp-dot.is-active { background: var(--color-primary); width: 22px; }
+.pp-tutorial-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 12px;
+  width: calc(100% - 28px);
+  height: calc(100% - 28px);
+  margin: 14px;
+  padding: 60px 18px 18px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 18px 48px rgba(14,14,14,0.28);
+  overflow: hidden;
+}
+.pp-card-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(14,14,14,0.06);
+  color: var(--color-text);
+  font-size: 18px;
+  cursor: pointer;
+}
+.pp-card-visual {
+  width: 100%;
+  aspect-ratio: 1.25;
+  margin-bottom: auto;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 38%, #fff), #f4f5ee),
+    var(--campaign-ambient);
+}
+.pp--tutorial-card .pp-dots .pp-dot { background: rgba(14,14,14,0.28); }
+.pp--tutorial-card .pp-dots .pp-dot.is-active { background: var(--color-text); }
 .pp-close {
   width: 28px; height: 28px;
   border-radius: 50%;

@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
 import { pageMeta, MENU_ITEMS, type ScaffoldConfig, type PageInstance } from '../shared/config.ts';
+import { startFrontendPreview } from '../bridge.ts';
+
+// The "Start real preview" button is hidden for now — spinning up a full
+// scaffold + pnpm install + vite dev from the wizard turned out to be too
+// brittle (Windows spawn quirks, slow cold starts, opaque failure modes)
+// for the benefit. The state/handler/server endpoint stay wired so it can
+// be re-enabled by flipping this flag once the flow is more dependable.
+const ENABLE_REAL_PREVIEW = false;
 
 interface Props {
   config: ScaffoldConfig;
@@ -19,6 +27,9 @@ interface Props {
 export default function PreviewPane({ config }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [menuOpen, setMenuOpen]   = useState(false);
+  const [realUrl, setRealUrl]     = useState<string | null>(null);
+  const [realBusy, setRealBusy]   = useState(false);
+  const [realError, setRealError] = useState<string | null>(null);
 
   // Clamp activeIdx if pages were removed.
   useEffect(() => {
@@ -38,6 +49,27 @@ export default function PreviewPane({ config }: Props) {
 
   const idx = Math.min(activeIdx, config.pages.length - 1);
   const inst = config.pages[idx];
+  const visualPages = config.pages.filter(p => !['game', 'video', 'intro-video', 'loading-video', 'ad-video'].includes(p.type));
+  const realRoute = visualPages.some(p => p.id === inst.id)
+    ? inst.route
+    : visualPages[0]?.route ?? inst.route;
+
+  const startRealPreview = async () => {
+    setRealBusy(true);
+    setRealError(null);
+    const res = await startFrontendPreview(config);
+    setRealBusy(false);
+    if (!res.ok || !res.url) {
+      setRealError(res.error ?? 'Could not start real frontend preview.');
+      return;
+    }
+    setRealUrl(res.url);
+    const firstVisual = visualPages[0];
+    if (firstVisual) {
+      const firstIdx = config.pages.findIndex(p => p.id === firstVisual.id);
+      if (firstIdx >= 0) setActiveIdx(firstIdx);
+    }
+  };
 
   /** Resolve where a given exit on this instance navigates to (instance id). */
   const resolveExit = (instId: string, exitKey: string, defaultRule: 'next' | 'first' = 'next'): number | null => {
@@ -61,12 +93,24 @@ export default function PreviewPane({ config }: Props) {
       <header className="preview-pane__head">
         <h3 className="pages-col__title">Preview</h3>
         <p className="step__hint">
-          Live mock that updates as you tweak settings, exits, and brand. Tap any primary button to walk your flow.
+          Mock render of each page in your flow. Click CTAs and tabs to step through the wired-up navigation. Real copy, branding and game runtime arrive at scaffold time via CAPE.
         </p>
+        {ENABLE_REAL_PREVIEW && (
+          <>
+            <div className="preview-pane__actions">
+              <button type="button" className="btn btn--secondary" onClick={startRealPreview} disabled={realBusy}>
+                {realBusy ? 'Starting real preview...' : realUrl ? 'Restart real preview' : 'Start real preview'}
+              </button>
+              {realUrl && <a className="preview-pane__link" href={realUrl} target="_blank" rel="noreferrer">Open full page</a>}
+            </div>
+            {realError && <div className="banner banner--err">{realError}</div>}
+          </>
+        )}
       </header>
 
       <div className="preview-pane__tabs" role="tablist">
-        {config.pages.map((p, i) => {
+        {(realUrl ? visualPages : config.pages).map((p) => {
+          const i = config.pages.findIndex(page => page.id === p.id);
           const meta = pageMeta(p.type);
           if (!meta) return null;
           const label = p.id === p.type ? meta.label : p.id;
@@ -77,27 +121,44 @@ export default function PreviewPane({ config }: Props) {
               aria-selected={i === idx}
               className={`preview-pane__tab${i === idx ? ' is-active' : ''}`}
               onClick={() => setActiveIdx(i)}
-              title={`/${p.id}`}
+              title={p.route}
             >
               <span className="preview-pane__tab-num">{i + 1}</span>
-              {label}
+              <span className="preview-pane__tab-text">
+                <span className="preview-pane__tab-label">{label}</span>
+                <span className="preview-pane__tab-route">{p.route}</span>
+              </span>
             </button>
           );
         })}
       </div>
 
       <div className="preview-pane__frame-wrap">
-        <PhoneFrame route={menuOpen ? '/menu' : inst.route}>
-          {menuOpen
-            ? <MenuPreview config={config} onClose={() => setMenuOpen(false)} onNavigate={(target) => {
-                // If the user picks a menu item that points to a page in the
-                // flow, jump the preview to that tab; otherwise just close.
-                const idx = config.pages.findIndex(p => p.route === target || `/${p.id}` === target);
-                if (idx >= 0) setActiveIdx(idx);
-                setMenuOpen(false);
-              }} />
-            : <PageRenderer config={config} instance={inst} navigate={navigate} onMenu={() => setMenuOpen(true)} />
-          }
+        <PhoneFrame route={realUrl ? realRoute : menuOpen ? '/menu' : inst.route}>
+          {realUrl ? (
+            <iframe
+              key={`${realUrl}${realRoute}`}
+              className="frontend-preview-frame"
+              src={`${realUrl}${realRoute}`}
+              title="Real frontend preview"
+            />
+          ) : (
+            menuOpen
+              ? <MenuPreview config={config} onClose={() => setMenuOpen(false)} onNavigate={(target) => {
+                  // If the user picks a menu item that points to a page in the
+                  // flow, jump the preview to that tab; otherwise just close.
+                  const idx = config.pages.findIndex(p => p.route === target || `/${p.id}` === target);
+                  if (idx >= 0) setActiveIdx(idx);
+                  setMenuOpen(false);
+                }} />
+              : (
+                // Keyed wrapper so React swaps the subtree on page change,
+                // re-triggering the CSS fade-in. Cheap polish — no JS animation.
+                <div key={inst.id} className="preview-pane__page">
+                  <PageRenderer config={config} instance={inst} navigate={navigate} onMenu={() => setMenuOpen(true)} />
+                </div>
+              )
+          )}
         </PhoneFrame>
       </div>
     </section>
@@ -207,13 +268,15 @@ function HeroStack({ kicker, title, body }: { kicker?: string; title: string; bo
 function LandingPreview({ config, instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
   const showTutorial    = isExitOn(config, instance.id, 'tutorial',    false);
   const showLeaderboard = isExitOn(config, instance.id, 'leaderboard', false);
+  const brand = config.brand?.trim() || config.name?.trim();
+  const title = brand ? `Welcome to ${brand}` : 'Welcome';
   return (
     <div className="pp pp--hero">
       <HeroBleed />
       <div className="pp-shell">
         <HeaderLogo onMenu={onMenu} />
         <div className="pp-bottom">
-          <HeroStack kicker="LIVE EXPERIENCE" title="Welcome" body="Are you ready to play?" />
+          <HeroStack kicker="LIVE EXPERIENCE" title={title} body="Are you ready to play?" />
           <div className="pp-actions">
             <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Play now" onClick={() => navigate(instance.id, 'next')} />
             {showTutorial    && <CtaButton kind={exitVariant(config, instance.id, 'tutorial',    'secondary')} label="Tutorial"    onClick={() => navigate(instance.id, 'tutorial')} />}
@@ -226,30 +289,54 @@ function LandingPreview({ config, instance, navigate, onMenu }: { config: Scaffo
 }
 
 function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn }) {
+  const s = instSettings(config, instance.id);
+  const layout = (s.screenLayout as string) ?? 'fullBleedHero';
+  // stepCount mirrors the wizard's tutorial setting — clamp so we always show
+  // at least one step and don't render a pagination row past what fits.
+  const stepCount = Math.max(1, Math.min(6, Number(s.stepCount ?? 3)));
   const [step, setStep] = useState(0);
-  const STEPS = [
-    { title: 'Step 1', body: 'Instructions for step 1.' },
-    { title: 'Step 2', body: 'Instructions for step 2.' },
-    { title: 'Step 3', body: 'Instructions for step 3.' },
-  ];
+  const STEPS = Array.from({ length: stepCount }, (_, i) => ({
+    title: `Step ${i + 1}`,
+    body: `Instructions for step ${i + 1}.`,
+  }));
   const isLast = step === STEPS.length - 1;
+  const content = (
+    <>
+      <HeroStack kicker="HOW TO PLAY" title={STEPS[step].title} body={STEPS[step].body} />
+      <div className="pp-dots">
+        {STEPS.map((_, i) => (
+          <button key={i} type="button" aria-label={`step ${i + 1}`} className={`pp-dot${i === step ? ' is-active' : ''}`} onClick={() => setStep(i)} />
+        ))}
+      </div>
+      <div className="pp-actions">
+        <CtaButton
+          kind={exitVariant(config, instance.id, 'next', 'primary')}
+          label={isLast ? 'Start' : 'Continue'}
+          onClick={() => isLast ? navigate(instance.id, 'next') : setStep(step + 1)}
+        />
+        {Boolean(s.allowSkip) && <CtaButton kind="secondary" label="Skip" onClick={() => navigate(instance.id, 'next')} />}
+      </div>
+    </>
+  );
+
+  if (layout === 'card') {
+    return (
+      <div className="pp pp--form pp--tutorial-card">
+        <div className="pp-tutorial-panel">
+          <button type="button" className="pp-card-close" aria-label="Close" onClick={() => navigate(instance.id, 'next')}>×</button>
+          <div className="pp-card-visual" aria-hidden />
+          {content}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="pp pp--form">
-      <div className="pp-shell pp-shell--center">
-        <HeroStack kicker="TUTORIAL" title={STEPS[step].title} body={STEPS[step].body} />
-        <div className="pp-dots">
-          {STEPS.map((_, i) => (
-            <button key={i} type="button" aria-label={`step ${i + 1}`} className={`pp-dot${i === step ? ' is-active' : ''}`} onClick={() => setStep(i)} />
-          ))}
-        </div>
-        <div className="pp-actions">
-          <CtaButton
-            kind={exitVariant(config, instance.id, 'next', 'primary')}
-            label={isLast ? 'Start' : 'Next'}
-            onClick={() => isLast ? navigate(instance.id, 'next') : setStep(step + 1)}
-          />
-          <CtaButton kind="secondary" label="Skip" onClick={() => navigate(instance.id, 'next')} />
-        </div>
+    <div className="pp pp--hero">
+      <HeroBleed />
+      <div className="pp-shell">
+        <HeaderLogo onMenu={() => navigate(instance.id, 'next')} />
+        <div className="pp-bottom">{content}</div>
       </div>
     </div>
   );
@@ -361,7 +448,7 @@ function GamePreview({ config, instance, navigate }: { config: ScaffoldConfig; i
         </div>
         <CtaButton kind={exitVariant(config, instance.id, 'next', 'tertiary')} label="Simulate game end" onClick={() => navigate(instance.id, 'next')} />
       </div>
-      <div className="pp-game-engine">{config.game}</div>
+      <div className="pp-game-engine">{config.gameId || config.game}</div>
     </div>
   );
 }
@@ -371,13 +458,14 @@ function GamePreview({ config, instance, navigate }: { config: ScaffoldConfig; i
 function ResultPreview({ config, instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
   const showPlayAgain   = isExitOn(config, instance.id, 'playAgain',   true);
   const showLeaderboard = isExitOn(config, instance.id, 'leaderboard', false);
+  const brand = config.brand?.trim() || config.name?.trim();
   return (
     <div className="pp pp--hero">
       <HeroBleed />
       <div className="pp-shell">
         <HeaderLogo onMenu={onMenu} />
         <div className="pp-bottom">
-          <HeroStack kicker="RESULT" title="Well done!" />
+          <HeroStack kicker="RESULT" title="Well done!" body={brand ? `Thanks for playing ${brand}.` : undefined} />
           <div className="pp-score-plate">
             <span className="pp-score-plate__label">Score</span>
             <span className="pp-score-plate__value">2,480</span>

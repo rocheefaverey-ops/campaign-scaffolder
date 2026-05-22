@@ -18,7 +18,8 @@ import Fastify from 'fastify';
 import cors    from '@fastify/cors';
 import fstatic from '@fastify/static';
 import { spawn } from 'child_process';
-import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync } from 'fs';
+import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync, rmSync } from 'fs';
+import { createServer } from 'net';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
@@ -35,6 +36,7 @@ const SCAFFOLD_JS    = join(SCAFFOLDER_ROOT, 'cli', 'scaffold.js');
 const UI_DIST        = join(SCAFFOLDER_ROOT, 'cli', 'wizard-ui', 'dist');
 
 const PORT = Number(process.env.WIZARD_PORT ?? 3737);
+const PNPM_CMD = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
 const INSTANCE_RE = /^([a-z]+)-(\d+)$/;
 const INSTANCEABLE_PAGES = new Set([]);
@@ -133,6 +135,9 @@ const MODULE_CATALOG = loadModuleCatalog();
 /** @type {Map<string, Job>} */
 const jobs = new Map();
 
+/** @type {{ child: import('child_process').ChildProcess | null, url: string, outputDir: string } | null} */
+let frontendPreview = null;
+
 function emit(job, level, line) {
   const ev = { level, line, ts: Date.now() };
   job.buffered.push(ev);
@@ -193,6 +198,101 @@ app.get('/api/games', async (req) => {
 app.get('/api/modules', async () => ({ modules: MODULE_CATALOG }));
 
 app.get('/api/doctor', async () => runDoctor());
+
+app.post('/api/frontend-preview/start', async (req, reply) => {
+  const cfg = req.body ?? {};
+  if (!cfg.name || typeof cfg.name !== 'string') {
+    return reply.code(400).send({ ok: false, error: 'Project name is required before preview can start.' });
+  }
+
+  const validation = validateWizardConfig(cfg);
+  if (validation.errors.length) {
+    return reply.code(400).send({ ok: false, error: validation.errors.join('\n'), errors: validation.errors });
+  }
+
+  stopFrontendPreview();
+
+  const previewId = randomBytes(6).toString('hex');
+  const outputDir = join(tmpdir(), `lw-frontend-preview-${previewId}`);
+  const frontendDir = join(outputDir, 'frontend');
+  const tmp = join(tmpdir(), `lw-frontend-preview-${previewId}.json`);
+  const previewConfig = {
+    ...cfg,
+    name: `preview-${cfg.name}`,
+    createCape: false,
+    capeId: cfg.capeId || '0',
+    outputDir,
+    buildMode: 'create',
+    skipInstall: true,
+    skipGit: true,
+  };
+
+  try {
+    rmSync(outputDir, { recursive: true, force: true });
+    writeFileSync(tmp, JSON.stringify(previewConfig, null, 2), 'utf8');
+
+    await runCommand(process.execPath, [SCAFFOLD_JS, `--config=${tmp}`, '--yes'], SCAFFOLDER_ROOT, 'Scaffold preview failed');
+    await runCommand(PNPM_CMD, ['install', '--ignore-scripts'], frontendDir, 'Install preview dependencies failed');
+
+    const port = await findOpenPort(4300, 4399);
+    const args = previewConfig.stack === 'tanstack'
+      ? ['exec', 'vite', 'dev', '--host', '127.0.0.1', '--port', String(port), '--strictPort']
+      : ['exec', 'next', 'dev', '-H', '127.0.0.1', '-p', String(port)];
+
+    const child = spawn(PNPM_CMD, args, {
+      cwd: frontendDir,
+      env: {
+        ...process.env,
+        CAPE_MOCK: 'true',
+        API_MOCK: 'true',
+        NEXT_PUBLIC_GAME_MOCK: 'true',
+        NO_COLOR: '1',
+      },
+      // Node 20+ refuses to spawn .cmd / .bat directly (CVE-2024-27980).
+      // PNPM_CMD is pnpm.cmd on Windows — route through cmd.exe there.
+      shell: process.platform === 'win32',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    // Capture child output so we can surface it when the dev server fails
+    // to bind. Without this the 500 just says "did not become ready" — opaque.
+    let logBuffer = '';
+    const collect = (chunk) => {
+      const line = stripAnsi(chunk.toString());
+      logBuffer += line;
+      if (logBuffer.length > 8000) logBuffer = logBuffer.slice(-8000);
+      // eslint-disable-next-line no-console
+      process.stdout.write(`[frontend-preview] ${line}`);
+    };
+    child.stdout.on('data', collect);
+    child.stderr.on('data', collect);
+
+    const url = `http://127.0.0.1:${port}`;
+    frontendPreview = { child, url, outputDir };
+    let earlyExitCode = null;
+    child.once('exit', (code) => {
+      if (frontendPreview?.child === child) frontendPreview = null;
+      earlyExitCode = code;
+      if (code && code !== 0) {
+        // eslint-disable-next-line no-console
+        console.error(`[frontend-preview] dev server exited with ${code}`);
+      }
+    });
+
+    try {
+      await waitForHttp(url, 90000);
+    } catch (waitErr) {
+      const detail = logBuffer.trim().slice(-2000) || '(no output captured)';
+      const exitNote = earlyExitCode !== null ? ` Process exited with code ${earlyExitCode}.` : '';
+      throw new Error(`${waitErr.message}${exitNote}\n--- Dev server output ---\n${detail}`);
+    }
+
+    return { ok: true, url, outputDir };
+  } catch (err) {
+    stopFrontendPreview();
+    return reply.code(500).send({ ok: false, error: err?.message ?? 'Could not start frontend preview.' });
+  }
+});
 
 // ─── Load existing project ──────────────────────────────────────────────────
 // The wizard's "Open existing" flow pings this with a directory path. We
@@ -500,6 +600,67 @@ function classify(line) {
   if (/^\s*[✗✘]/.test(line)) return 'error';
   return 'info';
 }
+
+function runCommand(command, args, cwd, label) {
+  // Node 20+ on Windows refuses to spawn .cmd / .bat without shell:true
+  // (CVE-2024-27980). Enable shell only for those, so node.exe paths
+  // (which may contain spaces) still take the safer no-shell path.
+  const needsShell = process.platform === 'win32' && /\.(cmd|bat)$/i.test(command);
+  return new Promise((resolveRun, rejectRun) => {
+    const child = spawn(command, args, {
+      cwd,
+      env: { ...process.env, NO_COLOR: '1' },
+      shell: needsShell,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let out = '';
+    child.stdout.on('data', (d) => { out += d.toString(); });
+    child.stderr.on('data', (d) => { out += d.toString(); });
+    child.on('error', (err) => rejectRun(new Error(`${label}: ${err.message}`)));
+    child.on('exit', (code) => {
+      if (code === 0) resolveRun();
+      else rejectRun(new Error(`${label} (${code ?? -1})\n${out.trim().slice(-4000)}`));
+    });
+  });
+}
+
+function findOpenPort(start, end) {
+  const tryPort = (port) => new Promise((resolvePort, rejectPort) => {
+    const server = createServer();
+    server.unref();
+    server.on('error', () => {
+      if (port >= end) rejectPort(new Error(`No open preview port found in ${start}-${end}.`));
+      else resolvePort(findOpenPort(port + 1, end));
+    });
+    server.listen(port, '127.0.0.1', () => {
+      server.close(() => resolvePort(port));
+    });
+  });
+  return tryPort(start);
+}
+
+async function waitForHttp(url, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url, { method: 'GET' });
+      if (res.status < 500) return;
+    } catch { /* dev server not ready yet */ }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`Preview server did not become ready at ${url}.`);
+}
+
+function stopFrontendPreview() {
+  if (frontendPreview?.child && !frontendPreview.child.killed) {
+    try { frontendPreview.child.kill(); } catch { /* ignore */ }
+  }
+  frontendPreview = null;
+}
+
+process.on('SIGINT', stopFrontendPreview);
+process.on('SIGTERM', stopFrontendPreview);
+process.on('exit', stopFrontendPreview);
 
 function stripAnsi(s) {
   // Minimal ANSI/CSI stripper — good enough for terminal log capture.
