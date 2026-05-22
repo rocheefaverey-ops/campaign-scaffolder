@@ -17,7 +17,7 @@ function LoadingVideoPage() {
   const [canContinue, setCanContinue] = useState(false);
   const started = useRef(false);
 
-  const goGame = () => void router.navigate({ to: '/game', replace: true });
+  const goNext = () => void router.navigate({ to: '{{NEXT_AFTER_LOADING_VIDEO}}' as never, replace: true });
 
   useEffect(() => {
     if (started.current) return;
@@ -27,7 +27,7 @@ function LoadingVideoPage() {
     setData({ translations: sharedCopy.game });
 
     fullBoot()
-      .then(goGame)
+      .then(goNext)
       .catch((error) => {
         console.error('Unity loading video failed to boot game:', error);
         setCanContinue(true);
@@ -46,7 +46,7 @@ function LoadingVideoPage() {
       )}
       {logoUrl && <img src={logoUrl} alt="" className="campaign-video-logo" />}
       {canContinue && (
-        <button type="button" className="campaign-video-skip" onClick={goGame}>{copy.cta}</button>
+        <button type="button" className="campaign-video-skip" onClick={goNext}>{copy.cta}</button>
       )}
     </PageContainer>
   );

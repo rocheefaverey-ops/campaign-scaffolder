@@ -1,4 +1,5 @@
-import { HeadContent, Outlet, Scripts, createRootRouteWithContext, retainSearchParams, useLoaderData } from '@tanstack/react-router';
+import { HeadContent, Outlet, Scripts, createRootRouteWithContext, retainSearchParams, useLoaderData, useRouter } from '@tanstack/react-router';
+import { useEffect } from 'react';
 import { z } from 'zod';
 import type { IDefaultProps } from '~/interfaces/IComponentProps.ts';
 import { ViewContainer } from '~/components/containers/ViewContainer.tsx';
@@ -62,6 +63,7 @@ export const Route = createRootRouteWithContext<RootContext>()({
   }),
   shellComponent: RootDocument,
   component: RootComponent,
+  errorComponent: RootErrorRecovery,
 });
 
 function RootComponent() {
@@ -74,6 +76,24 @@ function RootComponent() {
       </ViewContainer>
     </main>
   );
+}
+
+// Defensive recovery for transient render-tree breakages — typically the
+// useUnity-outside-provider race that fires when a view transition snapshot
+// captures a child component mid-unmount of UnityProvider. Resetting the
+// route after a tick reconciles the tree from scratch.
+function RootErrorRecovery({ error, reset }: { error: Error; reset: () => void }) {
+  const router = useRouter();
+  useEffect(() => {
+    if (error?.message?.includes('useUnity must be used within a UnityProvider')) {
+      const id = window.setTimeout(() => {
+        reset();
+        void router.invalidate();
+      }, 0);
+      return () => window.clearTimeout(id);
+    }
+  }, [error, reset, router]);
+  return null;
 }
 
 function RootDocument({ children }: IDefaultProps) {

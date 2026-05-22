@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
+import { StyledButton } from '~/components/buttons/StyledButton.tsx';
 import { loadVideoData } from '~/loaders/VideoLoader.ts';
 
 export const Route = createFileRoute('/intro-video')({
@@ -9,37 +10,34 @@ export const Route = createFileRoute('/intro-video')({
 });
 
 function IntroVideoPage() {
-  const { copy, videoUrl, logoUrl, skipAfterSeconds } = Route.useLoaderData();
+  const { copy, videoUrl, logoUrl } = Route.useLoaderData();
   const router = useRouter();
-  const [canSkip, setCanSkip] = useState(skipAfterSeconds <= 0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const goNext = () => void router.navigate({ to: '/landing', replace: true });
+  const goNext = () => void router.navigate({ to: '{{NEXT_AFTER_INTRO_VIDEO}}' as never, replace: true });
 
+  // If there's no intro video configured, skip the page entirely.
   useEffect(() => {
-    if (!videoUrl) {
-      goNext();
-      return;
-    }
-    if (skipAfterSeconds > 0) {
-      timerRef.current = setTimeout(() => setCanSkip(true), skipAfterSeconds * 1000);
-    }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [videoUrl, skipAfterSeconds]);
+    if (!videoUrl) goNext();
+  }, [videoUrl]);
 
   return (
-    <PageContainer className="campaign-screen--video" disableTransition>
-      {videoUrl ? (
-        <video src={videoUrl} className="campaign-video-fill" autoPlay muted playsInline onEnded={goNext} />
-      ) : (
-        <div className="campaign-video-placeholder" />
+    <PageContainer className="campaign-screen--hero">
+      {videoUrl && (
+        <video src={videoUrl} className="campaign-hero-bleed" autoPlay muted loop playsInline aria-hidden />
       )}
-      {logoUrl && <img src={logoUrl} alt="" className="campaign-video-logo" />}
-      {canSkip && (
-        <button type="button" className="campaign-video-skip" onClick={goNext}>{copy.cta}</button>
-      )}
+      <div className="campaign-hero-shade" aria-hidden />
+
+      <div className="campaign-shell">
+        <header className="campaign-hero-header" style={{ animation: 'fadeIn 0.4s ease both' }}>
+          {logoUrl && <img src={logoUrl} alt="Logo" className="campaign-hero-logo" />}
+        </header>
+
+        <div />
+
+        <div className="campaign-actions" style={{ animation: 'fadeIn 0.5s 0.2s ease both' }}>
+          <StyledButton onClick={goNext}>{copy.cta || 'Continue'}</StyledButton>
+        </div>
+      </div>
     </PageContainer>
   );
 }

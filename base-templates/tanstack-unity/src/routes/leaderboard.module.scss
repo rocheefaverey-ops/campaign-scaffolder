@@ -1,0 +1,80 @@
+.leaderboard {
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin: 1rem 0;
+}
+
+.tab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0.5rem 0.9rem;
+  color: inherit;
+  font: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+.tabActive {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.tabDivider {
+  width: 1px;
+  height: 1rem;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+}
+
+.entryPersonal {
+  background: rgba(255, 255, 255, 0.22);
+  font-weight: 600;
+}
+
+.entryUser {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.entryRank {
+  min-width: 1.75rem;
+  text-align: right;
+  opacity: 0.8;
+}
+
+.entryName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty,
+.loading {
+  text-align: center;
+  opacity: 0.75;
+  padding: 1.5rem 0;
+}
