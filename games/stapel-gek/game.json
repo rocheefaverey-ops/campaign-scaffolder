@@ -1,0 +1,75 @@
+{
+  "id": "stapel-gek",
+  "name": "Stapel Gek",
+  "description": "HEMA stacking game — score points by stacking products, payload is delivered as a JSON string.",
+  "engine": "unity",
+  "stack": "tanstack",
+
+  "cdn": {
+    "baseUrl": "https://lw-hema-campaigns-unitystapelgek-test.lwcf5.nl",
+    "gameName": "Game",
+    "platforms": ["desktop", "mobile"],
+    "compression": null,
+    "versionFile": "version.json",
+    "noCache": true
+  },
+
+  "dpr": {
+    "min": 1,
+    "max": 2
+  },
+
+  "boot": {
+    "gameObjects": {
+      "setup": "WebService",
+      "game":  "GameService",
+      "pause": "PauseService"
+    },
+    "setupMethod": "SetData",
+    "sceneMethod": "SetScene",
+    "loadMethod":  "LoadScene",
+    "startMethod": "StartGame",
+    "defaultScene": "example"
+  },
+
+  "data": {
+    "environment":  true,
+    "muted":        true,
+    "translations": true,
+    "custom": {
+      "locale":       "string",
+      "hasNotch":     "boolean",
+      "useCountdown": "boolean",
+      "useMockAPI":   "boolean"
+    }
+  },
+
+  "events": {
+    "listens": ["ready", "start", "end", "navigation", "tracking", "apiRequest"],
+    "end": {
+      "score":    "number",
+      "playTime": "number",
+      "payload":  "string"
+    }
+  },
+
+  "translations": {
+    "Note": "Stapel Gek uses sharedCopy.game object — keys map to Unity translation keys"
+  },
+
+  "env": {
+    "UNITY_BASE_URL":          "https://lw-hema-campaigns-unitystapelgek-test.lwcf5.nl",
+    "UNITY_GAME_NAME":         "Game",
+    "VITE_UNITY_DESKTOP_DPR":  "2",
+    "VITE_UNITY_MIN_DPR":      "1",
+    "VITE_UNITY_MAX_DPR":      "2"
+  },
+
+  "notes": [
+    "Uses TanStack Start (Vite) — env vars are VITE_ / unprefixed, not NEXT_PUBLIC_.",
+    "Verified end payload (V21 build, May 2026): { score, playTime, payload }. payload is an encrypted base64 string.",
+    "apiRequest event is handled by Unity — requires CORS proxy server action.",
+    "Default scene key 'example' — confirm with Unity dev before production.",
+    "CDN URL verified against the running hema-campaigns-frontend-stapelgek/.env (May 2026)."
+  ]
+}

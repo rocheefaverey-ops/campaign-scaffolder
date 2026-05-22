@@ -92,9 +92,11 @@ export function gameEnvLines(game, template = 'next') {
     const lines = [];
     if (game.cdn?.baseUrl)      lines.push(`UNITY_BASE_URL=${game.cdn.baseUrl}`);
     if (game.cdn?.gameName)     lines.push(`UNITY_GAME_NAME=${game.cdn.gameName}`);
+    if (game.boot?.defaultScene) lines.push(`UNITY_SCENE_KEY=${game.boot.defaultScene}`);
     // Use explicit version if CDN doesn't serve a version.json
     const version = game.env?.['NEXT_PUBLIC_UNITY_VERSION'];
     if (version)                lines.push(`UNITY_VERSION=${version}`);
+    if (game.env?.['VITE_UNITY_DESKTOP_DPR']) lines.push(`VITE_UNITY_DESKTOP_DPR=${game.env['VITE_UNITY_DESKTOP_DPR']}`);
     if (game.dpr?.min != null)  lines.push(`VITE_UNITY_MIN_DPR=${game.dpr.min}`);
     if (game.dpr?.max != null)  lines.push(`VITE_UNITY_MAX_DPR=${game.dpr.max}`);
     return lines;

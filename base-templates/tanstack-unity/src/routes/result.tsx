@@ -23,17 +23,25 @@ export const Route = createFileRoute('/result')({
 
 function Result() {
   const result = useUnityStore((state) => state.result);
-  const { copy } = Route.useLoaderData();
+  const { copy, backgroundUrl, logoUrl, winImageUrl } = Route.useLoaderData();
+  const resultVisualUrl = winImageUrl || backgroundUrl;
+  const isVideoVisual = !!resultVisualUrl && /\.(mp4|webm|mov)$/i.test(resultVisualUrl);
 
   return (
     <PageContainer className="campaign-screen--hero">
+      {resultVisualUrl && (
+        isVideoVisual
+          ? <video src={resultVisualUrl} className="campaign-hero-bleed" autoPlay muted loop playsInline aria-hidden />
+          : <img src={resultVisualUrl} alt="" className="campaign-hero-bleed" aria-hidden />
+      )}
       <ConfettiOverlay config={confettiConfig} visual="confetti" visualCount={2} />
-      <div className="campaign-hero-shade" />
+      <div className="campaign-hero-shade" aria-hidden />
 
       <div className="campaign-shell">
         <div />
 
         <div className="campaign-hero-content">
+          {logoUrl && <img src={logoUrl} alt="" className="campaign-hero-page-logo" />}
           <div className="result-plate">
             <span className="result-plate__label">{copy.scoreLabel || 'Your score'}</span>
             <span className="result-plate__score">{result.playTime}</span>
@@ -43,7 +51,7 @@ function Result() {
           {copy.description && <p className="campaign-copy" style={{ marginTop: '0.5rem' }}>{copy.description}</p>}
 
           <div className="campaign-actions" style={{ marginTop: '1.5rem' }}>
-            <StyledButton linkOptions={{ to: '/register' }}>Register</StyledButton>
+            <StyledButton linkOptions={{ to: '/register' }}>{copy.buttonRegister || 'Register'}</StyledButton>
           </div>
         </div>
       </div>

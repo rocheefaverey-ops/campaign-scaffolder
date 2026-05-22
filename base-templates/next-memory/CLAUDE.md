@@ -15,12 +15,12 @@ Core Next.js 16 project. **Contains only mandatory code.** Optional module code 
 ## Dev Commands
 
 ```bash
-npm run dev          # Turbopack dev server
-npm run build        # Production build
-npm run start        # Production server
-npm run lint         # ESLint
-npm run ts-compile   # TypeScript type check (no emit)
-npm run analyze      # Bundle analysis
+pnpm dev             # Turbopack dev server
+pnpm build           # Production build
+pnpm start           # Production server
+pnpm lint            # ESLint
+pnpm ts-compile      # TypeScript type check (no emit)
+pnpm analyze         # Bundle analysis
 ```
 
 ## Architecture Principles

@@ -14,12 +14,14 @@ export const getUnityEnvironment = createServerFn().handler(async () => {
     return { url: '', isLocal: false };
   }
 
-  let url = `${process.env.UNITY_BASE_URL}/`;
+  const baseUrl = process.env.UNITY_BASE_URL.trim().replace(/\/+$/, '');
+  const gameName = (process.env.UNITY_GAME_NAME || 'Game').trim();
+  let url = `${baseUrl}/`;
   let isLocal = false;
 
   // Retrieve version JSON
   try {
-    const response = await fetch(`${url}${process.env.UNITY_GAME_NAME}/version.json`);
+    const response = await fetch(`${url}${gameName}/version.json`);
 
     // Check if fetch was successful
     if (!response.ok) {
@@ -28,12 +30,12 @@ export const getUnityEnvironment = createServerFn().handler(async () => {
 
     // Parse JSON and build URL
     const versionJson: IUnityVersion = await response.json();
-    url += `${process.env.UNITY_GAME_NAME}/`;
+    url += `${gameName}/`;
     url += `V${versionJson.currentVersion}/`;
   } catch (e) {
     if (process.env.UNITY_VERSION) {
       // version.json not present on CDN — use hardcoded version from env
-      url += `${process.env.UNITY_GAME_NAME}/`;
+      url += `${gameName}/`;
       url += `${process.env.UNITY_VERSION}/`;
     } else {
       console.warn('Falling back to local game hosting, because:', e);

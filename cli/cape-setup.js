@@ -128,7 +128,7 @@ export async function capeFetchMock(outputDir, campaignId, market, baseUrl = 'ht
         await new Promise(r => setTimeout(r, 2500));
       } else {
         warn(`CDN fetch failed after ${attempt} attempts: ${e.message}`);
-        warn(`Run later:  cd ${outputDir} && npm run cape:fetch-mock`);
+        warn(`Run later:  cd ${outputDir} && pnpm cape:fetch-mock`);
         return false;
       }
     }

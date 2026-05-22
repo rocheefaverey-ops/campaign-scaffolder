@@ -1,13 +1,45 @@
 .tutorial {
-  background-color: $whiteColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+  background:
+    linear-gradient(180deg, rgba(14, 14, 14, 0.56), rgba(14, 14, 14, 0.82)),
+    var(--surface-ink, #{$blackColor});
 
-  .slider {
-    flex: 1;
+  .panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 390px);
+    max-height: min(760px, 100%);
+    padding: 52px 22px 24px;
+    border-radius: 24px;
+    background-color: $whiteColor;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+    overflow: hidden;
   }
 
   .skip {
     position: absolute;
-    top: 16px;
-    right: 16px;
+    z-index: 2;
+    top: 12px;
+    right: 12px;
+    background: transparent;
+  }
+
+  .header {
+    margin-bottom: 20px;
+    color: $primaryTextColor;
+  }
+
+  .slider {
+    min-height: 0;
+    flex: 1;
+  }
+
+  .button {
+    flex: 0 0 auto;
+    margin-top: 18px;
   }
 }

@@ -277,7 +277,9 @@ function tsDesktopTab() {
       textML('desktop.qrText',      'QR Text',     'ts-desktop-qrtext',      'Scan to play on mobile'),
     ]),
     block('ts-loading-assets-block', 'Loading assets', [
-      assetVideo('files.video.loadingVideo', 'Loading / intro video', 'ts-loading-video'),
+      assetLogo(   'general.loading.logo',       'Logo (overlay)',         'ts-loading-logo'),
+      assetMediaBg('general.loading.background', 'Background image / video', 'ts-loading-bg'),
+      assetVideo(  'files.video.loadingVideo',   'Loading / intro video',  'ts-loading-video'),
     ]),
     block('ts-loading-copy-block', 'Loading', [
       textML('loading.title',        'Title',         'ts-loading-title', 'Loading…'),
@@ -319,7 +321,9 @@ function nextDesktopTab() {
       textML('desktop.qrText',      'QR Text',     'next-desktop-qrtext',      'Scan to play on mobile'),
     ]),
     block('next-loading-assets-block', 'Loading assets', [
-      assetVideo('files.video.loadingVideo', 'Loading / intro video', 'next-loading-video'),
+      assetLogo(   'general.loading.logo',       'Loading logo (overlay)',   'next-loading-logo'),
+      assetMediaBg('general.loading.background', 'Loading background (img/video)', 'next-loading-bg'),
+      assetVideo(  'files.video.loadingVideo',   'Loading / intro video',    'next-loading-video'),
     ]),
     block('next-loading-copy-block', 'Loading copy', [
       textML('loading.title',        'Loading title',    'next-loading-title', 'Loading…'),
@@ -761,47 +765,44 @@ export function buildNextCapeFormat({
 
 /**
  * Build a complete Cape format (interfaceSetup + publishProfiles) for a
- * TanStack project. The Settings page is shared with Next, so Livewall
- * branding + fonts + legal flow identically across stacks.
+ * TanStack project. TanStack intentionally uses the same rich CAPE page
+ * vocabulary as Next so the scaffolder produces comparable campaign editing
+ * surfaces across stacks.
  *
- * @param {{ pages: string[], tsPageElementSelections: object }} opts
+ * @param {{ pages: string[], instances?: object[], pageTypes?: object, tsPageElementSelections?: object, pageElementSelections?: object, modules?: string[], flowEnabledExits?: object, menuItemsEnabled?: object, iframe?: boolean }} opts
  * @returns {{ publishProfiles: object, interfaceSetup: object }}
  */
-export function buildTanStackCapeFormat({ pages, tsPageElementSelections = {} }) {
-  const pageTabs = [];
+export function buildTanStackCapeFormat({
+  pages,
+  instances = null,
+  pageTypes = {},
+  tsPageElementSelections = {},
+  pageElementSelections = {},
+  modules = [],
+  flowEnabledExits = {},
+  menuItemsEnabled = {},
+  iframe = false,
+}) {
+  const selectionSource = Object.keys(pageElementSelections).length > 0
+    ? pageElementSelections
+    : tsPageElementSelections;
+  const pageTypeList = (pages ?? []).map((p) => (typeof p === 'object' ? (p.type ?? p.id) : (pageTypes[p] ?? p)));
+  const effectiveModules = new Set(modules);
+  if (pageTypeList.includes('register')) effectiveModules.add('registration');
+  if (pageTypeList.includes('leaderboard')) effectiveModules.add('leaderboard');
+  if (pageTypeList.includes('voucher')) effectiveModules.add('voucher');
 
-  if (pages.includes('landing')) {
-    const t = tsLandingTab(tsPageElementSelections['landing'] ?? []);
-    if (t) pageTabs.push(t);
-  }
-  if (pages.includes('tutorial')) {
-    const stepCount = tsPageElementSelections['tutorial__stepCount'] ?? 3;
-    const t = tsTutorialTab(tsPageElementSelections['tutorial'] ?? [], stepCount);
-    if (t) pageTabs.push(t);
-  }
-  if (pages.includes('result')) {
-    const t = tsResultTab(tsPageElementSelections['result'] ?? []);
-    if (t) pageTabs.push(t);
-  }
-  if (pages.includes('register')) {
-    const t = tsRegisterTab(tsPageElementSelections['register'] ?? []);
-    if (t) pageTabs.push(t);
-  }
-  pageTabs.push(tsDesktopTab());
+  const format = buildNextCapeFormat({
+    pages,
+    instances,
+    pageTypes,
+    pageElementSelections: selectionSource,
+    modules: [...effectiveModules],
+    flowEnabledExits,
+    menuItemsEnabled,
+    iframe,
+  });
 
-  const capePages = [settingsPage()];
-  if (pageTabs.length > 0) {
-    capePages.push(capePage('pages', 'Pages', 'ts-pages-page', pageTabs, { showLanguageSelector: true }));
-  }
-  capePages.push(publishPage());
-
-  return {
-    publishProfiles: {
-      export: {
-        title: 'Publish game',
-        tasks: [{ customerFunction: 'publishGame', async: true }],
-      },
-    },
-    interfaceSetup: { pages: capePages },
-  };
+  format.publishProfiles.export.title = 'Publish game';
+  return format;
 }

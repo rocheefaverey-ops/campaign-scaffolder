@@ -1,56 +1,52 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useLoaderData, useRouter } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
-import { loadVideoData } from '~/loaders/VideoLoader.ts';
-import { useGameNavigation } from '~/hooks/useGameNavigation.ts';
 import { useUnity } from '~/components/game/UnityContext.tsx';
+import { loadVideoData } from '~/loaders/VideoLoader.ts';
 
 export const Route = createFileRoute('/loading-video')({
   component: LoadingVideoPage,
-  loader: async ({ context }) => await loadVideoData(context.language),
+  loader: async ({ context }) => await loadVideoData(context.language, 'loading-video'),
 });
 
 function LoadingVideoPage() {
-  const { videoUrl, alwaysSkip, readyFallbackSec } = Route.useLoaderData();
-  const { navigate } = useGameNavigation();
-  const { fullBoot } = useUnity();
-  const [canSkip, setCanSkip] = useState(alwaysSkip);
-  const fallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const booted = useRef(false);
+  const { copy, videoUrl, logoUrl } = Route.useLoaderData();
+  const { copy: sharedCopy, sceneKey } = useLoaderData({ from: '__root__' });
+  const { setTargetScene, setData, fullBoot } = useUnity();
+  const router = useRouter();
+  const [canContinue, setCanContinue] = useState(false);
+  const started = useRef(false);
+
+  const goGame = () => void router.navigate({ to: '/game', replace: true });
 
   useEffect(() => {
-    let cancelled = false;
+    if (started.current) return;
+    started.current = true;
 
-    if (alwaysSkip) { setCanSkip(true); return; }
+    setTargetScene(sceneKey);
+    setData({ translations: sharedCopy.game });
 
-    // Start Unity boot in background; navigate when ready
-    if (!booted.current) {
-      booted.current = true;
-      fullBoot()
-        .then(() => { if (!cancelled) navigate(); })
-        .catch(() => { if (!cancelled) setCanSkip(true); });
-    }
-
-    // Fallback: allow skip if Unity never signals ready
-    fallbackRef.current = setTimeout(() => { if (!cancelled) setCanSkip(true); }, readyFallbackSec * 1000);
-
-    return () => {
-      cancelled = true;
-      if (fallbackRef.current) clearTimeout(fallbackRef.current);
-    };
-  }, [navigate, alwaysSkip, fullBoot, readyFallbackSec]);
+    fullBoot()
+      .then(goGame)
+      .catch((error) => {
+        console.error('Unity loading video failed to boot game:', error);
+        setCanContinue(true);
+      });
+  }, [fullBoot, sceneKey, setData, setTargetScene, sharedCopy.game]);
 
   return (
-    <PageContainer className="campaign-screen campaign-screen--video">
+    <PageContainer className="campaign-screen--video" disableTransition>
       {videoUrl ? (
         <video src={videoUrl} className="campaign-video-fill" autoPlay muted loop playsInline />
       ) : (
-        <div className="campaign-video-loader" aria-label="Loading game…">
+        <div className="campaign-video-loader" aria-label={copy.loadingText}>
           <span className="campaign-spinner" />
+          <span>{copy.loadingText}</span>
         </div>
       )}
-      {canSkip && (
-        <button type="button" className="campaign-video-skip" onClick={navigate}>Skip →</button>
+      {logoUrl && <img src={logoUrl} alt="" className="campaign-video-logo" />}
+      {canContinue && (
+        <button type="button" className="campaign-video-skip" onClick={goGame}>{copy.cta}</button>
       )}
     </PageContainer>
   );

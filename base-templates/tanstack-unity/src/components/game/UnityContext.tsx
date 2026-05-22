@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { useLoaderData } from '@tanstack/react-router';
+import { useLoaderData, useRouteContext } from '@tanstack/react-router';
 import styles from './UnityContext.module.scss';
 import type {
   IUnityApplication,
@@ -42,6 +42,7 @@ const UnityContext = createContext<IUnityContext | undefined>(undefined);
 
 export function UnityProvider({ children }: IDefaultProps) {
   const { unityEnvironment } = useLoaderData({ from: '__root__' });
+  const { language } = useRouteContext({ from: '__root__' });
 
   // Settings
   const autoResume = useRef<boolean>(true);
@@ -114,9 +115,10 @@ export function UnityProvider({ children }: IDefaultProps) {
     unityDataRef.current = {
       useMockAPI: true,
       environment: import.meta.env.VITE_ENVIRONMENT,
+      locale: language,
       ...data,
     };
-  }, []);
+  }, [language]);
 
   const initializeUnity = useCallback(async (omitLogs = false) => {
     if (!unityEnvironment.url) {
@@ -136,14 +138,14 @@ export function UnityProvider({ children }: IDefaultProps) {
     }
     isInitialized.current = true;
 
-    // Calculate target DPR
-    let dpr: number;
-    if (getPlatform() === 'desktop') {
-      const minDpr = parseNumber(import.meta.env.VITE_UNITY_DESKTOP_DPR, 1);
-      dpr = Math.max(window.devicePixelRatio, minDpr);
-    } else {
-      dpr = window.devicePixelRatio;
-    }
+    // Calculate target DPR. HEMA/ACMEA-style projects use a desktop floor;
+    // newer scaffolds can still clamp with min/max when needed.
+    const desktopMinDpr = getPlatform() === 'desktop'
+      ? parseNumber(import.meta.env.VITE_UNITY_DESKTOP_DPR, 1)
+      : 1;
+    const minDpr = Math.max(desktopMinDpr, parseNumber(import.meta.env.VITE_UNITY_MIN_DPR, 1));
+    const maxDpr = parseNumber(import.meta.env.VITE_UNITY_MAX_DPR, 3);
+    const dpr = Math.min(maxDpr, Math.max(minDpr, window.devicePixelRatio));
 
     // Build config
     const config: IUnityConfig = {
@@ -156,6 +158,7 @@ export function UnityProvider({ children }: IDefaultProps) {
       streamingAssetsUrl: `${unityEnvironment.url}StreamingAssets`,
       devicePixelRatio: dpr,
       matchWebGLToCanvasSize: true,
+      autoSyncPersistentDataPath: true,
       cacheControl: (url: string) => {
         if (url.match(/\.data/) || url.match(/\.wasm/) || url.match(/\.bundle/)) {
           return unityEnvironment.isLocal ? 'no-store' : 'immutable';
@@ -346,7 +349,7 @@ export function UnityProvider({ children }: IDefaultProps) {
     <>
       <UnityContext value={ctxValue}>{children}</UnityContext>
 
-      <div className={styles.unityGame} style={{ display: isUnityVisible ? 'block' : 'none' }}>
+      <div className={styles.unityGame} style={isUnityVisible ? { visibility: 'visible', pointerEvents: 'auto' } : { visibility: 'hidden', pointerEvents: 'none' }}>
         <canvas ref={unityCanvasRef} id={'unity'} className={styles.unityCanvas} />
       </div>
     </>

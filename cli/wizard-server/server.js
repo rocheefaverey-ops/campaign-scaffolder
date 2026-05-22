@@ -26,6 +26,7 @@ import { randomBytes } from 'crypto';
 import { validateAuth, login as capeLogin, clearTokenCache } from '../cape-client.js';
 import { loadGameRegistry } from '../game-registry.js';
 import { KNOWN_PAGE_TYPES } from '../cape-format-builder.js';
+import { runDoctor } from '../core/health.js';
 
 const __filename     = fileURLToPath(import.meta.url);
 const __dirname      = dirname(__filename);
@@ -190,6 +191,8 @@ app.get('/api/games', async (req) => {
 });
 
 app.get('/api/modules', async () => ({ modules: MODULE_CATALOG }));
+
+app.get('/api/doctor', async () => runDoctor());
 
 // ─── Load existing project ──────────────────────────────────────────────────
 // The wizard's "Open existing" flow pings this with a directory path. We

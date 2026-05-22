@@ -1,22 +1,87 @@
 .tutorialSliderItem {
-  background-color: $whiteColor;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
   width: 100%;
   height: 100%;
   overflow: hidden;
+  text-align: center;
 
-  .container {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+  .visual,
+  .fallbackVisual {
     width: 100%;
-    height: 100%;
-    padding: 32px 24px;
+    aspect-ratio: 1.18;
+    border-radius: 18px;
+    overflow: hidden;
+  }
 
-    .visual {
-      display: block;
-      width: 240px;
-      height: auto;
-      margin: 0 auto;
+  .visual {
+    display: block;
+    object-fit: cover;
+    background-color: color-mix(in srgb, var(--color-primary) 12%, #f4f4f0);
+  }
+
+  .fallbackVisual {
+    position: relative;
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 28%, #ffffff), #f7f8ef 58%),
+      var(--campaign-ambient);
+
+    &[data-variant='1'] {
+      background:
+        linear-gradient(145deg, #101010, color-mix(in srgb, var(--color-primary) 38%, #ffffff) 72%),
+        var(--campaign-ambient);
     }
+
+    &[data-variant='2'] {
+      background:
+        linear-gradient(110deg, rgba(255, 255, 255, 0.84) 0 24%, transparent 24% 100%),
+        linear-gradient(150deg, #f7f8ef, color-mix(in srgb, var(--color-secondary) 32%, #ffffff));
+    }
+  }
+
+  .fallbackBadge,
+  .fallbackCard,
+  .fallbackStripe {
+    position: absolute;
+    display: block;
+  }
+
+  .fallbackBadge {
+    width: 46%;
+    aspect-ratio: 1.28;
+    left: 10%;
+    top: 14%;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--color-primary) 76%, #ffffff);
+    box-shadow: 0 18px 38px rgba(14, 14, 14, 0.18);
+    transform: rotate(-6deg);
+  }
+
+  .fallbackCard {
+    width: 44%;
+    aspect-ratio: 0.78;
+    right: 11%;
+    bottom: 12%;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: 0 20px 50px rgba(14, 14, 14, 0.18);
+    transform: rotate(7deg);
+  }
+
+  .fallbackStripe {
+    width: 74%;
+    height: 18%;
+    left: 13%;
+    bottom: 18%;
+    border-radius: 999px;
+    background: rgba(14, 14, 14, 0.12);
+    transform: rotate(-8deg);
+  }
+
+  .copy {
+    width: min(100%, 320px);
+    margin: 0 auto;
   }
 }

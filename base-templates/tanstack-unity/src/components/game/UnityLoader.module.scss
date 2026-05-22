@@ -7,6 +7,41 @@
   background-color: white;
   width: 100%;
   height: 100%;
+  overflow: hidden;
+
+  .background {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 0;
+    // Dim media slightly so overlay copy reads on busy backgrounds.
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.18);
+      pointer-events: none;
+    }
+  }
+
+  .content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  .logo {
+    object-fit: contain;
+  }
 
   .spinner {
     margin-top: 24px;

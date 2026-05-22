@@ -6,7 +6,7 @@ import { AuthProvider } from '~/components/contexts/AuthContext.tsx';
 import { UnityProvider } from '~/components/game/UnityContext.tsx';
 
 export function ViewContainer({ children }: IDefaultProps) {
-  const { copy, branding, baseUrl } = useLoaderData({ from: '__root__' });
+  const { copy, branding, desktop, baseUrl } = useLoaderData({ from: '__root__' });
   const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
@@ -14,17 +14,24 @@ export function ViewContainer({ children }: IDefaultProps) {
   }, []);
 
   const b = branding as Record<string, unknown> | null;
-  const logoUrl = b?.logoUrl as string | undefined
+  const logoUrl = desktop?.logoUrl
+               || b?.logoUrl as string | undefined
                || b?.['general.header.logo'] as string | undefined;
-  const bgUrl   = b?.backgroundUrl as string | undefined
+  const bgUrl   = desktop?.backgroundUrl
+               || b?.backgroundUrl as string | undefined
                || b?.['desktop.backgroundIllustration'] as string | undefined;
+  const hasVideoBg = !!bgUrl && /\.(mp4|webm|mov)$/i.test(bgUrl);
 
   const description = copy.desktop.description;
   const qrLabel     = copy.desktop.qrText;
 
   return (
     <div className="desktop-wrapper" data-enabled="true">
-      {bgUrl && <div className="desktop-wrapper__bg" style={{ backgroundImage: `url('${bgUrl}')` }} />}
+      {bgUrl && (
+        hasVideoBg
+          ? <video src={bgUrl} className="desktop-wrapper__bg desktop-wrapper__bg--video" autoPlay muted loop playsInline aria-hidden />
+          : <div className="desktop-wrapper__bg" style={{ backgroundImage: `url('${bgUrl}')` }} />
+      )}
       <div className="desktop-wrapper__overlay" />
 
       <div className="desktop-wrapper__stage">

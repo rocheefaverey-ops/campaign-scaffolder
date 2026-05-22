@@ -75,7 +75,7 @@ export default function App() {
       <main className="app__main">
         {serverUp === false && (
           <div className="banner banner--err">
-            Wizard server not reachable on <code>:3737</code>. Make sure <code>npm run wizard</code> is running.
+            Wizard server not reachable on <code>:3737</code>. Make sure <code>pnpm wizard</code> is running.
           </div>
         )}
         <Current

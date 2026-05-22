@@ -1,36 +1,44 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
 import { loadVideoData } from '~/loaders/VideoLoader.ts';
-import { useGameNavigation } from '~/hooks/useGameNavigation.ts';
 
 export const Route = createFileRoute('/intro-video')({
   component: IntroVideoPage,
-  loader: async ({ context }) => await loadVideoData(context.language),
+  loader: async ({ context }) => await loadVideoData(context.language, 'intro-video'),
 });
 
 function IntroVideoPage() {
-  const { videoUrl, minPlaybackSec, alwaysSkip } = Route.useLoaderData();
-  const { navigate } = useGameNavigation();
-  const [canSkip, setCanSkip] = useState(alwaysSkip);
+  const { copy, videoUrl, logoUrl, skipAfterSeconds } = Route.useLoaderData();
+  const router = useRouter();
+  const [canSkip, setCanSkip] = useState(skipAfterSeconds <= 0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const goNext = () => void router.navigate({ to: '/landing', replace: true });
+
   useEffect(() => {
-    if (!videoUrl) { navigate(); return; }
-    if (alwaysSkip) return;
-    timerRef.current = setTimeout(() => setCanSkip(true), minPlaybackSec * 1000);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [navigate, videoUrl, alwaysSkip, minPlaybackSec]);
+    if (!videoUrl) {
+      goNext();
+      return;
+    }
+    if (skipAfterSeconds > 0) {
+      timerRef.current = setTimeout(() => setCanSkip(true), skipAfterSeconds * 1000);
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [videoUrl, skipAfterSeconds]);
 
   return (
-    <PageContainer className="campaign-screen campaign-screen--video">
+    <PageContainer className="campaign-screen--video" disableTransition>
       {videoUrl ? (
-        <video src={videoUrl} className="campaign-video-fill" autoPlay muted={false} playsInline onEnded={navigate} />
+        <video src={videoUrl} className="campaign-video-fill" autoPlay muted playsInline onEnded={goNext} />
       ) : (
         <div className="campaign-video-placeholder" />
       )}
+      {logoUrl && <img src={logoUrl} alt="" className="campaign-video-logo" />}
       {canSkip && (
-        <button type="button" className="campaign-video-skip" onClick={navigate}>Skip →</button>
+        <button type="button" className="campaign-video-skip" onClick={goNext}>{copy.cta}</button>
       )}
     </PageContainer>
   );

@@ -8,6 +8,7 @@ export const getRouter = () => {
     routeTree,
     scrollRestoration: true,
     defaultViewTransition: true,
+    defaultPendingComponent: () => null,
     defaultNotFoundComponent: () => <div>Not Found</div>,
     context: {
       language: process.env.CAPE_CAMPAIGN_LANGUAGE || 'EN', // Default language

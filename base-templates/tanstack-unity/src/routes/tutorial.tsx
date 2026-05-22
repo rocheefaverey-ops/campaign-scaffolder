@@ -1,14 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import styles from './tutorial.module.scss';
 import type { IContentSliderHandle } from '~/components/slider/ContentSlider.tsx';
 import { ContentSlider } from '~/components/slider/ContentSlider.tsx';
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
-import LogoVisual from '~/assets/images/logo.png';
 import { loadTutorialData } from '~/loaders/TutorialLoader.ts';
 import { useGameNavigation } from '~/hooks/useGameNavigation.ts';
 import { IconButton } from '~/components/buttons/IconButton.tsx';
 import { TutorialSliderItem } from '~/components/slider/tutorial/TutorialSliderItem.tsx';
+import { StyledButton } from '~/components/buttons/StyledButton.tsx';
+import { StyledText } from '~/components/texts/StyledText.tsx';
 
 export const Route = createFileRoute('/tutorial')({
   component: Tutorial,
@@ -16,29 +17,47 @@ export const Route = createFileRoute('/tutorial')({
 });
 
 function Tutorial() {
-  const { steps } = Route.useLoaderData();
+  const { copy, steps } = Route.useLoaderData();
   const { isPending, navigate } = useGameNavigation();
   const contentRef = useRef<IContentSliderHandle>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
-  // Click handler
-  const onItemClicked = useCallback((index: number) => {
-    if (index < steps.length - 1) {
+  const filledSteps = useMemo(
+    () => steps.filter((step) => step.title || step.description || step.image),
+    [steps]
+  );
+  const visibleSteps = filledSteps.length ? filledSteps : steps;
+  const isLastStep = activeIndex >= visibleSteps.length - 1;
+
+  const onNext = useCallback(() => {
+    if (!isLastStep) {
       contentRef.current?.goToNext();
+      setActiveIndex((index) => Math.min(index + 1, visibleSteps.length - 1));
     } else {
       navigate();
     }
-  }, []);
+  }, [isLastStep, navigate, visibleSteps.length]);
 
-  // Build items
-  const items = steps.map((step, i) =>
-    <TutorialSliderItem key={i} image={LogoVisual} {...step} loading={isPending} onClick={() => onItemClicked(i)} />
-  );
+  const items = visibleSteps.map((step, i) => (
+    <TutorialSliderItem
+      key={i}
+      index={i}
+      title={step.title || copy.headline || `Step ${i + 1}`}
+      description={step.description || copy.subline}
+      image={step.image}
+    />
+  ));
 
-  // Render
   return (
     <PageContainer className={styles.tutorial}>
-      <ContentSlider ref={contentRef} className={styles.slider} items={items} />
-      <IconButton className={styles.skip} icon={'close'} loading={isPending} onClick={navigate} />
+      <div className={styles.panel}>
+        <IconButton className={styles.skip} icon={'close'} loading={isPending} onClick={navigate} />
+        {copy.header && <StyledText type={'title'} className={styles.header}>{copy.header}</StyledText>}
+        <ContentSlider ref={contentRef} className={styles.slider} items={items} onIndexChange={setActiveIndex} />
+        <StyledButton className={styles.button} loading={isPending} onClick={onNext}>
+          {isLastStep ? copy.cta || 'Start' : copy.ctaNext || 'Next'}
+        </StyledButton>
+      </div>
     </PageContainer>
   );
 }

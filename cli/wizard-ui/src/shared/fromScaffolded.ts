@@ -1,6 +1,7 @@
 import {
   DEFAULT_CONFIG, defaultPageSettings, defaultEnabledExits, defaultFlowButtonVariants,
   defaultMenuItemsEnabled, defaultMenuButtonVariants, defaultRouteForType,
+  defaultPagesForStack,
   type ScaffoldConfig, type PageInstance, type Stack, type Engine, type Market, type RegMode, type PageSettings,
   type ButtonVariant,
 } from './config.ts';
@@ -16,6 +17,10 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
     ? raw.wizard as Record<string, unknown>
     : {};
 
+  // ── Strings & primitives — fall back to DEFAULT_CONFIG when missing.
+  const stack             = pickString(raw, 'stack')             as Stack   ?? DEFAULT_CONFIG.stack;
+  const game              = pickString(raw, 'game')              as Engine  ?? DEFAULT_CONFIG.game;
+
   // ── Pages: legacy shape was string[]; current is string[] of ids + a
   // separate pageTypes map. Reconstruct PageInstance[].
   const pageIds: string[] = Array.isArray(raw.pages)
@@ -27,13 +32,11 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
   const pages: PageInstance[] = pageIds.length > 0
     ? pageIds.map((id) => {
         const type = pageTypes[id] ?? id;
-        return { id, type, route: defaultRouteForType(type) };
+        const stackDefault = defaultPagesForStack(stack).find((page) => page.id === id || page.type === type);
+        return { id, type, route: stackDefault?.route ?? defaultRouteForType(type) };
       })
-    : DEFAULT_CONFIG.pages;
+    : defaultPagesForStack(stack);
 
-  // ── Strings & primitives — fall back to DEFAULT_CONFIG when missing.
-  const stack             = pickString(raw, 'stack')             as Stack   ?? DEFAULT_CONFIG.stack;
-  const game              = pickString(raw, 'game')              as Engine  ?? DEFAULT_CONFIG.game;
   const selectedGame = (raw.selectedGame && typeof raw.selectedGame === 'object')
     ? raw.selectedGame as Record<string, unknown>
     : {};

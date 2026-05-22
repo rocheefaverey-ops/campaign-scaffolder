@@ -106,8 +106,8 @@ export function printPostScaffoldMessage({ projectName, capeId, market, modules,
   console.log(c.bold(`  ${ARROW} STEP 3 — Install and start the dev server`));
   console.log('');
   console.log(c.cyan(`       cd ${outputDir}`));
-  console.log(c.cyan(`       npm install`));
-  console.log(c.cyan(`       npm run dev`));
+  console.log(c.cyan(`       pnpm install`));
+  console.log(c.cyan(`       pnpm dev`));
   console.log('');
 
   // ── Module-specific TODOs ─────────────────────────────────────────────────
@@ -145,7 +145,7 @@ function buildModuleTodos(modules, capeId, capeAutoPublished = false) {
 
   if (modules.includes('r3f')) {
     todos.push(
-      `[r3f] Install deps: ${c.cyan('npm install three @react-three/fiber @react-three/drei')}`,
+      `[r3f] Install deps: ${c.cyan('pnpm add three @react-three/fiber @react-three/drei')}`,
     );
     todos.push(
       `[r3f] Uncomment ${c.cyan('<Canvas>')} in ${c.cyan('components/_modules/R3FCanvas/R3FCanvas.tsx')}`,
@@ -166,13 +166,13 @@ function buildModuleTodos(modules, capeId, capeAutoPublished = false) {
 
   if (modules.includes('voucher')) {
     todos.push(
-      `[voucher] Install QR dep: ${c.cyan('npm install next-qrcode')} and uncomment in ${c.cyan('components/_modules/Voucher/QRCode.tsx')}`,
+      `[voucher] Install QR dep: ${c.cyan('pnpm add next-qrcode')} and uncomment in ${c.cyan('components/_modules/Voucher/QRCode.tsx')}`,
     );
   }
 
   if (modules.includes('audio')) {
     todos.push(
-      `[audio] Install: ${c.cyan('npm install howler @types/howler')} and uncomment in ${c.cyan('components/_modules/AudioPlayer/AudioPlayer.tsx')}`,
+      `[audio] Install: ${c.cyan('pnpm add howler @types/howler')} and uncomment in ${c.cyan('components/_modules/AudioPlayer/AudioPlayer.tsx')}`,
     );
   }
 
@@ -258,8 +258,8 @@ function printPostScaffoldMessageTanstack({ projectName, capeId, market, outputD
   console.log(c.bold(`  ${ARROW} STEP 4 — Install and start the dev server`));
   console.log('');
   console.log(c.cyan(`       cd ${outputDir}`));
-  console.log(c.cyan(`       npm install`));
-  console.log(c.cyan(`       npm run dev`));
+  console.log(c.cyan(`       pnpm install`));
+  console.log(c.cyan(`       pnpm dev`));
   console.log('');
   console.log(divider);
   console.log('');

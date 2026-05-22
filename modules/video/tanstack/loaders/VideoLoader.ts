@@ -1,17 +1,39 @@
-import { getCapeProperty } from '~/server/cape/CapeProvider.ts';
+import { getCapeCopy, getCapeProperty } from '~/server/cape/CapeProvider.ts';
 
-export async function loadVideoData(language: string) {
-  const [videoAsset, minPlaybackProp, alwaysSkipProp, readyFallbackProp] = await Promise.all([
-    getCapeProperty({ type: 'general', path: ['video', 'introVideo'] }),
-    getCapeProperty({ type: 'settings', path: ['pages', 'video', 'minPlaybackSec'] }),
-    getCapeProperty({ type: 'settings', path: ['pages', 'video', 'alwaysSkip'] }),
-    getCapeProperty({ type: 'settings', path: ['pages', 'video', 'readyFallbackSec'] }),
+type VideoPageId = 'intro-video' | 'loading-video' | 'ad-video' | 'video';
+
+function toCapeModelId(pageId: VideoPageId) {
+  return pageId.replace(/-([a-z0-9])/g, (_, chr: string) => chr.toUpperCase());
+}
+
+export async function loadVideoData(language: string, pageId: VideoPageId) {
+  const modelId = toCapeModelId(pageId);
+  const [
+    [cta, loadingText],
+    introVideo,
+    loadingVideo,
+    legacyLoadingVideo,
+    logo,
+    skipAfterSeconds,
+  ] = await Promise.all([
+    getCapeCopy(language, [
+      [modelId, 'cta'],
+      [modelId, 'loadingText'],
+    ]),
+    getCapeProperty({ type: 'general', path: [modelId, 'introVideo'] }),
+    getCapeProperty({ type: 'files', path: [modelId, 'loadingVideo'] }),
+    getCapeProperty({ type: 'files', path: ['video', 'loadingVideo'] }),
+    getCapeProperty({ type: 'general', path: [modelId, 'logo'] }),
+    getCapeProperty({ type: 'settings', path: ['pages', modelId, 'skipAfterSeconds'] }),
   ]);
 
   return {
-    videoUrl:         videoAsset.asFile()?.url ?? null,
-    minPlaybackSec:   minPlaybackProp.asNumber()  ?? 3,
-    alwaysSkip:       alwaysSkipProp.asBoolean()  ?? false,
-    readyFallbackSec: readyFallbackProp.asNumber() ?? 8,
+    copy: {
+      cta: cta || 'Skip',
+      loadingText: loadingText || 'Loading...',
+    },
+    videoUrl: introVideo.asFile()?.url ?? loadingVideo.asFile()?.url ?? legacyLoadingVideo.asFile()?.url ?? null,
+    logoUrl: logo.asFile()?.url ?? null,
+    skipAfterSeconds: skipAfterSeconds.asNumber() ?? 3,
   };
 }

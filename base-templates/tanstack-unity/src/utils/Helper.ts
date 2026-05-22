@@ -83,7 +83,7 @@ export function parseBoolean(input: string | null | undefined, fallback: boolean
  * Check if the current environment is local
  */
 export function isLocal(): boolean {
-  return import.meta.env.VITE_ENVIRONMENT === 'local';
+  return ['local', 'development'].includes(import.meta.env.VITE_ENVIRONMENT);
 }
 
 /**

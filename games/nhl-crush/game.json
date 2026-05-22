@@ -6,12 +6,12 @@
   "stack": "tanstack",
 
   "cdn": {
-    "baseUrl": "https://lw-someone-something-unity-test.lwcf4.nl",
+    "baseUrl": "https://lw-wave-nhlcrush-unity-test.lwcf5.nl",
     "gameName": "Game",
     "platforms": ["desktop", "mobile"],
     "compression": null,
     "versionFile": "version.json",
-    "noCache": false
+    "noCache": true
   },
 
   "dpr": {
@@ -80,7 +80,7 @@
   },
 
   "env": {
-    "UNITY_BASE_URL":      "https://lw-someone-something-unity-test.lwcf4.nl",
+    "UNITY_BASE_URL":      "https://lw-wave-nhlcrush-unity-test.lwcf5.nl",
     "UNITY_GAME_NAME":     "Game",
     "VITE_UNITY_MIN_DPR":  "1.5",
     "VITE_UNITY_MAX_DPR":  "3"

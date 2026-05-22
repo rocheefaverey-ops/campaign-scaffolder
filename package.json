@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Livewall Campaign Scaffolder CLI",
   "type": "module",
+  "packageManager": "pnpm@10.33.2",
   "bin": {
     "lw-scaffold": "./cli/scaffold.js"
   },
@@ -14,12 +15,12 @@
     "teardown:list": "node cli/teardown.js --list",
     "preview-message": "node cli/post-scaffold-message.js",
     "wizard": "node cli/wizard.js",
-    "wizard:install": "npm --prefix cli/wizard-server install && npm --prefix cli/wizard-ui install",
-    "wizard:build": "npm --prefix cli/wizard-ui run build",
+    "wizard:install": "pnpm --dir cli/wizard-server install && pnpm --dir cli/wizard-ui install",
+    "wizard:build": "pnpm --dir cli/wizard-ui run build",
     "verify:antigravfix": "node scripts/verify-antigravfix.js",
-    "test": "node cli/cape-format-builder.test.js && node cli/scaffold.test.js && node --test cli/tests/game-registry.test.js",
-    "prewizard:build": "npm test",
-    "prewizard": "npm test"
+    "test": "node cli/cape-format-builder.test.js && node cli/scaffold.test.js && node --test cli/tests/*.test.js",
+    "prewizard:build": "pnpm test",
+    "prewizard": "pnpm test"
   },
   "engines": {
     "node": ">=18.0.0"

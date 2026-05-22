@@ -1771,6 +1771,79 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
     if (generated > 0) ok(`${generated} page(s) generated from page builder`);
   }
 
+  // 3b-ii. Explicit TanStack video routes. Keep these in sync with the
+  // selected flow so `.scaffolded`, routeTree, and CAPE tabs describe the
+  // same campaign.
+  const selectedVideoPages = EXPLICIT_VIDEO_PAGES.filter((id) => normalizedPages.includes(id));
+  const tanstackVideoModuleDir = join(MODULES_DIR, 'video', 'tanstack');
+  if (selectedVideoPages.length > 0) {
+    step('3b-ii', `Installing ${selectedVideoPages.length} video route(s)...`);
+    const srcLoader = join(tanstackVideoModuleDir, 'loaders', 'VideoLoader.ts');
+    if (existsSync(srcLoader)) {
+      mkdirSync(loadersDir, { recursive: true });
+      cpSync(srcLoader, join(loadersDir, 'VideoLoader.ts'));
+    }
+    for (const id of selectedVideoPages) {
+      const srcRoute = join(tanstackVideoModuleDir, 'routes', `${id}.tsx`);
+      if (!existsSync(srcRoute)) {
+        warn(`No TanStack video route template found for "${id}".`);
+        continue;
+      }
+      cpSync(srcRoute, join(routesDir, `${id}.tsx`));
+      ok(`Video route "${id}" installed`);
+    }
+  }
+  for (const id of EXPLICIT_VIDEO_PAGES) {
+    if (!selectedVideoPages.includes(id)) {
+      const f = join(routesDir, `${id}.tsx`);
+      if (existsSync(f)) rmSync(f, { force: true });
+    }
+  }
+
+  const indexRoute = join(routesDir, 'index.tsx');
+  if (existsSync(indexRoute) && selectedVideoPages.includes('intro-video')) {
+    let src = readFileSync(indexRoute, 'utf8');
+    src = src
+      .replace(/preloadRoute\(\{ to: '\/landing' \}\)/g, `preloadRoute({ to: '/intro-video' })`)
+      .replace(/navigate\(\{ to: '\/landing', replace: true \}\)/g, `navigate({ to: '/intro-video', replace: true })`);
+    writeFileSync(indexRoute, src, 'utf8');
+  }
+
+  const gameNavigationHook = join(frontendDir, 'src', 'hooks', 'useGameNavigation.ts');
+  if (existsSync(gameNavigationHook) && selectedVideoPages.includes('loading-video')) {
+    writeFileSync(gameNavigationHook, `import { useCallback, useEffect, useTransition } from 'react';
+import { useRouter } from '@tanstack/react-router';
+
+export function useGameNavigation() {
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  useEffect(() => void router.preloadRoute({ to: '/loading-video', replace: true }), []);
+
+  const navigate = useCallback(() => {
+    startTransition(async () => {
+      await router.navigate({ to: '/loading-video', replace: true });
+    });
+  }, []);
+
+  return {
+    isPending,
+    navigate,
+  };
+}
+`, 'utf8');
+  }
+
+  if (!normalizedPages.includes('register')) {
+    const resultRoute = join(routesDir, 'result.tsx');
+    if (existsSync(resultRoute)) {
+      const src = readFileSync(resultRoute, 'utf8')
+        .replace(/linkOptions=\{\{ to: '\/register' \}\}/g, `linkOptions={{ to: '/landing' }}`)
+        .replace(/\{copy\.buttonRegister \|\| 'Register'\}/g, `{copy.buttonRegister || 'Play again'}`);
+      writeFileSync(resultRoute, src, 'utf8');
+    }
+  }
+
   // 3c. Token replacement for GTM
   if (gtmId) {
     step('3c', 'Injecting GTM ID…');
@@ -3404,12 +3477,19 @@ async function main() {
       const cfgFormat = cfg.stack === 'tanstack'
         ? buildTanStackCapeFormat({
             pages: pageIds,
+            instances: pageIds.map(id => ({ id, type: pageTypes[id] ?? id })),
+            pageTypes,
             tsPageElementSelections: {
               ...Object.fromEntries(pageIds
                 .filter((id) => TS_PAGE_DEFAULTS[id])
                 .map((id) => [id, TS_PAGE_DEFAULTS[id]])),
               ...(cfg.tsPageElementSelections ?? {}),
             },
+            pageElementSelections: cfg.pageElementSelections ?? {},
+            modules:               resolveModules(cfg.game ?? 'unity', pageIds.map(id => pageTypes[id] ?? id), cfg.modules ?? []),
+            flowEnabledExits:      cfg.flowEnabledExits ?? {},
+            menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
+            iframe:                cfg.iframe ?? false,
           })
         : buildNextCapeFormat({
             instances:         pageIds.map(id => ({ id, type: pageTypes[id] ?? id })),

@@ -9,7 +9,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import {
-  ALL_PAGES, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, MENU_ITEMS, BUTTON_VARIANTS, defaultRouteForType,
+  pagesForStack, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, MENU_ITEMS, BUTTON_VARIANTS, defaultRouteForType,
   type ScaffoldConfig, type RegMode, type StepProps, type PageInstance, type ButtonVariant,
 } from '../shared/config.ts';
 import PageSettingsCard from './PageSettingsCard.tsx';
@@ -17,6 +17,7 @@ import PreviewPane from './PreviewPane.tsx';
 
 export default function StepPages({ config, setConfig }: StepProps) {
   const inFlow      = config.pages;
+  const availablePages = pagesForStack(config.stack);
   const hasRegister = inFlow.some(i => i.type === 'register');
 
   /** Number of instances of each type currently in the flow. */
@@ -39,7 +40,7 @@ export default function StepPages({ config, setConfig }: StepProps) {
 
   const addInstance = (type: string) => {
     const id    = nextInstanceId(type, inFlow);
-    const route = defaultRouteForType(type);
+    const route = availablePages.find((page) => page.id === type)?.route ?? defaultRouteForType(type);
     setConfig({ ...config, pages: [...inFlow, { id, type, route }] });
   };
   const removeInstance = (id: string) => {
@@ -77,7 +78,7 @@ export default function StepPages({ config, setConfig }: StepProps) {
       <div className="pages-grid">
         <section className="pages-col">
           <h3 className="pages-col__title">Available</h3>
-          {ALL_PAGES.map(p => {
+          {availablePages.map(p => {
             const count = typeCounts[p.id] ?? 0;
             const canAdd = count === 0;
             return (

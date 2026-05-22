@@ -8,7 +8,7 @@
  *
  * Usage:
  *   node scripts/fetch-mock-cape.js
- *   npm run cape:fetch-mock
+ *   pnpm cape:fetch-mock
  *
  * Reads from .env (if present) or falls back to process.env.
  * Requires: NEXT_PUBLIC_CAPE_URL, NEXT_PUBLIC_CAPE_CAMPAIGN_ID, NEXT_PUBLIC_CAPE_MARKET
@@ -72,4 +72,4 @@ writeFileSync(outPath, JSON.stringify(data, null, 2), 'utf-8');
 
 console.log(`[cape:fetch-mock] Saved → public/mock-cape.json`);
 console.log(`[cape:fetch-mock] Campaign ${campaignId} (${market}) cached locally.`);
-console.log(`\n  Set CAPE_MOCK=true in .env and run:  npm run dev:mock\n`);
+console.log(`\n  Set CAPE_MOCK=true in .env and run:  pnpm dev:mock\n`);

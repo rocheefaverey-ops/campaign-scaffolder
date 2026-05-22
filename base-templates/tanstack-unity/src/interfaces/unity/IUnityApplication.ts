@@ -24,6 +24,7 @@ export interface IUnityConfig {
   matchWebGLToCanvasSize?: boolean;
   cacheControl?: (url: string) => string;
   errorHandler?: (message: string, filename: string, lineno: number) => boolean;
+  autoSyncPersistentDataPath?: boolean;
 }
 
 export interface IUnityTranslations {

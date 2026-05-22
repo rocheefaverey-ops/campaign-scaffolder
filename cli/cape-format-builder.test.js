@@ -11,7 +11,7 @@
  * Exits non-zero on any failure.
  */
 
-import { buildNextCapeFormat, KNOWN_PAGE_TYPES } from './cape-format-builder.js';
+import { buildNextCapeFormat, buildTanStackCapeFormat, KNOWN_PAGE_TYPES } from './cape-format-builder.js';
 import { stripInterfaceSetupForCapeSave } from './cape-client.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -23,6 +23,17 @@ const TYPES_THAT_SHOULD_RENDER_A_TAB = [...KNOWN_PAGE_TYPES].filter((t) => t !==
 
 const failures = [];
 const warnings = [];
+
+const collectModels = (node, models = new Set()) => {
+  if (Array.isArray(node)) {
+    for (const item of node) collectModels(item, models);
+    return models;
+  }
+  if (!node || typeof node !== 'object') return models;
+  if (typeof node.model === 'string') models.add(node.model);
+  for (const value of Object.values(node)) collectModels(value, models);
+  return models;
+};
 
 // Capture warnings so an unexpected `console.warn` from the builder fails the test.
 const origWarn = console.warn;
@@ -97,6 +108,37 @@ for (const expected of expectedFullTabs) {
 }
 if (warnings.length > 0) {
   failures.push(`Full-flow test produced unexpected warnings:\n  ${warnings.join('\n  ')}`);
+}
+
+// ── Test 3b: TanStack uses the same rich CAPE vocabulary as Next ───────────
+warnings.length = 0;
+const tanStackFlow = buildTanStackCapeFormat({
+  pages: ['landing', 'tutorial', 'register', 'game', 'result', 'leaderboard', 'voucher'],
+  tsPageElementSelections: { tutorial__stepCount: 3 },
+  menuItemsEnabled: {},
+});
+const tanStackTabs = tanStackFlow.interfaceSetup.pages.find((p) => p.path === 'pages').tabs.map((t) => t.path);
+for (const expected of ['header', 'desktop', 'landing', 'tutorial', 'register', 'result', 'leaderboard', 'voucher', 'menu']) {
+  if (!tanStackTabs.includes(expected)) {
+    failures.push(`TanStack rich-flow test: expected tab "${expected}" missing. Got: ${tanStackTabs.join(', ')}`);
+  }
+}
+const tanStackModels = collectModels(tanStackFlow.interfaceSetup);
+for (const expectedModel of [
+  'general.header.logo',
+  'files.landing.backgroundImage',
+  'copy.landing.headline',
+  'copy.tutorial.step1Title',
+  'copy.register.headline',
+  'copy.result.scoreLabel',
+  'copy.menu.home',
+]) {
+  if (!tanStackModels.has(expectedModel)) {
+    failures.push(`TanStack rich-flow test: expected model "${expectedModel}" missing.`);
+  }
+}
+if (warnings.length > 0) {
+  failures.push(`TanStack rich-flow test produced unexpected warnings:\n  ${warnings.join('\n  ')}`);
 }
 
 let generatedBooleanFields = 0;

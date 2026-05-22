@@ -1,0 +1,79 @@
+{
+  "id": "acmea-autozeker",
+  "name": "Acmea Autozeker",
+  "description": "Achmea Autozeker racing-style game — collect tokens, track distance and laps; supports vehicle choice (bicycle, …).",
+  "engine": "unity",
+  "stack": "tanstack",
+
+  "cdn": {
+    "baseUrl": "https://lw-achmea-autozeker-unity-test.lwcf5.nl",
+    "gameName": "Game",
+    "platforms": ["desktop", "mobile"],
+    "compression": null,
+    "versionFile": "version.json",
+    "noCache": true
+  },
+
+  "dpr": {
+    "min": 1,
+    "max": 2
+  },
+
+  "boot": {
+    "gameObjects": {
+      "setup": "WebService",
+      "game":  "GameService",
+      "pause": "PauseService"
+    },
+    "setupMethod": "SetData",
+    "sceneMethod": "SetScene",
+    "loadMethod":  "LoadScene",
+    "startMethod": "StartGame",
+    "defaultScene": "example"
+  },
+
+  "data": {
+    "environment":  true,
+    "muted":        true,
+    "translations": true,
+    "custom": {
+      "playTutorial": "boolean",
+      "useMockAPI":   "boolean",
+      "carChosen":    "string"
+    }
+  },
+
+  "events": {
+    "listens": ["ready", "start", "end", "navigation", "tracking", "apiRequest", "tutorialPlayed"],
+    "end": {
+      "score":           "number",
+      "playTime":        "number",
+      "collectedTokens": "number",
+      "distance":        "number",
+      "lapsCompleted":   "number",
+      "payload":         "string"
+    }
+  },
+
+  "translations": {
+    "Note": "Achmea Autozeker uses sharedCopy.game object — keys map to Unity translation keys"
+  },
+
+  "env": {
+    "UNITY_BASE_URL":          "https://lw-achmea-autozeker-unity-test.lwcf5.nl",
+    "UNITY_GAME_NAME":         "Game",
+    "VITE_UNITY_DESKTOP_DPR":  "2",
+    "VITE_UNITY_MIN_DPR":      "1",
+    "VITE_UNITY_MAX_DPR":      "2"
+  },
+
+  "notes": [
+    "Folder id is 'acmea-autozeker' to match the existing client project naming; Unity CDN uses correct 'achmea' spelling.",
+    "Uses TanStack Start (Vite) — env vars are VITE_ / unprefixed, not NEXT_PUBLIC_.",
+    "Verified end payload (May 2026 build): { score, playTime, collectedTokens, distance, lapsCompleted, payload }. payload is an encrypted base64 string the backend decrypts.",
+    "Current build has no PauseService GameObject — 'SendMessage: object PauseService not found!' is harmless. Remove boot.gameObjects.pause once confirmed permanent.",
+    "apiRequest event is handled by Unity — requires CORS proxy server action.",
+    "Default scene key 'example' — confirm with Unity dev before production.",
+    "CDN URL verified against the running acmea-autozeker-frontend/.env (May 2026)."
+  ]
+}

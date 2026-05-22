@@ -5,6 +5,9 @@ import { PageContainer } from '~/components/containers/PageContainer.tsx';
 import { useUnity } from '~/components/game/UnityContext.tsx';
 import { UnityLoader } from '~/components/game/UnityLoader.tsx';
 
+// Mirrors the pattern used by all current TanStack production campaigns
+// (NHL Crush, Achmea Autozeker, HEMA Stapelgek): the index route shows the
+// branded loader while Unity initialises, then forwards to /landing.
 export const Route = createFileRoute('/')({
   component: App,
 });
@@ -16,24 +19,22 @@ function App() {
   const [_, startTransition] = useTransition();
   const initialized = useRef(false);
 
-  // Begin loading Unity on mount
   useEffect(() => {
-    if (initialized.current) {
-      return;
-    }
+    if (initialized.current) return;
     initialized.current = true;
 
     startTransition(async () => {
       setTargetScene(sceneKey);
 
-      // Preload next route
       await router.preloadRoute({ to: '/landing' });
-
-      // Initialize Unity
       await initializeUnity();
 
-      // Navigate to launch after Unity loading
-      router.navigate({ to: '/landing', replace: true });
+      // viewTransition: false — Unity is still mutating the DOM right now
+      // (canvas, audio context, addressable bundles), and a view transition
+      // started here gets aborted by those mutations and surfaces as
+      // "InvalidStateError: Transition was aborted". Subsequent user-driven
+      // navigations still animate.
+      router.navigate({ to: '/landing', replace: true, viewTransition: false });
     });
   }, []);
 

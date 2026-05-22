@@ -166,9 +166,8 @@ function BubbleMesh({
       angularDamping={0.5}
       restitution={0.85}
       friction={0.1}
-      onPointerDown={(e) => { e.stopPropagation(); onPop(bubble.id, e as unknown as ThreeEvent<PointerEvent>); }}
     >
-      <mesh>
+      <mesh onPointerDown={(e) => { e.stopPropagation(); onPop(bubble.id, e); }}>
         <sphereGeometry args={[bubble.radius, 24, 24]} />
         <meshStandardMaterial
           color={bubble.color}

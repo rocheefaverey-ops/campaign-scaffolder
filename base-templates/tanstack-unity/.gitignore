@@ -1,0 +1,27 @@
+# Default web files
+.DS_Store
+node_modules/
+dist/
+dist-ssr/
+certs/
+
+# Local env files
+.env
+.env.local
+.env.*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+
+# TanStack / Nitro output
+count.txt
+.nitro/
+.tanstack/
+.wrangler/
+.output/
+.vinxi/
+todos.json

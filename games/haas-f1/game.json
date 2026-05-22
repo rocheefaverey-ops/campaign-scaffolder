@@ -11,7 +11,7 @@
     "platforms": ["desktop", "mobile"],
     "compression": null,
     "versionFile": "version.json",
-    "noCache": false
+    "noCache": true
   },
 
   "dpr": {

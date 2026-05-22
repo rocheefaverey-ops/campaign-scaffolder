@@ -17,6 +17,7 @@ export interface IUnitySceneLoad {
 export interface IUnityBaseInput {
   useMockAPI?: boolean;
   environment: string;
+  locale: string;
 }
 export interface IUnityInput {
   translations: IUnityTranslations;

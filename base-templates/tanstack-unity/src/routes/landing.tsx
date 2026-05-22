@@ -1,9 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
 import { StyledButton } from '~/components/buttons/StyledButton.tsx';
 import { BaseButton } from '~/components/buttons/BaseButton.tsx';
 import { loadLandingData } from '~/loaders/LandingLoader.ts';
-import { useGameNavigation } from '~/hooks/useGameNavigation.ts';
 import LogoImage from '~/assets/images/logo.png';
 
 export const Route = createFileRoute('/landing')({
@@ -13,7 +12,7 @@ export const Route = createFileRoute('/landing')({
 
 function Landing() {
   const { copy, heroUrl, headerLogoUrl, pageLogoUrl } = Route.useLoaderData();
-  const { isPending, navigate } = useGameNavigation();
+  const router = useRouter();
 
   const resolvedHeaderLogo = headerLogoUrl || LogoImage;
   const isVideoHero = !!heroUrl && /\.(mp4|webm|mov)$/i.test(heroUrl);
@@ -33,7 +32,7 @@ function Landing() {
           style={{ animation: 'fadeIn 0.4s ease both' }}
         >
           <img src={resolvedHeaderLogo} alt="Logo" className="campaign-hero-logo" />
-          <button type="button" className="campaign-menu-btn" aria-label="Menu">
+          <button type="button" className="campaign-menu-btn" aria-label="Menu" onClick={() => router.navigate({ to: '/menu' as never })}>
             <HamburgerIcon />
           </button>
         </header>
@@ -54,10 +53,10 @@ function Landing() {
           className="campaign-actions"
           style={{ animation: 'fadeIn 0.5s 0.28s ease both' }}
         >
-          <StyledButton loading={isPending} onClick={navigate}>
+          <StyledButton linkOptions={{ to: '/tutorial' }}>
             {copy.button || 'Play'}
           </StyledButton>
-          <BaseButton linkOptions={{ to: '{{LANDING_TUTORIAL_ROUTE}}' }} className="campaign-skip">
+          <BaseButton linkOptions={{ to: '/tutorial' }} className="campaign-skip">
             Tutorial
           </BaseButton>
         </div>

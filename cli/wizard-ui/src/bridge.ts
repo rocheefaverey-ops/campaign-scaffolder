@@ -53,6 +53,18 @@ export interface ModuleInfo {
   engine?:     string;
 }
 
+export interface DoctorCheck {
+  label:    string;
+  ok:       boolean;
+  warnings: string[];
+  errors:   string[];
+}
+
+export interface DoctorResult {
+  ok:     boolean;
+  checks: DoctorCheck[];
+}
+
 /**
  * Kicks off a scaffold on the server and streams logs back via SSE.
  * Returns immediately with a handle; resolve `done` for completion.
@@ -138,6 +150,16 @@ export async function listModules(): Promise<ModuleInfo[]> {
     return Array.isArray(data?.modules) ? data.modules as ModuleInfo[] : [];
   } catch {
     return [];
+  }
+}
+
+export async function getDoctorReport(): Promise<DoctorResult | null> {
+  try {
+    const res = await fetch('/api/doctor');
+    if (!res.ok) return null;
+    return (await res.json()) as DoctorResult;
+  } catch {
+    return null;
   }
 }
 

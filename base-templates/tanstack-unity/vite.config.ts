@@ -36,8 +36,12 @@ const config = defineConfig(() => {
               return source;
             }
 
-            // Inject global styles
-            return `@use "~/assets/styles/main.scss" as *;\n${source}`;
+            const isComponentModule = f.includes('/src/components/') && f.endsWith('.module.scss');
+            const layerOpen = isComponentModule ? '@layer components {\n' : '';
+            const layerClose = isComponentModule ? '\n}' : '';
+
+            // Keep shared variables available while making component modules easier to override from routes.
+            return `@use "~/assets/styles/main.scss" as *;\n@layer reset, components;\n${layerOpen}${source}${layerClose}`;
           },
         },
       },

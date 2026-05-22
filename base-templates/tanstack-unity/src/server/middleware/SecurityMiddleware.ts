@@ -10,11 +10,11 @@ export const securityMiddleware = createMiddleware().server(({ next }) => {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const cspTemplate = `
     default-src 'none';
-    connect-src 'self' https://region1.google-analytics.com ${extractBaseUrl(process.env.UNITY_BASE_URL ?? '')};
+    connect-src 'self' https://region1.google-analytics.com ${extractBaseUrl(process.env.UNITY_BASE_URL ?? '')} https://config.uca.cloud.unity3d.com https://cdp.cloud.unity3d.com;
     script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval' ${isLocal() ? "'unsafe-eval'" : ''};
     style-src 'self' 'unsafe-inline';
-    media-src 'self' blob:;
-    img-src 'self' data: blob:;
+    media-src 'self' blob: ${extractBaseUrl(process.env.CAPE_BASE_URL ?? '')};
+    img-src 'self' data: blob: ${extractBaseUrl(process.env.CAPE_BASE_URL ?? '')};
     font-src 'self';
     frame-ancestors 'none';
     ${!isLocal() ? 'upgrade-insecure-requests' : ''}

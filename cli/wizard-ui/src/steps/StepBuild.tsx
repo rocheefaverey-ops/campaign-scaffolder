@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { pageMeta, type ScaffoldConfig, type BuildMode, type StepProps, type PageInstance } from '../shared/config.ts';
 import { rememberFreshScaffoldCreated } from '../shared/projectNameDefaults.ts';
-import { startScaffold, logoutCape, getGitStatus, type LogEvent, type GitStatus } from '../bridge.ts';
+import { startScaffold, logoutCape, getGitStatus, getDoctorReport, type LogEvent, type GitStatus, type DoctorResult } from '../bridge.ts';
 
 type BuildState =
   | { kind: 'idle' }
@@ -15,6 +15,8 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
   const [state, setState] = useState<BuildState>({ kind: 'idle' });
   const [lines, setLines] = useState<LogEvent[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
+  const [doctor, setDoctor] = useState<DoctorResult | null>(null);
+  const [doctorLoading, setDoctorLoading] = useState(true);
 
   // The mode picker shows whenever the wizard was populated from an existing
   // project. `loadedProjectDir` is sticky across mode changes, so the user
@@ -34,6 +36,17 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
     getGitStatus(config.loadedProjectDir).then(setGit);
   }, [config.loadedProjectDir]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setDoctorLoading(true);
+    getDoctorReport().then((report) => {
+      if (cancelled) return;
+      setDoctor(report);
+      setDoctorLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [config.stack, config.game, config.gameId]);
+
   const authFailure = useMemo(
     () => state.kind === 'done' && !state.ok && lines.some(l => AUTH_FAIL_RE.test(l.line)),
     [state, lines],
@@ -46,7 +59,7 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
 
   /** Compute whether the chosen mode is safe + whether to require an override. */
   const safety = useMemo(() => evalSafety(config.buildMode, git, isLoadedExisting), [config.buildMode, git, isLoadedExisting]);
-  const canStart = state.kind === 'idle' && (!safety.requiresOverride || override);
+  const canStart = state.kind === 'idle' && doctor?.ok !== false && (!safety.requiresOverride || override);
 
   // Auto-scroll the log to the bottom on each new line.
   useEffect(() => {
@@ -80,9 +93,13 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
         <p className="step__hint">The wizard will run <code>scaffold.js --config=…</code> with the values below.</p>
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid var(--color-line)', borderRadius: 12, padding: 16 }}>
-        <Summary config={config} />
-      </div>
+      <BuildPlan config={config} loaded={isLoadedExisting} />
+
+      <DoctorPanel report={doctor} loading={doctorLoading} onRefresh={async () => {
+        setDoctorLoading(true);
+        setDoctor(await getDoctorReport());
+        setDoctorLoading(false);
+      }} />
 
       {isLoadedExisting && (
         <section className="build-mode">
@@ -198,6 +215,52 @@ function modeButtonLabel(mode: BuildMode, loaded: boolean): string {
 
 // ─── Git safety ─────────────────────────────────────────────────────────────
 
+function DoctorPanel({ report, loading, onRefresh }: { report: DoctorResult | null; loading: boolean; onRefresh: () => void }) {
+  const warnings = report?.checks.flatMap((check) => check.warnings.map((message) => ({ label: check.label, message }))) ?? [];
+  const errors = report?.checks.flatMap((check) => check.errors.map((message) => ({ label: check.label, message }))) ?? [];
+  const klass = loading ? '' : report?.ok === false ? 'banner--err' : warnings.length ? 'banner--warn' : 'banner--ok';
+
+  return (
+    <section className={`banner ${klass}`} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <strong>Doctor</strong>
+        <span style={{ flex: 1 }}>
+          {loading
+            ? 'Checking scaffolder health...'
+            : report === null
+              ? 'Could not reach the doctor endpoint.'
+              : report.ok
+                ? warnings.length ? `${warnings.length} warning${warnings.length === 1 ? '' : 's'} found.` : 'Everything needed for build looks healthy.'
+                : `${errors.length} error${errors.length === 1 ? '' : 's'} must be fixed before build.`}
+        </span>
+        <button type="button" className="btn" onClick={onRefresh} disabled={loading} style={{ padding: '6px 10px', fontSize: 12 }}>
+          Refresh
+        </button>
+      </div>
+
+      {!loading && report && (errors.length > 0 || warnings.length > 0) && (
+        <details style={{ marginTop: 8 }}>
+          <summary style={{ cursor: 'pointer', fontSize: 12 }}>Show details</summary>
+          <ul style={{ marginTop: 8, listStyle: 'none', padding: 0, display: 'grid', gap: 6 }}>
+            {errors.map((item, index) => (
+              <li key={`e-${index}`} style={{ fontSize: 12 }}>
+                <strong>error · {item.label}</strong><br />
+                <code style={{ wordBreak: 'break-word' }}>{item.message}</code>
+              </li>
+            ))}
+            {warnings.map((item, index) => (
+              <li key={`w-${index}`} style={{ fontSize: 12 }}>
+                <strong>warning · {item.label}</strong><br />
+                <code style={{ wordBreak: 'break-word' }}>{item.message}</code>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
+  );
+}
+
 interface Safety {
   /** When true, the Build button is disabled until the user ticks the override checkbox. */
   requiresOverride: boolean;
@@ -307,45 +370,152 @@ function GitPanel({ git, mode, safety, override, setOverride }:
   );
 }
 
-function Summary({ config }: { config: ScaffoldConfig }) {
+function BuildPlan({ config, loaded }: { config: ScaffoldConfig; loaded: boolean }) {
   const resolvedModules = resolveModulesForSummary(config);
-  const rows: Array<[string, string]> = [
-    ['Stack',     `${config.stack} + ${config.game}`],
-    ['Name',      config.name || '—'],
-    ['CAPE',      config.createCape
-                    ? `Create new${config.capeTitle ? ` — "${config.capeTitle}"` : ' (auto-titled)'}`
-                    : `Existing #${config.capeId || '—'}`],
-    ['Market',    config.market],
-    ['Pages',     formatPages(config.pages)],
-    ['Modules',   resolvedModules.join(', ') || '—'],
-    ['Output',    config.outputDir ?? '(sibling of scaffolder)'],
+  const runtimeRows: Array<[string, string]> = [
+    ['Registration', regModeLabel(config.regMode)],
+    ['Iframe', config.iframe ? 'enabled' : 'disabled'],
+    ['GTM', config.gtmId || 'not configured'],
+    ['Languages', formatLanguages(config.defaultLanguage, config.supportedLanguages)],
   ];
+
   return (
-    <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-      <tbody>
-        {rows.map(([k, v]) => (
-          <tr key={k}>
-            <td style={{ padding: '6px 0', color: 'var(--color-text-soft)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', width: 110 }}>{k}</td>
-            <td style={{ padding: '6px 0', fontFamily: 'var(--font-mono)', fontSize: 13 }}>{v}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <section className="build-plan">
+      <header className="build-plan__head">
+        <div>
+          <p className="pages-col__title">Build plan</p>
+          <h3>{config.name || 'Untitled campaign'}</h3>
+        </div>
+        <span className="build-plan__status">{buildModeSummary(config.buildMode, loaded)}</span>
+      </header>
+
+      <div className="build-plan__hero">
+        <PlanFact label="Output" value={config.outputDir ?? 'Sibling of scaffolder'} mono />
+        <PlanFact label="Stack" value={`${config.stack} / ${config.game}`} mono />
+        <PlanFact
+          label="CAPE"
+          value={config.createCape
+            ? `Create new${config.capeTitle ? `: ${config.capeTitle}` : ''}`
+            : `Use existing #${config.capeId || 'missing id'}`}
+          mono
+        />
+        <PlanFact label="Market" value={`${config.market} / ${config.timezone}`} mono />
+      </div>
+
+      <div className="build-plan__grid">
+        <PlanSection title="Campaign">
+          <PlanRows rows={[
+            ['Brand', config.brand || 'Not set'],
+            ['Department', config.department || 'Not set'],
+            ['Game config', config.gameId || (config.game === 'none' ? 'No game engine' : `${config.game} defaults`)],
+            ['Entry route', entryRoute(config.pages, config.flowEntry)],
+          ]} />
+        </PlanSection>
+
+        <PlanSection title={`Pages (${config.pages.length})`}>
+          {config.pages.length === 0 ? (
+            <p className="build-plan__empty">No pages selected.</p>
+          ) : (
+            <ol className="build-plan__routes">
+              {config.pages.map((page, index) => {
+                const meta = pageMeta(page.type);
+                return (
+                  <li key={page.id}>
+                    <span className="build-plan__step">{index + 1}</span>
+                    <span className="build-plan__route-main">
+                      <strong>{meta?.label ?? page.type}</strong>
+                      <code>{pageRoute(page)}</code>
+                    </span>
+                    {page.id !== page.type && <span className="build-plan__muted">{page.id}</span>}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </PlanSection>
+
+        <PlanSection title={`Modules (${resolvedModules.length})`}>
+          {resolvedModules.length === 0 ? (
+            <p className="build-plan__empty">No modules selected.</p>
+          ) : (
+            <div className="build-plan__pills">
+              {resolvedModules.map((module) => <code key={module}>{module}</code>)}
+            </div>
+          )}
+        </PlanSection>
+
+        <PlanSection title="Runtime">
+          <PlanRows rows={runtimeRows} />
+        </PlanSection>
+      </div>
+    </section>
   );
 }
 
-function formatPages(pages: PageInstance[]): string {
-  if (pages.length === 0) return '—';
-  return pages.map((page) => {
-    const meta = pageMeta(page.type);
-    const label = meta?.label ?? page.type;
-    const route = page.id === page.type ? (meta?.route ?? `/${page.id}`) : `/${page.id}`;
-    return page.id === page.type ? `${label} (${route})` : `${label} · ${page.id} (${route})`;
-  }).join(', ');
+function PlanFact({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="build-plan__fact">
+      <span>{label}</span>
+      <strong className={mono ? 'build-plan__mono' : undefined}>{value}</strong>
+    </div>
+  );
+}
+
+function PlanSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="build-plan__section">
+      <h4>{title}</h4>
+      {children}
+    </section>
+  );
+}
+
+function PlanRows({ rows }: { rows: Array<[string, string]> }) {
+  return (
+    <dl className="build-plan__rows">
+      {rows.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function buildModeSummary(mode: BuildMode, loaded: boolean): string {
+  if (!loaded) return 'Fresh scaffold';
+  if (mode === 'update') return 'Update loaded project';
+  if (mode === 'recreate') return 'Delete and rebuild';
+  return 'Build fresh copy';
+}
+
+function pageRoute(page: PageInstance): string {
+  if (page.route) return page.route;
+  const meta = pageMeta(page.type);
+  return page.id === page.type ? (meta?.route ?? `/${page.id}`) : `/${page.id}`;
+}
+
+function entryRoute(pages: PageInstance[], flowEntry?: string): string {
+  const page = pages.find((candidate) => candidate.id === flowEntry) ?? pages[0];
+  return page ? pageRoute(page) : 'No entry page';
+}
+
+function regModeLabel(mode: ScaffoldConfig['regMode']): string {
+  if (mode === 'gate') return 'Before gameplay';
+  if (mode === 'after') return 'After gameplay';
+  return 'Disabled';
+}
+
+function formatLanguages(defaultLanguage: string, supportedLanguages: string[]): string {
+  const supported = supportedLanguages.length ? supportedLanguages : [defaultLanguage].filter(Boolean);
+  if (supported.length === 0) return 'No languages selected';
+  return supported.map((code) => code === defaultLanguage ? `${code} default` : code).join(', ');
 }
 
 function resolveModulesForSummary(config: ScaffoldConfig): string[] {
-  const modules = new Set<string>();
+  if (config.stack === 'tanstack') return [];
+  const modules = new Set<string>(config.modules);
   if (config.game === 'unity' || config.game === 'phaser' || config.game === 'r3f' || config.game === 'memory') {
     modules.add(config.game);
   }

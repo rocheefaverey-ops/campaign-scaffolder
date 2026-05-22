@@ -22,9 +22,6 @@ function Register() {
   const router = useRouter();
   const [error, setError] = useState<string>('');
 
-  const countryOptions = { NL: 'Netherlands', BE: 'Belgium', DE: 'Germany', FR: 'France', UK: 'United Kingdom', US: 'United States' };
-
-  // TODO: Make cape fields for password
   const formData: IFormData = [
     {
       type: 'text',
@@ -45,52 +42,12 @@ function Register() {
       defaultValue: '',
     },
     {
-      type: 'password',
-      name: 'password',
-      label: 'Password',
-      error: 'Please enter a valid password',
-      placeholder: '...',
-      validator: z.string().min(8).max(255),
-      defaultValue: '',
-      bottomLink: {
-        label: 'Forgot password?',
-        link: 'https://google.nl',
-      },
-    },
-    {
-      type: 'password',
-      name: 'repeatPassword',
-      label: 'Repeat Password',
-      error: 'Please enter a valid password',
-      placeholder: '...',
-      validator: z.string().min(8).max(255),
-      defaultValue: '',
-      linkTo: 'password',
-    },
-    {
-      type: 'select',
-      name: 'country',
-      label: copy.country.label,
-      error: copy.country.error,
-      options: countryOptions,
-      validator: z.string().refine((val) => val in countryOptions),
-      placeholder: '-',
-      defaultValue: '',
-    },
-    {
       type: 'checkbox',
       name: 'optInOne',
       label: copy.optInOne.label,
       error: copy.optInOne.error,
       link: copy.optInOne.link,
       validator: z.literal(true),
-      defaultValue: false,
-    },
-    {
-      type: 'checkbox',
-      name: 'optInTwo',
-      label: copy.optInTwo.label,
-      validator: z.boolean(),
       defaultValue: false,
     },
   ];
@@ -120,7 +77,7 @@ function Register() {
       <StyledText type={'description'} marginTop={8} alternate>{copy.description}</StyledText>
 
       <DynamicForm className={styles.form} formData={formData} buttonText={copy.button} errorText={error} loading={isPending} onSubmit={(data) => processForm(data)} />
-      <StyledButton linkOptions={{ to: '/landing' }} marginTop={8} alternate>Back</StyledButton>
+      <StyledButton linkOptions={{ to: '/result' }} marginTop={8} alternate>Back</StyledButton>
     </PageContainer>
   );
 }

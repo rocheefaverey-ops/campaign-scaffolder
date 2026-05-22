@@ -33,12 +33,12 @@ const OPEN_URL    = `http://localhost:${PROD ? SERVER_PORT : UI_PORT}`;
 // ── Pre-flight: confirm deps are installed ──────────────────────────────────
 if (!existsSync(join(SERVER_DIR, 'node_modules'))) {
   console.error('\n  [wizard] cli/wizard-server/node_modules missing.');
-  console.error('  Run:  cd cli/wizard-server && npm install\n');
+  console.error('  Run:  cd cli/wizard-server && pnpm install\n');
   process.exit(1);
 }
 if (!PROD && !existsSync(join(UI_DIR, 'node_modules'))) {
   console.error('\n  [wizard] cli/wizard-ui/node_modules missing.');
-  console.error('  Run:  cd cli/wizard-ui && npm install\n');
+  console.error('  Run:  cd cli/wizard-ui && pnpm install\n');
   process.exit(1);
 }
 
