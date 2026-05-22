@@ -22,8 +22,8 @@ export function ViewContainer({ children }: IDefaultProps) {
                || b?.['desktop.backgroundIllustration'] as string | undefined;
   const hasVideoBg = !!bgUrl && /\.(mp4|webm|mov)$/i.test(bgUrl);
 
-  const description = copy.desktop.description;
-  const qrLabel     = copy.desktop.qrText;
+  const description = copy.desktop.description?.trim() || 'Scan the QR code to play on your mobile device';
+  const qrLabel     = copy.desktop.qrText?.trim()     || 'Scan to play';
 
   return (
     <div className="desktop-wrapper" data-enabled="true">

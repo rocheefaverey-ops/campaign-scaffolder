@@ -1,6 +1,6 @@
 import { getCapeCopy, getCapeCopyMapUnity, getCapeProperty } from '~/server/cape/CapeProvider.ts';
 import { getBaseUrl, getUnityEnvironment } from '~/utils/Functions.ts';
-import LogoImage from '~/assets/images/logo.png';
+import LogoImage from '~/assets/images/logo.svg';
 import { getBlurUri } from '~/server/ImageBlurUri.ts';
 import { getNonce } from '~/server/middleware/SecurityMiddleware.ts';
 

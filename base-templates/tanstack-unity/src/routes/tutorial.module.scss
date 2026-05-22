@@ -15,7 +15,7 @@
     max-height: min(760px, 100%);
     padding: 52px 22px 24px;
     border-radius: 24px;
-    background-color: $whiteColor;
+    background-color: var(--lw-bg, #{$whiteColor});
     box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
     overflow: hidden;
   }
@@ -31,6 +31,10 @@
   .header {
     margin-bottom: 20px;
     color: $primaryTextColor;
+    font-size: 1.45rem;
+    font-weight: 800;
+    line-height: 1.1;
+    text-align: center;
   }
 
   .slider {
@@ -42,4 +46,13 @@
     flex: 0 0 auto;
     margin-top: 18px;
   }
+}
+
+.heroSkip {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.88);
+  color: $primaryTextColor;
+  box-shadow: 0 8px 24px rgba(14, 14, 14, 0.18);
 }

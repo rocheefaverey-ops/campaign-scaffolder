@@ -19,6 +19,13 @@ export async function loadTutorialData(language: string) {
     step1TutorialImage,
     step2TutorialImage,
     step3TutorialImage,
+    screenLayout,
+    tutorialBackground,
+    landingBackground,
+    landingBackgroundImage,
+    tutorialLogo,
+    landingLogo,
+    headerLogo,
   ] = await Promise.all([
     getCapeCopy(language, [
       ['tutorial', 'headline'],
@@ -47,6 +54,13 @@ export async function loadTutorialData(language: string) {
     getCapeProperty({ type: 'files', path: ['tutorial', 'step1Image'] }),
     getCapeProperty({ type: 'files', path: ['tutorial', 'step2Image'] }),
     getCapeProperty({ type: 'files', path: ['tutorial', 'step3Image'] }),
+    getCapeProperty({ type: 'settings', path: ['pages', 'tutorial', 'screenLayout'] }),
+    getCapeProperty({ type: 'general', path: ['tutorial', 'background'] }),
+    getCapeProperty({ type: 'general', path: ['landing', 'background'] }),
+    getCapeProperty({ type: 'files', path: ['landing', 'backgroundImage'] }),
+    getCapeProperty({ type: 'general', path: ['tutorial', 'logo'] }),
+    getCapeProperty({ type: 'general', path: ['landing', 'logo'] }),
+    getCapeProperty({ type: 'general', path: ['header', 'logo'] }),
   ]);
 
   const [
@@ -79,6 +93,17 @@ export async function loadTutorialData(language: string) {
       cta: cta || buttonReady,
       ctaNext: ctaNext || buttonNext,
     },
+    screenLayout: screenLayout.asString('fullBleedHero') === 'card' ? 'card' : 'fullBleedHero',
+    heroUrl:
+      tutorialBackground.asFile()?.url ??
+      landingBackground.asFile()?.url ??
+      landingBackgroundImage.asFile()?.url ??
+      null,
+    logoUrl:
+      tutorialLogo.asFile()?.url ??
+      landingLogo.asFile()?.url ??
+      headerLogo.asFile()?.url ??
+      null,
     steps: [
       {
         title: step1Title || legacyStep1Title,

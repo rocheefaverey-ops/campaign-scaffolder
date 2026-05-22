@@ -1,5 +1,6 @@
 export interface ICapeData {
   copy?: ICapeObject;
+  desktop?: ICapeObject;
   files?: ICapeObject;
   general?: ICapeObject;
   settings?: ICapeObject;

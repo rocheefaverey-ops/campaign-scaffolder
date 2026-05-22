@@ -14,7 +14,7 @@ export const getUnityEnvironment = createServerFn().handler(async () => {
     return { url: '', isLocal: false };
   }
 
-  const baseUrl = process.env.UNITY_BASE_URL.trim().replace(/\/+$/, '');
+  const baseUrl = (process.env.UNITY_BASE_URL || '').trim().replace(/\/+$/, '');
   const gameName = (process.env.UNITY_GAME_NAME || 'Game').trim();
   let url = `${baseUrl}/`;
   let isLocal = false;

@@ -13,8 +13,11 @@ export const Route = createFileRoute('/landing')({
 function Landing() {
   const { copy, heroUrl, headerLogoUrl, pageLogoUrl } = Route.useLoaderData();
   const router = useRouter();
+  const nextRoute = '/tutorial';
+  const tutorialRoute = '/tutorial';
+  const showTutorialButton = JSON.parse('false') as boolean;
 
-  const resolvedHeaderLogo = headerLogoUrl || LogoImage;
+  const resolvedHeaderLogo = pageLogoUrl || headerLogoUrl || LogoImage;
   const isVideoHero = !!heroUrl && /\.(mp4|webm|mov)$/i.test(heroUrl);
 
   return (
@@ -41,9 +44,6 @@ function Landing() {
           className="campaign-stack campaign-hero-content"
           style={{ animation: 'fadeIn 0.5s 0.14s ease both' }}
         >
-          {pageLogoUrl && (
-            <img src={pageLogoUrl} alt="" className="campaign-hero-page-logo" />
-          )}
           {copy.kicker && <p className="campaign-kicker">{copy.kicker}</p>}
           <h1 className="campaign-title">{copy.title || 'Welcome'}</h1>
           {copy.description && <p className="campaign-copy">{copy.description}</p>}
@@ -53,12 +53,14 @@ function Landing() {
           className="campaign-actions"
           style={{ animation: 'fadeIn 0.5s 0.28s ease both' }}
         >
-          <StyledButton linkOptions={{ to: '/tutorial' }}>
+          <StyledButton onClick={() => router.navigate({ to: nextRoute as never, replace: true })}>
             {copy.button || 'Play'}
           </StyledButton>
-          <BaseButton linkOptions={{ to: '/tutorial' }} className="campaign-skip">
-            Tutorial
-          </BaseButton>
+          {showTutorialButton && (
+            <BaseButton onClick={() => router.navigate({ to: tutorialRoute as never, replace: true })} className="campaign-skip">
+              Tutorial
+            </BaseButton>
+          )}
         </div>
       </div>
     </PageContainer>

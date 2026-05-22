@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import type { IConfettiConfig } from '~/components/confetti/engine/ConfettiEngine.ts';
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
 import { useUnityStore } from '~/hooks/stores/useUnityStore.ts';
@@ -24,6 +24,13 @@ export const Route = createFileRoute('/result')({
 function Result() {
   const result = useUnityStore((state) => state.result);
   const { copy, backgroundUrl, logoUrl, winImageUrl } = Route.useLoaderData();
+  const router = useRouter();
+  const nextRoute = '/leaderboard';
+  const playAgainRoute = '/game';
+  const leaderboardRoute = '/leaderboard';
+  const resultCopy = copy as typeof copy & Record<string, string | undefined>;
+  const showPlayAgainButton = JSON.parse('true') as boolean;
+  const showLeaderboardButton = JSON.parse('false') as boolean;
   const resultVisualUrl = winImageUrl || backgroundUrl;
   const isVideoVisual = !!resultVisualUrl && /\.(mp4|webm|mov)$/i.test(resultVisualUrl);
 
@@ -51,7 +58,13 @@ function Result() {
           {copy.description && <p className="campaign-copy" style={{ marginTop: '0.5rem' }}>{copy.description}</p>}
 
           <div className="campaign-actions" style={{ marginTop: '1.5rem' }}>
-            <StyledButton linkOptions={{ to: '/register' }}>{copy.buttonRegister || 'Register'}</StyledButton>
+            <StyledButton onClick={() => router.navigate({ to: nextRoute as never, replace: true })}>{copy.buttonRegister || resultCopy.buttonContinue || 'Continue'}</StyledButton>
+            {showPlayAgainButton && (
+              <StyledButton onClick={() => router.navigate({ to: playAgainRoute as never, replace: true })} alternate>{resultCopy.buttonPlayAgain || 'Play again'}</StyledButton>
+            )}
+            {showLeaderboardButton && (
+              <StyledButton onClick={() => router.navigate({ to: leaderboardRoute as never, replace: true })} alternate>{resultCopy.buttonLeaderboard || 'Leaderboard'}</StyledButton>
+            )}
           </div>
         </div>
       </div>

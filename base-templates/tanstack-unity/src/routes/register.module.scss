@@ -1,6 +1,6 @@
 .register {
   padding: 24px;
-  background-color: $whiteColor;
+  background-color: var(--lw-bg, #{$whiteColor});
 
   .form {
     margin-top: 16px;
