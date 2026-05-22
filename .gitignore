@@ -16,3 +16,6 @@ _out/
 
 # Large video files (keep locally, don't commit)
 *.mp4
+
+# Internal/agent docs — keep local for now
+docs/
