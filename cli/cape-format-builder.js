@@ -21,7 +21,8 @@ const LW_LIME     = '#D1FF00';
 const LW_INK      = '#1A1A1A';
 const LW_SURFACE  = '#EEF1E9';
 const LW_ERROR    = '#E82727';
-const LW_FONT     = "'Stabil Grotesk', 'Inter', 'Segoe UI', Arial, sans-serif";
+const LW_FONT         = "'Stabil Grotesk', 'Inter', 'Segoe UI', Arial, sans-serif";
+const LW_DISPLAY_FONT = "'Livewall', 'Stabil Grotesk', 'Inter', 'Segoe UI', Arial, sans-serif";
 
 // ── Field builders ────────────────────────────────────────────────────────────
 
@@ -120,7 +121,7 @@ function settingsPage() {
         color('settings.branding.accentColor',      'Accent (highlights)',     'settings-branding-accentcolor',  LW_LIME),
         color('settings.branding.errorColor',       'Error / status red',      'settings-branding-errorcolor',   LW_ERROR),
         text( 'settings.branding.fontFamily',       'Default font family',     'settings-branding-fontfamily',   LW_FONT),
-        text( 'settings.branding.displayFontFamily','Display font family',     'settings-branding-displayfont',  LW_FONT),
+        text( 'settings.branding.displayFontFamily','Display font family',     'settings-branding-displayfont',  LW_DISPLAY_FONT),
         asset('settings.branding.fontBrand',        'Brand font file (optional)','settings-branding-fontbrand', { fileType: '*', maxFileSize: '15000' }),
         asset('settings.branding.fontLight',        'Light font file (optional)','settings-branding-fontlight', { fileType: '*', maxFileSize: '15000' }),
       ]),
@@ -161,6 +162,21 @@ function settingsPage() {
         bool('settings.menu.showPrivacy',     'Show Privacy',        'settings-menu-privacy', true),
         bool('settings.menu.showFaq',         'Show FAQ',            'settings-menu-faq',     false),
         bool('settings.menu.showLeave',       'Show Leave campaign', 'settings-menu-leave',   true),
+      ]),
+
+      // ── Menu button variants (visual style per item) ──────────────────────
+      // Accepts: primary | secondary | tertiary | dark | danger.
+      // Unset / invalid falls back to the per-item agency default in MenuLoader.
+      block('settings-menu-variant-block', 'Menu button styles', [
+        text('settings.menu.variantHome',        'Home button style',        'settings-menu-variant-home',    'secondary'),
+        text('settings.menu.variantResume',      'Resume button style',      'settings-menu-variant-resume',  'secondary'),
+        text('settings.menu.variantHowToPlay',   'How-to-play button style', 'settings-menu-variant-how',     'primary'),
+        text('settings.menu.variantLeaderboard', 'Leaderboard button style', 'settings-menu-variant-leader',  'primary'),
+        text('settings.menu.variantVoucher',     'Voucher button style',     'settings-menu-variant-voucher', 'primary'),
+        text('settings.menu.variantTerms',       'Terms button style',       'settings-menu-variant-terms',   'tertiary'),
+        text('settings.menu.variantPrivacy',     'Privacy button style',     'settings-menu-variant-privacy', 'tertiary'),
+        text('settings.menu.variantFaq',         'FAQ button style',         'settings-menu-variant-faq',     'tertiary'),
+        text('settings.menu.variantLeave',       'Leave button style',       'settings-menu-variant-leave',   'danger'),
       ]),
 
       block('settings-game-block', 'Game boot', [
@@ -442,6 +458,10 @@ function nextOnboardingTab(instanceId, els, stepCount) {
   if (assetItems.length) blocks.push(block(blockKey('next-onboarding', TYPE, instanceId, 'assets'),       'Assets',      assetItems));
   if (stepAssets.length) blocks.push(block(blockKey('next-onboarding', TYPE, instanceId, 'step-assets'),  'Step images', stepAssets));
   blocks.push(block(blockKey('next-onboarding', TYPE, instanceId, 'settings'), 'Settings', [
+    select(`settings.pages.${instanceId}.screenLayout`, 'Screen layout', k('screenlayout'), [
+      { label: 'Full bleed hero', value: 'fullBleedHero' },
+      { label: 'Card screen', value: 'card' },
+    ], 'fullBleedHero'),
     bool(`settings.pages.${instanceId}.allowSkip`, 'Allow skip', k('allowskip'), false),
   ]));
 
@@ -650,7 +670,7 @@ function nextVoucherTab(instanceId = 'voucher') {
 const VIDEO_PAGE_IDS = new Set(['video', 'intro-video', 'loading-video', 'ad-video']);
 
 export const KNOWN_PAGE_TYPES = new Set([
-  'video', 'intro-video', 'loading-video', 'ad-video',
+  'intro-video', 'loading-video', 'ad-video',
   'landing', 'tutorial', 'result',
   'leaderboard', 'register', 'voucher', 'game',
 ]);

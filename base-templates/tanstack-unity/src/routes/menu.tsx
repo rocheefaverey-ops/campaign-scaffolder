@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
+import type { StyledButtonVariant } from '~/components/buttons/StyledButton.tsx';
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
 import { StyledButton } from '~/components/buttons/StyledButton.tsx';
 import { loadMenuData } from '~/loaders/MenuLoader.ts';
@@ -45,7 +46,7 @@ function Menu() {
           <h1 className="campaign-title campaign-title--compact">{data.copy.headline}</h1>
           <div className="campaign-actions">
             {items.map((item) => (
-              <StyledButton key={item.copyKey} alternate={item.alternate} onClick={() => goTo(item)}>
+              <StyledButton key={item.copyKey} variant={item.variant} onClick={() => goTo(item)}>
                 {data.copy[item.copyKey]}
               </StyledButton>
             ))}
@@ -63,19 +64,19 @@ function Menu() {
 
 function buildItems(data: Awaited<ReturnType<typeof loadMenuData>>) {
   return [
-    data.flags.showHome && { copyKey: 'home', target: '/landing', alternate: true },
-    data.flags.showResume && { copyKey: 'resume', target: '/game', alternate: true },
-    data.flags.showHowToPlay && { copyKey: 'howToPlay', target: '/tutorial' },
-    data.flags.showLeaderboard && { copyKey: 'leaderboard', target: '/leaderboard' },
-    data.flags.showVoucher && { copyKey: 'voucher', target: '/voucher' },
-    data.flags.showTerms && data.links.termsUrl && { copyKey: 'terms', target: data.links.termsUrl, external: true },
-    data.flags.showPrivacy && data.links.privacyUrl && { copyKey: 'privacy', target: data.links.privacyUrl, external: true },
-    data.flags.showFaq && { copyKey: 'faq', target: '/faq' },
-    data.flags.showLeave && { copyKey: 'leave', target: '/', alternate: true },
+    data.flags.showHome        && { copyKey: 'home',        target: '/landing',           variant: data.variants.home },
+    data.flags.showResume      && { copyKey: 'resume',      target: '/game',              variant: data.variants.resume },
+    data.flags.showHowToPlay   && { copyKey: 'howToPlay',   target: '/tutorial',          variant: data.variants.howToPlay },
+    data.flags.showLeaderboard && { copyKey: 'leaderboard', target: '/leaderboard',       variant: data.variants.leaderboard },
+    data.flags.showVoucher     && { copyKey: 'voucher',     target: '/voucher',           variant: data.variants.voucher },
+    data.flags.showTerms && data.links.termsUrl     && { copyKey: 'terms',   target: data.links.termsUrl,   external: true, variant: data.variants.terms },
+    data.flags.showPrivacy && data.links.privacyUrl && { copyKey: 'privacy', target: data.links.privacyUrl, external: true, variant: data.variants.privacy },
+    data.flags.showFaq         && { copyKey: 'faq',         target: '/faq',               variant: data.variants.faq },
+    data.flags.showLeave       && { copyKey: 'leave',       target: '/',                  variant: data.variants.leave },
   ].filter(Boolean) as Array<{
     copyKey: keyof Awaited<ReturnType<typeof loadMenuData>>['copy'];
     target: string;
     external?: boolean;
-    alternate?: boolean;
+    variant: StyledButtonVariant;
   }>;
 }

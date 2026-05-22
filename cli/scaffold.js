@@ -391,6 +391,7 @@ function computeFlowTokens(pages, regMode = 'none', flowExits = {}, flowEntry = 
 
   // ── Secondary optional exits (configurable buttons on landing/result/…). ──
   const SECONDARY_EXITS = [
+    { sourceType: 'landing', exitKey: 'tutorial', token: '{{LANDING_TUTORIAL_ROUTE}}', defaultTargetType: 'tutorial' },
     { sourceType: 'landing', exitKey: 'leaderboard', token: '{{LANDING_LEADERBOARD_ROUTE}}', defaultTargetType: 'leaderboard' },
     { sourceType: 'result',  exitKey: 'leaderboard', token: '{{RESULT_LEADERBOARD_ROUTE}}',  defaultTargetType: 'leaderboard' },
   ];
@@ -1515,12 +1516,23 @@ async function scaffold(options) {
   releaseLock(lockPath);
 }
 
-async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], gtmId = '', tsPageElementSelections = {}, selectedGame = null, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false }) {
+async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], gtmId = '', tsPageElementSelections = {}, selectedGame = null, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, pageSettings = {}, pageTypes = {}, routeMap = {}, menuItemsEnabled = {}, _wizardMeta = null }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
 
   const frontendDir = join(outputDir, 'frontend');
+  const flowTokens = computeFlowTokens(pages, 'none', flowExits, flowEntry, pageTypes, routeMap);
+  const optionalExitEnabled = (pageId, exitKey, defaultValue = false) =>
+    Boolean(flowEnabledExits?.[`${pageId}.${exitKey}`] ?? defaultValue);
+  const hasPageType = (type) => pages.some((id) => (pageTypes[id] ?? id) === type);
+  const tanstackFlowTokens = {
+    ...flowTokens,
+    '{{SHOW_LANDING_TUTORIAL_BUTTON}}': String(optionalExitEnabled('landing', 'tutorial', false) && hasPageType('tutorial')),
+    '{{SHOW_LANDING_LEADERBOARD_BUTTON}}': String(optionalExitEnabled('landing', 'leaderboard', false) && hasPageType('leaderboard')),
+    '{{SHOW_RESULT_PLAY_AGAIN_BUTTON}}': String(optionalExitEnabled('result', 'playAgain', true)),
+    '{{SHOW_RESULT_LEADERBOARD_BUTTON}}': String(optionalExitEnabled('result', 'leaderboard', false) && hasPageType('leaderboard')),
+  };
 
   // 1. Copy boilerplate (skipped in update mode)
   if (isUpdate) {
@@ -1643,11 +1655,31 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
 
   // 2. Token replacement
   step(2, 'Replacing tokens…');
+  // Menu visibility defaults — wizard's menuItemsEnabled, gated by which
+  // routes were actually generated. If the target route is missing, the
+  // item is forced off (no broken links from the menu).
+  const generatedRouteSet = new Set((pages ?? []).map((p) => routeFor(p, routeMap)));
+  const menuItemEnabled = (itemId, agencyDefault, requiredRoutes = []) => {
+    const wizardChoice = menuItemsEnabled?.[itemId];
+    const intent = typeof wizardChoice === 'boolean' ? wizardChoice : agencyDefault;
+    if (!intent) return false;
+    return requiredRoutes.every((r) => generatedRouteSet.has(r));
+  };
   const tokens = {
     '{{PROJECT_NAME}}':              name,
     'engagement-frontend-tanstack':  name,
     '{{CAPE_ID}}':                   capeId,
     '{{MARKET}}':                    market,
+    '{{MENU_SHOW_HOME}}':        String(menuItemEnabled('home',        true,  ['/landing'])),
+    '{{MENU_SHOW_RESUME}}':      String(menuItemEnabled('resume',      false, ['/game'])),
+    '{{MENU_SHOW_HOWTOPLAY}}':   String(menuItemEnabled('howToPlay',   true,  ['/tutorial'])),
+    '{{MENU_SHOW_LEADERBOARD}}': String(menuItemEnabled('leaderboard', false, ['/leaderboard'])),
+    '{{MENU_SHOW_VOUCHER}}':     String(menuItemEnabled('voucher',     false, ['/voucher'])),
+    '{{MENU_SHOW_TERMS}}':       String(menuItemEnabled('terms',       true,  [])),
+    '{{MENU_SHOW_PRIVACY}}':     String(menuItemEnabled('privacy',     true,  [])),
+    '{{MENU_SHOW_FAQ}}':         String(menuItemEnabled('faq',         false, ['/faq'])),
+    '{{MENU_SHOW_LEAVE}}':       String(menuItemEnabled('leave',       true,  [])),
+    ...tanstackFlowTokens,
   };
   const replaced = tokenReplaceDir(frontendDir, tokens);
   ok(`${replaced} file(s) updated`);
@@ -1760,6 +1792,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
     mkdirSync(loadersDir, { recursive: true });
     for (const [page, elements] of Object.entries(tsPageElementSelections)) {
       if (page.includes('__') || !BUILDABLE_TS.includes(page)) continue;
+      if (page === 'tutorial') continue;
       const stepCount = tsPageElementSelections[`${page}__stepCount`] ?? 3;
       try {
         const { route, loader } = buildTsPage(page, elements, { stepCount, pages: normalizedPages });
@@ -1769,6 +1802,8 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
       } catch (e) { warn(`[page-builder] ${page}: ${e.message}`); }
     }
     if (generated > 0) ok(`${generated} page(s) generated from page builder`);
+    const flowReplaced = tokenReplaceDir(frontendDir, tanstackFlowTokens);
+    if (flowReplaced > 0) ok(`Flow tokens applied to ${flowReplaced} generated file(s)`);
   }
 
   // 3b-ii. Explicit TanStack video routes. Keep these in sync with the
@@ -1804,6 +1839,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   if (existsSync(indexRoute) && selectedVideoPages.includes('intro-video')) {
     let src = readFileSync(indexRoute, 'utf8');
     src = src
+      .replace(/const entryRoute = '\/landing';/g, `const entryRoute = '/intro-video';`)
       .replace(/preloadRoute\(\{ to: '\/landing' \}\)/g, `preloadRoute({ to: '/intro-video' })`)
       .replace(/navigate\(\{ to: '\/landing', replace: true \}\)/g, `navigate({ to: '/intro-video', replace: true })`);
     writeFileSync(indexRoute, src, 'utf8');
@@ -1878,6 +1914,8 @@ export function useGameNavigation() {
     // Pages & element selections
     pages,
     tsPageElementSelections,
+    pageSettings: Object.keys(pageSettings ?? {}).length > 0 ? pageSettings : undefined,
+    wizard: _wizardMeta ?? undefined,
     // Tooling
     gtmId: gtmId || undefined,
     // Update tracking
@@ -2077,6 +2115,17 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     const value = menuButtonVariants?.[itemId];
     return ['primary', 'secondary', 'tertiary', 'dark', 'danger'].includes(value) ? value : fallback;
   };
+  // Decide if a menu item should be on by default. Order of precedence:
+  //   1. Wizard set it explicitly (menuItemsEnabled[itemId] is a boolean) → use it.
+  //   2. Otherwise fall back to the agency default for this item.
+  // Then gate: if the item points at a route that wasn't generated, force off.
+  const generatedRouteSet = new Set((pages ?? []).map((p) => routeFor(p, routeMap)));
+  const menuItemEnabled = (itemId, agencyDefault, requiredRoutes = []) => {
+    const wizardChoice = menuItemsEnabled?.[itemId];
+    const intent = typeof wizardChoice === 'boolean' ? wizardChoice : agencyDefault;
+    if (!intent) return false;
+    return requiredRoutes.every((r) => generatedRouteSet.has(r));
+  };
   const tokens = {
     '{{PROJECT_NAME}}':       name,
     '{{CAPE_ID}}':            capeId,
@@ -2107,6 +2156,19 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     '{{MENU_VARIANT_PRIVACY}}':               menuVariant('privacy', 'tertiary'),
     '{{MENU_VARIANT_FAQ}}':                   menuVariant('faq', 'tertiary'),
     '{{MENU_VARIANT_LEAVE}}':                 menuVariant('leave', 'danger'),
+    // Menu visibility defaults — sourced from the wizard's menuItemsEnabled,
+    // gated by which pages were actually generated. If a target route is
+    // missing the menu item is forced off regardless of wizard intent, so
+    // we never produce broken links.
+    '{{MENU_SHOW_HOME}}':        String(menuItemEnabled('home',        true,  ['/landing'])),
+    '{{MENU_SHOW_RESUME}}':      String(menuItemEnabled('resume',      false, ['/game'])),
+    '{{MENU_SHOW_HOWTOPLAY}}':   String(menuItemEnabled('howToPlay',   true,  ['/tutorial'])),
+    '{{MENU_SHOW_LEADERBOARD}}': String(menuItemEnabled('leaderboard', false, ['/leaderboard'])),
+    '{{MENU_SHOW_VOUCHER}}':     String(menuItemEnabled('voucher',     false, ['/voucher'])),
+    '{{MENU_SHOW_TERMS}}':       String(menuItemEnabled('terms',       true,  [])),
+    '{{MENU_SHOW_PRIVACY}}':     String(menuItemEnabled('privacy',     true,  [])),
+    '{{MENU_SHOW_FAQ}}':         String(menuItemEnabled('faq',         false, ['/faq'])),
+    '{{MENU_SHOW_LEAVE}}':       String(menuItemEnabled('leave',       true,  [])),
     ...flowTokens,
   };
   const replacedCount = tokenReplaceDir(frontendDir, tokens);
@@ -2137,6 +2199,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     let generated = 0;
     for (const [page, elements] of Object.entries(pageElementSelections)) {
       if (page.includes('__')) continue; // skip meta keys like tutorial__stepCount
+      if (page === 'tutorial') continue;
       const dirName = BUILDABLE_TO_DIR[page];
       if (!dirName) continue;
 
@@ -3544,11 +3607,14 @@ async function main() {
       unityCdnUrl:             cfg.unityCdnUrl ?? '',
       capeAutoPublished,
       capePublishedUrl,
+      skipInstall:             Boolean(cfg.skipInstall),
+      _skipGitInit:            Boolean(cfg.skipGit),
       // User-supplied flow overrides. computeFlowTokens consumes these.
       flowExits:               (cfg.flowExits && typeof cfg.flowExits === 'object') ? cfg.flowExits : {},
       flowEntry:               typeof cfg.flowEntry === 'string' ? cfg.flowEntry : '',
       flowEnabledExits:        (cfg.flowEnabledExits && typeof cfg.flowEnabledExits === 'object') ? cfg.flowEnabledExits : {},
       flowButtonVariants:      (cfg.flowButtonVariants && typeof cfg.flowButtonVariants === 'object') ? cfg.flowButtonVariants : {},
+      pageSettings:            (cfg.pageSettings && typeof cfg.pageSettings === 'object') ? cfg.pageSettings : {},
       // Menu visibility — drives which menu copy keys make it into the
       // generated CAPE format. The /menu route reads the matching CAPE flags.
       menuItemsEnabled:        (cfg.menuItemsEnabled && typeof cfg.menuItemsEnabled === 'object') ? cfg.menuItemsEnabled : {},

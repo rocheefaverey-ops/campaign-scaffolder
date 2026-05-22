@@ -9,7 +9,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import {
-  pagesForStack, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, MENU_ITEMS, BUTTON_VARIANTS, defaultRouteForType,
+  pagesForStack, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, BUTTON_VARIANTS, defaultRouteForType,
   type ScaffoldConfig, type RegMode, type StepProps, type PageInstance, type ButtonVariant,
 } from '../shared/config.ts';
 import PageSettingsCard from './PageSettingsCard.tsx';
@@ -201,50 +201,9 @@ export default function StepPages({ config, setConfig }: StepProps) {
         </section>
       )}
 
-      {/* Menu items — global, single set per campaign. The hamburger button on
-          every hero page routes to /menu, which renders only the items ticked
-          here. Saved at settings.menu.show{Id} in CAPE. */}
-      <section className="menu-picker">
-        <header>
-          <h3 className="pages-col__title">Menu items</h3>
-          <p className="step__hint">
-            Pick which links appear in the hamburger menu. Click the menu button in any preview to see the menu render live.
-          </p>
-        </header>
-        <div className="menu-picker__list">
-          {MENU_ITEMS.map(item => {
-            const enabled = config.menuItemsEnabled[item.id] ?? item.defaultEnabled;
-            const variant = config.menuButtonVariants[item.id] ?? item.kind;
-            return (
-              <div key={item.id} className={`menu-picker__row${enabled ? ' is-enabled' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  onChange={(e) => setConfig({
-                    ...config,
-                    menuItemsEnabled: { ...config.menuItemsEnabled, [item.id]: e.target.checked },
-                  })}
-                />
-                <div className="menu-picker__row-body">
-                  <span className="menu-picker__row-label">{item.label}</span>
-                  <select
-                    className="menu-picker__variant"
-                    value={variant}
-                    onChange={(e) => setConfig({
-                      ...config,
-                      menuButtonVariants: { ...config.menuButtonVariants, [item.id]: e.target.value as ButtonVariant },
-                    })}
-                    aria-label={`Button variant for ${item.label}`}
-                  >
-                    {BUTTON_VARIANTS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
-                  </select>
-                  <code className="menu-picker__row-target">{item.target}</code>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      {/* Menu visibility lives in CAPE (settings.menu.show*). The CLI hard-
+          gates items whose target route wasn't generated, so we don't ship a
+          duplicate UI here. */}
     </>
   );
 }
