@@ -185,6 +185,34 @@ export async function startFrontendPreview(config: ScaffoldConfig): Promise<Fron
   }
 }
 
+export interface RunScaffoldedResult {
+  ok: boolean;
+  url?: string;
+  error?: string;
+}
+
+/**
+ * Boot a dev server against a freshly scaffolded project. Unlike the
+ * frontend-preview path this does NOT re-scaffold — the project at
+ * `outputDir` already exists (and has its deps installed because
+ * scaffold.js ran `pnpm install`). Returns the URL once Vite/Next reports
+ * ready.
+ */
+export async function startScaffoldedProject(input: { outputDir: string; stack: 'next' | 'tanstack' }): Promise<RunScaffoldedResult> {
+  try {
+    const res = await fetch('/api/scaffolded-project/start', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(input),
+    });
+    const data = await res.json().catch(() => ({})) as RunScaffoldedResult;
+    if (!res.ok) return { ok: false, error: data.error ?? `Auto-run failed (${res.status})` };
+    return data;
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Network error.' };
+  }
+}
+
 // ─── CAPE auth ───────────────────────────────────────────────────────────────
 
 export interface AuthStatus {

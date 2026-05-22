@@ -294,6 +294,81 @@ app.post('/api/frontend-preview/start', async (req, reply) => {
   }
 });
 
+// ─── Auto-run after build ───────────────────────────────────────────────────
+// Used by the wizard's "Build & run" toggle. Unlike /frontend-preview/start,
+// this does NOT re-scaffold — the project is the real freshly scaffolded
+// output and scaffold.js already ran pnpm install. We just spawn the dev
+// server and wait until it answers HTTP.
+app.post('/api/scaffolded-project/start', async (req, reply) => {
+  const { outputDir, stack } = req.body ?? {};
+  if (!outputDir || typeof outputDir !== 'string') {
+    return reply.code(400).send({ ok: false, error: 'outputDir is required.' });
+  }
+  if (stack !== 'next' && stack !== 'tanstack') {
+    return reply.code(400).send({ ok: false, error: 'stack must be "next" or "tanstack".' });
+  }
+
+  // Tanstack writes the app to <outputDir>/frontend; next writes to the root.
+  const frontendDir = stack === 'tanstack' ? join(outputDir, 'frontend') : outputDir;
+  if (!existsSync(frontendDir)) {
+    return reply.code(400).send({ ok: false, error: `Frontend directory not found at ${frontendDir}.` });
+  }
+
+  stopFrontendPreview();
+
+  try {
+    const port = await findOpenPort(4300, 4399);
+    const args = stack === 'tanstack'
+      ? ['exec', 'vite', 'dev', '--host', '127.0.0.1', '--port', String(port), '--strictPort']
+      : ['exec', 'next', 'dev', '-H', '127.0.0.1', '-p', String(port)];
+
+    const child = spawn(PNPM_CMD, args, {
+      cwd: frontendDir,
+      env: { ...process.env, NO_COLOR: '1' },
+      shell: process.platform === 'win32',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    // Capture child output so failures surface in the 500 instead of being
+    // an opaque "did not become ready" timeout.
+    let logBuffer = '';
+    const collect = (chunk) => {
+      const line = stripAnsi(chunk.toString());
+      logBuffer += line;
+      if (logBuffer.length > 8000) logBuffer = logBuffer.slice(-8000);
+      // eslint-disable-next-line no-console
+      process.stdout.write(`[auto-run] ${line}`);
+    };
+    child.stdout.on('data', collect);
+    child.stderr.on('data', collect);
+
+    const url = `http://127.0.0.1:${port}`;
+    frontendPreview = { child, url, outputDir: frontendDir };
+    let earlyExitCode = null;
+    child.once('exit', (code) => {
+      if (frontendPreview?.child === child) frontendPreview = null;
+      earlyExitCode = code;
+      if (code && code !== 0) {
+        // eslint-disable-next-line no-console
+        console.error(`[auto-run] dev server exited with ${code}`);
+      }
+    });
+
+    try {
+      await waitForHttp(url, 90000);
+    } catch (waitErr) {
+      const detail = logBuffer.trim().slice(-2000) || '(no output captured)';
+      const exitNote = earlyExitCode !== null ? ` Process exited with code ${earlyExitCode}.` : '';
+      throw new Error(`${waitErr.message}${exitNote}\n--- Dev server output ---\n${detail}`);
+    }
+
+    return { ok: true, url };
+  } catch (err) {
+    stopFrontendPreview();
+    return reply.code(500).send({ ok: false, error: err?.message ?? 'Could not start the scaffolded project.' });
+  }
+});
+
 // ─── Load existing project ──────────────────────────────────────────────────
 // The wizard's "Open existing" flow pings this with a directory path. We
 // look for a `.scaffolded` marker in either the dir itself OR a `frontend/`

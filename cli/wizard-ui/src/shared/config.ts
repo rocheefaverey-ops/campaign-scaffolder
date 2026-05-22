@@ -198,6 +198,12 @@ export interface ScaffoldConfig {
    * UI-only.
    */
   loadedProjectDir?: string;
+  /**
+   * When true, the wizard spawns `pnpm dev` on the scaffolded project after
+   * a successful build and opens the resulting URL in a new tab. UI-only;
+   * never persisted to `.scaffolded`.
+   */
+  autoRunAfterBuild?: boolean;
 }
 
 // ─── Per-page settings ──────────────────────────────────────────────────────

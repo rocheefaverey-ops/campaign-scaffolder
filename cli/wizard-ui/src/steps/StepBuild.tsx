@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { pageMeta, type ScaffoldConfig, type BuildMode, type StepProps, type PageInstance } from '../shared/config.ts';
 import { rememberFreshScaffoldCreated } from '../shared/projectNameDefaults.ts';
-import { startScaffold, logoutCape, getGitStatus, getDoctorReport, type LogEvent, type GitStatus, type DoctorResult } from '../bridge.ts';
+import { startScaffold, startScaffoldedProject, logoutCape, getGitStatus, getDoctorReport, type LogEvent, type GitStatus, type DoctorResult } from '../bridge.ts';
 
 type BuildState =
   | { kind: 'idle' }
   | { kind: 'running' }
   | { kind: 'done'; ok: boolean; outputDir?: string };
+
+type AutoRunState =
+  | { kind: 'idle' }
+  | { kind: 'starting' }
+  | { kind: 'ready'; url: string }
+  | { kind: 'failed'; error: string };
 
 /** Common auth-failure substrings emitted by CAPE / scaffold.js. */
 const AUTH_FAIL_RE = /(userIncorrect|incorrect credentials|unauthori[sz]ed|not logged in|invalid token|expired session|CAPE auth required)/i;
@@ -17,6 +23,7 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
   const logRef = useRef<HTMLDivElement>(null);
   const [doctor, setDoctor] = useState<DoctorResult | null>(null);
   const [doctorLoading, setDoctorLoading] = useState(true);
+  const [autoRun, setAutoRun] = useState<AutoRunState>({ kind: 'idle' });
 
   // The mode picker shows whenever the wizard was populated from an existing
   // project. `loadedProjectDir` is sticky across mode changes, so the user
@@ -69,6 +76,7 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
   const start = () => {
     setLines([]);
     setState({ kind: 'running' });
+    setAutoRun({ kind: 'idle' });
     // For 'create' mode while loaded: drop outputDir so scaffold.js routes
     // it to a sibling directory rather than failing on the existing path.
     // loadedProjectDir + loadedFromExisting are also dropped — the server
@@ -78,11 +86,23 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
       ? { ...config, outputDir: undefined, loadedProjectDir: undefined }
       : config;
     const handle = startScaffold(submitConfig, (e) => setLines((prev) => [...prev, e]));
-    handle.done.then((res) => {
+    handle.done.then(async (res) => {
       if (res.ok && submitConfig.buildMode === 'create') {
         rememberFreshScaffoldCreated(submitConfig.name);
       }
       setState({ kind: 'done', ok: res.ok, outputDir: res.outputDir });
+
+      // Auto-run the freshly scaffolded project if the user opted in.
+      if (res.ok && config.autoRunAfterBuild && res.outputDir) {
+        setAutoRun({ kind: 'starting' });
+        const runRes = await startScaffoldedProject({ outputDir: res.outputDir, stack: config.stack });
+        if (runRes.ok && runRes.url) {
+          setAutoRun({ kind: 'ready', url: runRes.url });
+          window.open(runRes.url, '_blank', 'noopener');
+        } else {
+          setAutoRun({ kind: 'failed', error: runRes.error ?? 'Failed to start the dev server.' });
+        }
+      }
     });
   };
 
@@ -145,14 +165,26 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
       )}
 
       {state.kind === 'idle' && (
-        <button
-          className="btn btn--primary"
-          onClick={start}
-          disabled={!canStart}
-          style={{ alignSelf: 'flex-start' }}
-        >
-          {modeButtonLabel(config.buildMode, isLoadedExisting)}
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={Boolean(config.autoRunAfterBuild)}
+              onChange={(e) => setConfig({ ...config, autoRunAfterBuild: e.target.checked })}
+              style={{ width: 16, height: 16, accentColor: 'var(--color-primary)' }}
+            />
+            <span>
+              <strong>Run it for me after build</strong> — spawn <code>pnpm dev</code> on the scaffolded project and open it in a new tab.
+            </span>
+          </label>
+          <button
+            className="btn btn--primary"
+            onClick={start}
+            disabled={!canStart}
+          >
+            {modeButtonLabel(config.buildMode, isLoadedExisting)}
+          </button>
+        </div>
       )}
 
       {(state.kind === 'running' || state.kind === 'done') && (
@@ -169,6 +201,24 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
           {state.ok
             ? <>✓ Scaffold complete{state.outputDir ? <> · <code>{state.outputDir}</code></> : null}</>
             : <>✗ Scaffold failed — check the log above.</>}
+        </div>
+      )}
+
+      {autoRun.kind === 'starting' && (
+        <div className="banner">⠋ Spawning dev server… first compile can take ~30s.</div>
+      )}
+      {autoRun.kind === 'ready' && (
+        <div className="banner banner--ok" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <span>✓ Dev server running at <code>{autoRun.url}</code></span>
+          <a className="btn btn--primary" style={{ padding: '6px 12px', fontSize: 13 }} href={autoRun.url} target="_blank" rel="noreferrer">
+            Open ↗
+          </a>
+        </div>
+      )}
+      {autoRun.kind === 'failed' && (
+        <div className="banner banner--warn" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+          <span>⚠ Auto-run failed — the scaffold itself was fine, just the dev server didn't come up.</span>
+          <pre style={{ marginTop: 8, fontSize: 11, whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto' }}>{autoRun.error}</pre>
         </div>
       )}
 
