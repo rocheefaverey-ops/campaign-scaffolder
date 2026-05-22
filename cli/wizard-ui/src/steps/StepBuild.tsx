@@ -205,7 +205,7 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
       )}
 
       {autoRun.kind === 'starting' && (
-        <div className="banner">⠋ Spawning dev server… first compile can take ~30s.</div>
+        <div className="banner">⠋ Booting your scaffold… first run may take ~60s for install + cold compile.</div>
       )}
       {autoRun.kind === 'ready' && (
         <div className="banner banner--ok" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>

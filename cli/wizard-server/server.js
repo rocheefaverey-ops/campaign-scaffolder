@@ -297,8 +297,9 @@ app.post('/api/frontend-preview/start', async (req, reply) => {
 // ─── Auto-run after build ───────────────────────────────────────────────────
 // Used by the wizard's "Build & run" toggle. Unlike /frontend-preview/start,
 // this does NOT re-scaffold — the project is the real freshly scaffolded
-// output and scaffold.js already ran pnpm install. We just spawn the dev
-// server and wait until it answers HTTP.
+// output. Installs dependencies if node_modules is missing (scaffoldTanstack
+// doesn't run install; scaffoldNext usually does), then spawns the dev
+// server and waits until it answers HTTP.
 app.post('/api/scaffolded-project/start', async (req, reply) => {
   const { outputDir, stack } = req.body ?? {};
   if (!outputDir || typeof outputDir !== 'string') {
@@ -317,6 +318,16 @@ app.post('/api/scaffolded-project/start', async (req, reply) => {
   stopFrontendPreview();
 
   try {
+    // Install dependencies if node_modules is missing. scaffoldTanstack
+    // doesn't auto-install, and scaffoldNext can fail silently — either way,
+    // running install here is idempotent and lets the auto-run path stand
+    // on its own.
+    if (!existsSync(join(frontendDir, 'node_modules'))) {
+      // eslint-disable-next-line no-console
+      process.stdout.write('[auto-run] node_modules missing — running pnpm install (first run, ~30–60s)…\n');
+      await runCommand(PNPM_CMD, ['install', '--ignore-scripts'], frontendDir, 'pnpm install failed');
+    }
+
     const port = await findOpenPort(4300, 4399);
     const args = stack === 'tanstack'
       ? ['exec', 'vite', 'dev', '--host', '127.0.0.1', '--port', String(port), '--strictPort']
