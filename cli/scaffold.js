@@ -1846,6 +1846,33 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
     }
   }
 
+  // 3b-iii. Explicit TanStack voucher route. Mirrors the video-route pattern
+  // above: scaffoldTanstack does NOT process modules generically, so a
+  // selected `voucher` page would otherwise ship no route file and 404 at
+  // runtime. Copy from modules/voucher/tanstack instead.
+  if (normalizedPages.includes('voucher')) {
+    const voucherModuleDir = join(MODULES_DIR, 'voucher', 'tanstack');
+    const srcVoucherLoader = join(voucherModuleDir, 'loaders', 'VoucherLoader.ts');
+    const srcVoucherRoute  = join(voucherModuleDir, 'routes', 'voucher.tsx');
+    if (existsSync(srcVoucherLoader) && existsSync(srcVoucherRoute)) {
+      step('3b-iii', 'Installing voucher route…');
+      mkdirSync(loadersDir, { recursive: true });
+      cpSync(srcVoucherLoader, join(loadersDir, 'VoucherLoader.ts'));
+      let routeSrc = readFileSync(srcVoucherRoute, 'utf8');
+      for (const [from, to] of Object.entries(tanstackFlowTokens)) {
+        if (routeSrc.includes(from)) routeSrc = routeSrc.replaceAll(from, to);
+      }
+      writeFileSync(join(routesDir, 'voucher.tsx'), routeSrc, 'utf8');
+      ok('Voucher route installed');
+    } else {
+      warn('voucher page selected but module/voucher/tanstack templates are missing — runtime will 404.');
+    }
+  } else {
+    // If voucher was deselected on an update, clean up any prior copy.
+    const f = join(routesDir, 'voucher.tsx');
+    if (existsSync(f)) rmSync(f, { force: true });
+  }
+
   const indexRoute = join(routesDir, 'index.tsx');
   if (existsSync(indexRoute) && selectedVideoPages.includes('intro-video')) {
     let src = readFileSync(indexRoute, 'utf8');
