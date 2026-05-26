@@ -37,6 +37,20 @@ export default function App() {
   // have just logged in inline, and the header badge should reflect it.
   useEffect(() => { getAuthStatus().then(setAuth); }, [stepIdx]);
 
+  // Also refresh on window focus and after StepBuild signals a finish — a
+  // scaffold that failed with userIncorrect clears the bad token cache
+  // server-side, and the badge should drop the misleading ✓ without forcing a
+  // step navigation.
+  useEffect(() => {
+    const refresh = () => { getAuthStatus().then(setAuth); };
+    window.addEventListener('focus', refresh);
+    window.addEventListener('cape:auth-recheck', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('cape:auth-recheck', refresh);
+    };
+  }, []);
+
   const Current = STEPS[stepIdx].Component;
   const isFirst = stepIdx === 0;
   const isLast  = stepIdx === STEPS.length - 1;

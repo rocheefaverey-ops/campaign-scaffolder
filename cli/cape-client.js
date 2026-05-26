@@ -195,8 +195,22 @@ export async function validateAuth() {
   const tokens = await loadTokens();
   if (!tokens?.authToken) return null;
   try {
-    const { ok, data } = await apiPost('/resources/load', { resource: 'setup' }, tokens);
-    if (!ok || data?.error === 'tokenExpired' || data?.success === 0) return null;
+    // /resources/load only checks the token half of `userId:token` — a stale
+    // userId still returns success:1, so the wizard would happily show ✓ CAPE
+    // and then explode with "userIncorrect" at /campaigns/create. Probe a
+    // user-scoped endpoint to verify the userId is actually valid too.
+    const { ok: setupOk, data: setupData } = await apiPost('/resources/load', { resource: 'setup' }, tokens);
+    if (!setupOk || setupData?.success !== 1 || !setupData?.data) return null;
+
+    // getCampaign with a sentinel id surfaces userIncorrect / auth errors
+    // without depending on a specific campaign existing. A bad-but-existing
+    // user returns success:0 with an error like "userIncorrect"; a good user
+    // returns success:0 with "campaignNotFound" (or success:1 / empty data).
+    const probe = await apiPost('/editor/getCampaign', { type: 'campaign', id: 0 }, tokens);
+    const err = String(probe.data?.error || '').toLowerCase();
+    if (err.includes('userincorrect') || err.includes('tokenexpired') || err.includes('unauthorized') || err.includes('notloggedin')) {
+      return null;
+    }
     return tokens;
   } catch {
     return null;
@@ -265,6 +279,13 @@ export async function createCampaign(tokens, { title, market, formatPath = DEFAU
   }, tokens);
 
   if (!ok || data?.success !== 1 || !data?.data?.id || data.data.id === '0') {
+    const errMsg = String(data?.error || '').toLowerCase();
+    // If CAPE explicitly rejects the user, the cached token is unrecoverable —
+    // wipe it so the wizard's next status check correctly shows "signed out"
+    // instead of a misleading ✓ CAPE badge.
+    if (errMsg.includes('userincorrect') || errMsg.includes('tokenexpired') || errMsg.includes('unauthorized') || errMsg.includes('notloggedin')) {
+      try { await clearTokenCache(); } catch {}
+    }
     throw new Error(`Campaign creation failed: ${data?.error || JSON.stringify(data)}`);
   }
 

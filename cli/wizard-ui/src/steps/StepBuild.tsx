@@ -111,6 +111,10 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
         rememberFreshScaffoldCreated(submitConfig.name);
       }
       setState({ kind: 'done', ok: res.ok, outputDir: res.outputDir });
+      // Tell the app shell to re-check the CAPE badge — a failed scaffold may
+      // have cleared a stale token cache server-side (userIncorrect handling),
+      // and the badge should drop the misleading ✓ without a step navigation.
+      window.dispatchEvent(new Event('cape:auth-recheck'));
 
       // Auto-run the freshly scaffolded project if the user opted in.
       if (res.ok && config.autoRunAfterBuild && res.outputDir) {
