@@ -44,6 +44,14 @@ function flagKey(id: string): string {
   return `settings.menu.show${id[0].toUpperCase()}${id.slice(1)}`;
 }
 
+function variantKey(id: string): string {
+  return `settings.menu.variant${id[0].toUpperCase()}${id.slice(1)}`;
+}
+
+function coerceVariant(value: string, fallback: ButtonVariant): ButtonVariant {
+  return ['primary', 'secondary', 'tertiary', 'dark', 'danger'].includes(value) ? value as ButtonVariant : fallback;
+}
+
 export default function MenuPage() {
   const router       = useRouter();
   const navigate     = useSafeNavigation();
@@ -81,11 +89,12 @@ export default function MenuPage() {
             {visible.map(item => {
               const label = getCapeText(capeData, `copy.menu.${item.id}`, item.label);
               const target = getMenuTarget(capeData, item);
+              const variant = coerceVariant(getCapeText(capeData, variantKey(item.id), item.kind), item.kind);
               return (
                 <Button
                   key={item.id}
-                  variant={item.kind}
-                  size={item.kind === 'tertiary' ? 'sm' : 'md'}
+                  variant={variant}
+                  size={variant === 'tertiary' ? 'sm' : 'md'}
                   className="w-full"
                   onClick={() => navigate(target)}
                 >

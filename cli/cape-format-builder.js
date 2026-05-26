@@ -76,6 +76,18 @@ function langSelector(model, label, key, defaultValue) {
   return inp('languageSelector', model, label, key, { defaultValue });
 }
 
+const BUTTON_VARIANT_OPTIONS = {
+  primary:   'Primary CTA',
+  secondary: 'Secondary',
+  tertiary:  'Text / subtle',
+  dark:      'Dark',
+  danger:    'Danger / leave',
+};
+
+function buttonVariantSelect(model, label, key, defaultValue) {
+  return select(model, label, key, BUTTON_VARIANT_OPTIONS, defaultValue);
+}
+
 // ── Structure builders ────────────────────────────────────────────────────────
 
 function block(key, title, items) {
@@ -149,34 +161,6 @@ function settingsPage() {
       // ── Desktop wrapper (QR → mobile preview) ──────────────────────────────
       block('settings-desktop-block', 'Desktop wrapper', [
         bool('desktop.useDesktopWrapper', 'Use desktop QR wrapper', 'settings-desktop-enabled', true),
-      ]),
-
-      // ── Menu visibility (toggles items in the hamburger menu) ─────────────
-      block('settings-menu-block', 'Menu visibility', [
-        bool('settings.menu.showHome',        'Show Home',           'settings-menu-home',    true),
-        bool('settings.menu.showResume',      'Show Resume game',    'settings-menu-resume',  false),
-        bool('settings.menu.showHowToPlay',   'Show How to play',    'settings-menu-how',     true),
-        bool('settings.menu.showLeaderboard', 'Show Leaderboard',    'settings-menu-leader',  false),
-        bool('settings.menu.showVoucher',     'Show My voucher',     'settings-menu-voucher', false),
-        bool('settings.menu.showTerms',       'Show Terms',          'settings-menu-terms',   true),
-        bool('settings.menu.showPrivacy',     'Show Privacy',        'settings-menu-privacy', true),
-        bool('settings.menu.showFaq',         'Show FAQ',            'settings-menu-faq',     false),
-        bool('settings.menu.showLeave',       'Show Leave campaign', 'settings-menu-leave',   true),
-      ]),
-
-      // ── Menu button variants (visual style per item) ──────────────────────
-      // Accepts: primary | secondary | tertiary | dark | danger.
-      // Unset / invalid falls back to the per-item agency default in MenuLoader.
-      block('settings-menu-variant-block', 'Menu button styles', [
-        text('settings.menu.variantHome',        'Home button style',        'settings-menu-variant-home',    'secondary'),
-        text('settings.menu.variantResume',      'Resume button style',      'settings-menu-variant-resume',  'secondary'),
-        text('settings.menu.variantHowToPlay',   'How-to-play button style', 'settings-menu-variant-how',     'primary'),
-        text('settings.menu.variantLeaderboard', 'Leaderboard button style', 'settings-menu-variant-leader',  'primary'),
-        text('settings.menu.variantVoucher',     'Voucher button style',     'settings-menu-variant-voucher', 'primary'),
-        text('settings.menu.variantTerms',       'Terms button style',       'settings-menu-variant-terms',   'tertiary'),
-        text('settings.menu.variantPrivacy',     'Privacy button style',     'settings-menu-variant-privacy', 'tertiary'),
-        text('settings.menu.variantFaq',         'FAQ button style',         'settings-menu-variant-faq',     'tertiary'),
-        text('settings.menu.variantLeave',       'Leave button style',       'settings-menu-variant-leave',   'danger'),
       ]),
 
       block('settings-game-block', 'Game boot', [
@@ -514,8 +498,8 @@ function nextResultTab(instanceId, els, flowEnabledExits = {}, modules = []) {
 }
 
 /**
- * Menu — only the labels for items the wizard left enabled. If the user
- * disables every item, the tab is dropped entirely (caller's job to skip).
+ * Menu: visibility, button style, and labels in one CAPE tab.
+ * Route availability is still enforced by the scaffolded frontend.
  */
 function nextMenuTab(menuItemsEnabled = {}) {
   // Mirror of MENU_ITEMS in cli/wizard-ui/src/shared/config.ts and
@@ -532,16 +516,32 @@ function nextMenuTab(menuItemsEnabled = {}) {
     { id: 'leave',       label: 'Leave campaign', defaultEnabled: false, fallback: 'Leave campaign' },
   ];
 
+  const visibilityItems = ALL_ITEMS.map((item) =>
+    bool(
+      `settings.menu.show${item.id[0].toUpperCase()}${item.id.slice(1)}`,
+      item.label,
+      `next-menu-show-${item.id.toLowerCase()}`,
+      menuItemsEnabled[item.id] ?? item.defaultEnabled,
+    )
+  );
+
+  const styleItems = ALL_ITEMS.map((item) =>
+    buttonVariantSelect(
+      `settings.menu.variant${item.id[0].toUpperCase()}${item.id.slice(1)}`,
+      item.label,
+      `next-menu-variant-${item.id.toLowerCase()}`,
+      item.id === 'leave' ? 'danger' : item.id === 'terms' || item.id === 'privacy' || item.id === 'faq' ? 'tertiary' : 'secondary',
+    )
+  );
+
   const items = [textML('copy.menu.headline', 'Menu headline', 'next-menu-headline', 'Menu')];
   for (const item of ALL_ITEMS) {
-    const enabled = menuItemsEnabled[item.id] ?? item.defaultEnabled;
-    if (!enabled) continue;
     items.push(textML(`copy.menu.${item.id}`, item.label, `next-menu-${item.id.toLowerCase()}`, item.fallback));
   }
 
-  // If no items at all (user explicitly turned everything off) just keep the
-  // headline alone; the tab is still useful for that one field.
   return tab('next-menu-tab', 'Menu', 'menu', [
+    block('next-menu-visibility-block', 'Menu items', visibilityItems),
+    block('next-menu-style-block', 'Button style', styleItems),
     block('next-menu-copy-block', 'Menu copy', items),
   ], true);
 }
@@ -764,11 +764,7 @@ export function buildNextCapeFormat({
     }
   }
 
-  // Menu tab — global (one per campaign). Skip entirely when every item is
-  // off so CAPE editors aren't shown a tab full of dead headings.
-  const anyMenuItem = Object.values(menuItemsEnabled).some(Boolean)
-    || (Object.keys(menuItemsEnabled).length === 0); // empty defaults to true (legacy)
-  if (anyMenuItem) pageTabs.push(nextMenuTab(menuItemsEnabled));
+  pageTabs.push(nextMenuTab(menuItemsEnabled));
 
   const capePages = [settingsPage()];
   capePages.push(capePage('pages', 'Pages', 'next-pages-page', pageTabs, { showLanguageSelector: true }));

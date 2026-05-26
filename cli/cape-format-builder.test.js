@@ -200,12 +200,14 @@ if (warnings.length > 0) {
 let generatedBooleanFields = 0;
 let generatedSwitchFields = 0;
 let generatedYesNoSelectFields = 0;
+const menuVariantFields = [];
 const walkItems = (node) => {
   if (Array.isArray(node)) return node.forEach(walkItems);
   if (!node || typeof node !== 'object') return;
   if (node.itemType === 'input') {
     if (node.type === 'boolean') generatedBooleanFields++;
     if (node.type === 'switch') generatedSwitchFields++;
+    if (typeof node.model === 'string' && node.model.startsWith('settings.menu.variant')) menuVariantFields.push(node);
     if (
       node.type === 'select' &&
       node.options?.true === 'Yes' &&
@@ -223,6 +225,12 @@ if (generatedSwitchFields === 0) {
 }
 if (generatedYesNoSelectFields > 0) {
   failures.push(`Generated CAPE format still contains ${generatedYesNoSelectFields} Yes/No select field(s); use switch instead.`);
+}
+if (menuVariantFields.length !== 9 || menuVariantFields.some((field) => field.type !== 'select')) {
+  failures.push('Menu button style fields must be CAPE select/dropdown fields, not free-text inputs.');
+}
+if (menuVariantFields.some((field) => !field.options?.primary || !field.options?.secondary || !field.options?.tertiary || !field.options?.danger)) {
+  failures.push('Menu button style dropdowns are missing one or more required button variants.');
 }
 
 // ── Test 4: KNOWN_PAGE_TYPES and the wizard's ALL_PAGES stay in sync ─────────
