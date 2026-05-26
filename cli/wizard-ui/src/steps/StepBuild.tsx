@@ -72,11 +72,23 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
   /** Compute whether the chosen mode is safe + whether to require an override. */
   const safety = useMemo(() => evalSafety(config.buildMode, git, isLoadedExisting), [config.buildMode, git, isLoadedExisting]);
   const canStart = state.kind === 'idle' && doctor?.ok !== false && (!safety.requiresOverride || override);
+  const canTestRun = state.kind === 'done' && state.ok && Boolean(state.outputDir) && autoRun.kind !== 'starting';
 
   // Auto-scroll the log to the bottom on each new line.
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [lines]);
+
+  const testRun = async (outputDir: string) => {
+    setAutoRun({ kind: 'starting' });
+    const runRes = await startScaffoldedProject({ outputDir, stack: config.stack });
+    if (runRes.ok && runRes.url) {
+      setAutoRun({ kind: 'ready', url: runRes.url });
+      window.open(runRes.url, '_blank', 'noopener');
+    } else {
+      setAutoRun({ kind: 'failed', error: runRes.error ?? 'Failed to start the dev server.' });
+    }
+  };
 
   const start = () => {
     if (inFlightRef.current) return;
@@ -102,14 +114,7 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
 
       // Auto-run the freshly scaffolded project if the user opted in.
       if (res.ok && config.autoRunAfterBuild && res.outputDir) {
-        setAutoRun({ kind: 'starting' });
-        const runRes = await startScaffoldedProject({ outputDir: res.outputDir, stack: config.stack });
-        if (runRes.ok && runRes.url) {
-          setAutoRun({ kind: 'ready', url: runRes.url });
-          window.open(runRes.url, '_blank', 'noopener');
-        } else {
-          setAutoRun({ kind: 'failed', error: runRes.error ?? 'Failed to start the dev server.' });
-        }
+        await testRun(res.outputDir);
       }
     });
   };
@@ -205,10 +210,20 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
       )}
 
       {state.kind === 'done' && (
-        <div className={`banner ${state.ok ? 'banner--ok' : 'banner--err'}`}>
+        <div className={`banner ${state.ok ? 'banner--ok' : 'banner--err'}`} style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           {state.ok
             ? <>✓ Scaffold complete{state.outputDir ? <> · <code>{state.outputDir}</code></> : null}</>
             : <>✗ Scaffold failed — check the log above.</>}
+          {canTestRun && state.outputDir && (
+            <button
+              type="button"
+              className="btn btn--primary"
+              style={{ padding: '6px 12px', fontSize: 13 }}
+              onClick={() => void testRun(state.outputDir!)}
+            >
+              Test run
+            </button>
+          )}
         </div>
       )}
 
