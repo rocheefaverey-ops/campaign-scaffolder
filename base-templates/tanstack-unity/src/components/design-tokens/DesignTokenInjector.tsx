@@ -29,6 +29,15 @@ export function DesignTokenInjector({ branding }: DesignTokenInjectorProps) {
     set('--color-statusRed', branding.errorColor);
     set('--color-theme',     branding.themeColor);
 
+    // Surface + text tokens — backfilled to match the Next templates so
+    // CAPE-driven background/ink/on-dark text actually flows through on
+    // TanStack campaigns instead of staying on the neutral defaults.
+    set('--surface-base', branding.backgroundColor ?? branding.tertiaryColor);
+    set('--surface-ink', branding.secondaryColor);
+    set('--surface-lime', branding.primaryColor);
+    set('--text-primary', branding.textColor ?? branding.secondaryColor);
+    set('--text-inverse', branding.onDarkText);
+
     set('--default-font-family', branding.fontFamily);
     set('--display-font-family', branding.displayFontFamily);
   }, [branding]);
