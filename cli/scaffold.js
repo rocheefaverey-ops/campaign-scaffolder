@@ -842,7 +842,7 @@ async function runWizard(pre) {
               console.log(`  ${c.dim('Opening https://engagement.acceptance.campaigndesigner.io ...')}`);
               try {
                 const url = 'https://engagement.acceptance.campaigndesigner.io';
-                if (process.platform === 'win32') execSync(`start "${url}"`, { stdio: 'ignore', shell: true });
+                if (process.platform === 'win32') execSync(`start "" "${url}"`, { stdio: 'ignore', shell: true });
                 else if (process.platform === 'darwin') execSync(`open "${url}"`, { stdio: 'ignore' });
                 else execSync(`xdg-open "${url}"`, { stdio: 'ignore' });
                 console.log(`  ${c.green('✓')} Browser opened. Check your account, then return here.`);
@@ -1132,7 +1132,7 @@ async function runWizard(pre) {
             console.log(`  ${c.dim('Opening https://engagement.acceptance.campaigndesigner.io ...')}`);
             try {
               const url = 'https://engagement.acceptance.campaigndesigner.io';
-              if (process.platform === 'win32') execSync(`start "${url}"`, { stdio: 'ignore', shell: true });
+              if (process.platform === 'win32') execSync(`start "" "${url}"`, { stdio: 'ignore', shell: true });
               else if (process.platform === 'darwin') execSync(`open "${url}"`, { stdio: 'ignore' });
               else execSync(`xdg-open "${url}"`, { stdio: 'ignore' });
               console.log(`  ${c.green('✓')} Browser opened. Check your account, then return here.`);
@@ -2508,6 +2508,16 @@ function writeDebugFile(outputDir, config) {
 
 // ─── Token replacement ────────────────────────────────────────────────────────
 const TEXT_EXT = new Set(['.ts','.tsx','.js','.jsx','.json','.md','.env','.example','.css','.html','.txt','.yaml','.yml']);
+// Text files that don't fit the extension allow-list — dotfiles whose entire
+// name is the "extension" (`.gitignore` → ext `.gitignore`) and extensionless
+// config files (`Dockerfile`, `LICENSE`, …). Without this, tokens like
+// `{{PROJECT_NAME}}` survive verbatim into these files.
+const TEXT_FILENAMES = new Set([
+  '.gitignore', '.gitattributes', '.npmrc', '.nvmrc', '.dockerignore',
+  '.editorconfig', '.prettierrc', '.eslintrc', '.browserslistrc',
+  'Dockerfile', 'Procfile', 'Makefile', 'LICENSE', 'README',
+  'env.dist',
+]);
 
 function tokenReplaceDir(dir, tokens) {
   let count = 0;
@@ -2517,7 +2527,7 @@ function tokenReplaceDir(dir, tokens) {
       const full = join(d, entry);
       if (statSync(full).isDirectory()) { walk(full); continue; }
       const ext = entry.includes('.') ? '.' + entry.split('.').pop() : '';
-      if (!TEXT_EXT.has(ext) && !entry.startsWith('.env') && entry !== 'env.dist') continue;
+      if (!TEXT_EXT.has(ext) && !entry.startsWith('.env') && !TEXT_FILENAMES.has(entry)) continue;
       let content = readFileSync(full, 'utf8');
       let modified = false;
       for (const [from, to] of Object.entries(tokens)) {
@@ -2547,8 +2557,13 @@ function appendEnvVars(outputDir, envVars) {
   if (!existsSync(p)) return;
   const existing = readFileSync(p, 'utf8');
   const byModule = {};
+  // Substring matching on `existing.includes(varName)` skipped `FOO` whenever
+  // the file already contained `FOOBAR` (or `FOO_PREFIX`, or a comment that
+  // mentioned `FOO`). Match line-anchored `<name>=` instead.
+  const existingLines = existing.split('\n').map((l) => l.trimStart());
+  const hasEnvVar = (name) => existingLines.some((l) => l.startsWith(`${name}=`));
   for (const { moduleId, varName } of envVars) {
-    if (!existing.includes(varName)) (byModule[moduleId] ??= []).push(varName);
+    if (!hasEnvVar(varName)) (byModule[moduleId] ??= []).push(varName);
   }
   if (!Object.keys(byModule).length) return;
   const lines = ['', '# ─────────────────────────────────────────────', '# Added by lw-scaffold', '# ─────────────────────────────────────────────'];
