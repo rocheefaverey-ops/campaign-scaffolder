@@ -21,6 +21,16 @@ export function validateArgs(args) {
   if (args.market && !VALID_MARKETS.has(args.market.toUpperCase())) {
     throw new Error(`Unknown market "${args.market}". Valid markets: ${[...VALID_MARKETS].join(', ')}.`);
   }
+  // Only a tanstack-unity base template exists today. r3f / phaser / memory
+  // module files ship Next-shaped paths, so `--stack=tanstack --game=phaser`
+  // would scaffold a broken project. Fail fast.
+  if (args.stack === 'tanstack' && args.game && !['unity', 'none', ''].includes(args.game)) {
+    throw new Error(
+      `TanStack stack only supports game=unity (got "${args.game}"). ` +
+      `The r3f, phaser, and memory engines are Next-only — drop --stack=tanstack ` +
+      `or switch to --game=unity.`,
+    );
+  }
 }
 
 export function validateConfig({ game = 'none', pages = [], pageTypes = {}, modules = [] }) {
