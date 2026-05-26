@@ -11,8 +11,9 @@ export const Route = createFileRoute('/')({
 function App() {
   const router = useRouter();
   const entryRoute = '{{FLOW_ENTRY}}';
+  const shouldPreloadUnity = '{{UNITY_BOOT_MODE}}' === 'entry';
   const { sceneKey } = useLoaderData({ from: '__root__' });
-  const { setTargetScene } = useUnity();
+  const { initializeUnity, setTargetScene } = useUnity();
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -20,6 +21,11 @@ function App() {
     initialized.current = true;
 
     setTargetScene(sceneKey);
+    if (shouldPreloadUnity) {
+      void initializeUnity(true).catch((error) => {
+        console.error('Unity failed to initialize on entry:', error);
+      });
+    }
     void router.preloadRoute({ to: entryRoute as never });
     void router.navigate({ to: entryRoute as never, replace: true, viewTransition: false });
   }, []);

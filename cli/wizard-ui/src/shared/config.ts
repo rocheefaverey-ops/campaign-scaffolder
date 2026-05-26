@@ -274,6 +274,12 @@ export const PAGE_SETTINGS_SCHEMA: Record<string, SettingDef[]> = {
       hint: '✓ Block submission until all consent checkboxes are ticked.' },
   ],
   game: [
+    { key: 'unityBootMode', label: 'Unity boot timing', kind: 'select', default: 'entry',
+      options: [
+        { value: 'entry', label: 'Start page (preload immediately)' },
+        { value: 'game',  label: 'Game page only' },
+      ],
+      hint: 'Choose whether Unity starts loading as soon as the visitor enters the site or only when /game opens.' },
     { key: 'timerEnabled', label: 'Timer enabled',  kind: 'boolean', default: true,
       hint: '✓ Render a countdown overlay on the gameplay page.' },
     { key: 'timerSec',     label: 'Timer duration', kind: 'number',  default: 60, min: 5, max: 600, unit: 'sec', showWhen: [{ key: 'timerEnabled', value: true }],

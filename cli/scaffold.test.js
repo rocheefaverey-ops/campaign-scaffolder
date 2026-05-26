@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { basePageType, routeFor, validateConfig } from './scaffold.js';
+import { basePageType, normalizeUnityBootMode, routeFor, validateConfig } from './scaffold.js';
 
 let pass = 0;
 let fail = 0;
@@ -47,6 +47,19 @@ t('uses routeMap override when provided', () => {
 t('defaults to PAGE_ROUTES when routeMap is empty', () => {
   assert.equal(routeFor('game', {}), '/gameplay');
   assert.equal(routeFor('video-2', {}), '/video-2');
+});
+
+console.log('normalizeUnityBootMode()');
+t('defaults to start-page Unity preload', () => {
+  assert.equal(normalizeUnityBootMode(), 'entry');
+  assert.equal(normalizeUnityBootMode({}), 'entry');
+  assert.equal(normalizeUnityBootMode({ game: {} }), 'entry');
+});
+t('allows Unity to wait until the game page', () => {
+  assert.equal(normalizeUnityBootMode({ game: { unityBootMode: 'game' } }), 'game');
+});
+t('falls back to start-page preload for unknown values', () => {
+  assert.equal(normalizeUnityBootMode({ game: { unityBootMode: 'soon' } }), 'entry');
 });
 
 console.log('validateConfig()');

@@ -154,7 +154,7 @@ Selectable pages in the wizard:
 | `leaderboard` | `/leaderboard` | Score table |
 | `voucher` | `/voucher` | Reward/voucher page |
 
-The wizard flow editor decides where each page goes next.
+The wizard flow editor decides where each page goes next. For TanStack + Unity campaigns, the `game` page settings also include **Unity boot timing**: preload Unity from the start page, or wait until the visitor reaches the game page.
 
 ---
 

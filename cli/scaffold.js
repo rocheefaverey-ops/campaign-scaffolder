@@ -66,7 +66,7 @@ import {
   validateModuleManifestFile,
 } from './core/health.js';
 
-export { PAGE_ROUTES, basePageType, routeFor, validateConfig };
+export { PAGE_ROUTES, basePageType, routeFor, normalizeUnityBootMode, validateConfig };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -1608,6 +1608,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
 
   const frontendDir = join(outputDir, 'frontend');
   const flowTokens = computeFlowTokens(pages, 'none', flowExits, flowEntry, pageTypes, routeMap);
+  const unityBootMode = normalizeUnityBootMode(pageSettings);
   const optionalExitEnabled = (pageId, exitKey, defaultValue = false) =>
     Boolean(flowEnabledExits?.[`${pageId}.${exitKey}`] ?? defaultValue);
   const hasPageType = (type) => pages.some((id) => (pageTypes[id] ?? id) === type);
@@ -1617,6 +1618,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
     '{{SHOW_LANDING_LEADERBOARD_BUTTON}}': String(optionalExitEnabled('landing', 'leaderboard', false) && hasPageType('leaderboard')),
     '{{SHOW_RESULT_PLAY_AGAIN_BUTTON}}': String(optionalExitEnabled('result', 'playAgain', true)),
     '{{SHOW_RESULT_LEADERBOARD_BUTTON}}': String(optionalExitEnabled('result', 'leaderboard', false) && hasPageType('leaderboard')),
+    '{{UNITY_BOOT_MODE}}': unityBootMode,
     '{{GAME_ROUTE}}': routeFor('game', routeMap),
     '{{LEADERBOARD_ROUTE}}': routeFor('leaderboard', routeMap),
   };
@@ -2773,6 +2775,10 @@ function patchRouteAwareRuntime(frontendDir, pages = [], routeMap = {}, flowToke
     src = src.replace(/navigate\('\/landing'\), autoNavSec \* 1000\)/, `navigate('${nextAfterResult}'), autoNavSec * 1000)`);
     writeFileSync(resultPath, src, 'utf8');
   }
+}
+
+function normalizeUnityBootMode(pageSettings = {}) {
+  return pageSettings?.game?.unityBootMode === 'game' ? 'game' : 'entry';
 }
 
 function tokenReplaceDir(dir, tokens) {
@@ -4334,7 +4340,7 @@ async function main() {
           'ad-video': { skipAfterSeconds: 3 },
           onboarding: { allowSkip: false },
           register: { showInfix: true, requireOptIns: true },
-          game: { timerEnabled: true, timerSec: 60 },
+          game: { unityBootMode: 'entry', timerEnabled: true, timerSec: 60 },
           result: { autoNavSec: 0 },
           voucher: { showQr: true, codeLength: 8 },
         },
