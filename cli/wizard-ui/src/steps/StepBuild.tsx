@@ -24,6 +24,11 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
   const [doctor, setDoctor] = useState<DoctorResult | null>(null);
   const [doctorLoading, setDoctorLoading] = useState(true);
   const [autoRun, setAutoRun] = useState<AutoRunState>({ kind: 'idle' });
+  // Synchronous double-click guard. Setting `state` to 'running' inside
+  // `start` re-renders + disables the button, but two clicks dispatched in
+  // the same paint frame can both enter `start` before React commits. A ref
+  // is consulted synchronously and blocks the second call.
+  const inFlightRef = useRef(false);
 
   // The mode picker shows whenever the wizard was populated from an existing
   // project. `loadedProjectDir` is sticky across mode changes, so the user
@@ -74,6 +79,8 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
   }, [lines]);
 
   const start = () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setLines([]);
     setState({ kind: 'running' });
     setAutoRun({ kind: 'idle' });
@@ -87,6 +94,7 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
       : config;
     const handle = startScaffold(submitConfig, (e) => setLines((prev) => [...prev, e]));
     handle.done.then(async (res) => {
+      inFlightRef.current = false;
       if (res.ok && submitConfig.buildMode === 'create') {
         rememberFreshScaffoldCreated(submitConfig.name);
       }
