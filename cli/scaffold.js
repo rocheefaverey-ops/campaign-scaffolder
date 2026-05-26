@@ -1941,66 +1941,25 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
     if (flowReplaced > 0) ok(`Flow tokens applied to ${flowReplaced} generated file(s)`);
   }
 
-  // 3b-ii. Explicit TanStack video routes. Keep these in sync with the
-  // selected flow so `.scaffolded`, routeTree, and CAPE tabs describe the
-  // same campaign.
+  // 3b-ii. Per-page video route cleanup. The video manifest declares all
+  // four route files (`video`, `intro-video`, `loading-video`, `ad-video`)
+  // with `stacks: ["tanstack"]`, so the generic module pipeline (step 1a)
+  // shipped all four even when the user only selected one or two. Remove
+  // the ones not in the flow so the route tree matches the campaign.
+  const ALL_VIDEO_ROUTE_IDS = ['video', ...EXPLICIT_VIDEO_PAGES];
   const selectedVideoPages = EXPLICIT_VIDEO_PAGES.filter((id) => normalizedPages.includes(id));
-  const tanstackVideoModuleDir = join(MODULES_DIR, 'video', 'tanstack');
-  if (selectedVideoPages.length > 0) {
-    step('3b-ii', `Installing ${selectedVideoPages.length} video route(s)...`);
-    const srcLoader = join(tanstackVideoModuleDir, 'loaders', 'VideoLoader.ts');
-    if (existsSync(srcLoader)) {
-      mkdirSync(loadersDir, { recursive: true });
-      cpSync(srcLoader, join(loadersDir, 'VideoLoader.ts'));
-    }
-    for (const id of selectedVideoPages) {
-      const srcRoute = join(tanstackVideoModuleDir, 'routes', `${id}.tsx`);
-      if (!existsSync(srcRoute)) {
-        warn(`No TanStack video route template found for "${id}".`);
-        continue;
-      }
-      // Read + replace + write rather than cpSync — the earlier
-      // tanstackFlowTokens pass already ran, so any unresolved tokens in the
-      // copied file would survive into the scaffold (e.g. {{NEXT_AFTER_INTRO_VIDEO}}
-      // shipping as a literal string).
-      let routeSrc = readFileSync(srcRoute, 'utf8');
-      for (const [from, to] of Object.entries(tanstackFlowTokens)) {
-        if (routeSrc.includes(from)) routeSrc = routeSrc.replaceAll(from, to);
-      }
-      writeFileSync(join(routesDir, `${id}.tsx`), routeSrc, 'utf8');
-      ok(`Video route "${id}" installed`);
-    }
-  }
-  for (const id of EXPLICIT_VIDEO_PAGES) {
-    if (!selectedVideoPages.includes(id)) {
+  for (const id of ALL_VIDEO_ROUTE_IDS) {
+    if (!normalizedPages.includes(id)) {
       const f = join(routesDir, `${id}.tsx`);
       if (existsSync(f)) rmSync(f, { force: true });
     }
   }
 
-  // 3b-iii. Explicit TanStack voucher route. Mirrors the video-route pattern
-  // above: scaffoldTanstack does NOT process modules generically, so a
-  // selected `voucher` page would otherwise ship no route file and 404 at
-  // runtime. Copy from modules/voucher/tanstack instead.
-  if (normalizedPages.includes('voucher')) {
-    const voucherModuleDir = join(MODULES_DIR, 'voucher', 'tanstack');
-    const srcVoucherLoader = join(voucherModuleDir, 'loaders', 'VoucherLoader.ts');
-    const srcVoucherRoute  = join(voucherModuleDir, 'routes', 'voucher.tsx');
-    if (existsSync(srcVoucherLoader) && existsSync(srcVoucherRoute)) {
-      step('3b-iii', 'Installing voucher route…');
-      mkdirSync(loadersDir, { recursive: true });
-      cpSync(srcVoucherLoader, join(loadersDir, 'VoucherLoader.ts'));
-      let routeSrc = readFileSync(srcVoucherRoute, 'utf8');
-      for (const [from, to] of Object.entries(tanstackFlowTokens)) {
-        if (routeSrc.includes(from)) routeSrc = routeSrc.replaceAll(from, to);
-      }
-      writeFileSync(join(routesDir, 'voucher.tsx'), routeSrc, 'utf8');
-      ok('Voucher route installed');
-    } else {
-      warn('voucher page selected but module/voucher/tanstack templates are missing — runtime will 404.');
-    }
-  } else {
-    // If voucher was deselected on an update, clean up any prior copy.
+  // 3b-iii. Voucher route deselect cleanup. Generic pipeline only copies
+  // when 'voucher' is in `modules` (i.e. when --page=voucher), so this only
+  // matters on --update where voucher was previously installed and the user
+  // has since dropped the page.
+  if (!normalizedPages.includes('voucher')) {
     const f = join(routesDir, 'voucher.tsx');
     if (existsSync(f)) rmSync(f, { force: true });
   }
