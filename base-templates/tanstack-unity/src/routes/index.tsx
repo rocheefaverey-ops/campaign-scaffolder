@@ -10,7 +10,7 @@ export const Route = createFileRoute('/')({
 
 function App() {
   const router = useRouter();
-  const entryRoute = '/landing';
+  const entryRoute = '{{FLOW_ENTRY}}';
   const { sceneKey } = useLoaderData({ from: '__root__' });
   const { setTargetScene } = useUnity();
   const initialized = useRef(false);

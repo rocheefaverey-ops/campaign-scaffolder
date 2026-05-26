@@ -63,7 +63,7 @@ function Register() {
 
       try {
         await sleep(2000);
-        router.navigate({ to: '/landing' });
+        router.navigate({ to: '{{NEXT_AFTER_REGISTER}}' as never });
       } catch (e) {
         console.error('Error during form submission:', e);
         setError(copy.genericError);
@@ -77,7 +77,7 @@ function Register() {
       <StyledText type={'description'} marginTop={8} alternate>{copy.description}</StyledText>
 
       <DynamicForm className={styles.form} formData={formData} buttonText={copy.button} errorText={error} loading={isPending} onSubmit={(data) => processForm(data)} />
-      <StyledButton linkOptions={{ to: '/result' }} marginTop={8} alternate>Back</StyledButton>
+      <StyledButton linkOptions={{ to: '{{NEXT_AFTER_REGISTER}}' as never }} marginTop={8} alternate>Back</StyledButton>
     </PageContainer>
   );
 }

@@ -13,8 +13,8 @@ export const Route = createFileRoute('/landing')({
 function Landing() {
   const { copy, heroUrl, headerLogoUrl, pageLogoUrl } = Route.useLoaderData();
   const router = useRouter();
-  const nextRoute = '/tutorial';
-  const tutorialRoute = '/tutorial';
+  const nextRoute = '{{NEXT_AFTER_LANDING}}';
+  const tutorialRoute = '{{LANDING_TUTORIAL_ROUTE}}';
   const showTutorialButton = JSON.parse('false') as boolean;
 
   const resolvedHeaderLogo = pageLogoUrl || headerLogoUrl || LogoImage;

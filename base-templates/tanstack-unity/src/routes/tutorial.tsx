@@ -18,7 +18,7 @@ export const Route = createFileRoute('/tutorial')({
 function Tutorial() {
   const { copy, steps, screenLayout, heroUrl, logoUrl } = Route.useLoaderData();
   const router = useRouter();
-  const nextRoute = '/loading-video';
+  const nextRoute = '{{NEXT_AFTER_TUTORIAL}}';
   const isPending = false;
   const navigate = () => void router.navigate({ to: nextRoute as never, replace: true });
   const contentRef = useRef<IContentSliderHandle>(null);

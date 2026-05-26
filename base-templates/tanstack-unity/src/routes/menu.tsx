@@ -19,7 +19,7 @@ function Menu() {
     if (window.history.length > 1) {
       window.history.back();
     } else {
-      void router.navigate({ to: '/landing' });
+      void router.navigate({ to: '{{FLOW_ENTRY}}' as never });
     }
   }
 
@@ -64,10 +64,10 @@ function Menu() {
 
 function buildItems(data: Awaited<ReturnType<typeof loadMenuData>>) {
   return [
-    data.flags.showHome        && { copyKey: 'home',        target: '/landing',           variant: data.variants.home },
-    data.flags.showResume      && { copyKey: 'resume',      target: '/game',              variant: data.variants.resume },
-    data.flags.showHowToPlay   && { copyKey: 'howToPlay',   target: '/tutorial',          variant: data.variants.howToPlay },
-    data.flags.showLeaderboard && { copyKey: 'leaderboard', target: '/leaderboard',       variant: data.variants.leaderboard },
+    data.flags.showHome        && { copyKey: 'home',        target: '{{FLOW_ENTRY}}',      variant: data.variants.home },
+    data.flags.showResume      && { copyKey: 'resume',      target: '{{GAME_ROUTE}}',      variant: data.variants.resume },
+    data.flags.showHowToPlay   && { copyKey: 'howToPlay',   target: '{{LANDING_TUTORIAL_ROUTE}}', variant: data.variants.howToPlay },
+    data.flags.showLeaderboard && { copyKey: 'leaderboard', target: '{{LEADERBOARD_ROUTE}}', variant: data.variants.leaderboard },
     data.flags.showVoucher     && { copyKey: 'voucher',     target: '/voucher',           variant: data.variants.voucher },
     data.flags.showTerms && data.links.termsUrl     && { copyKey: 'terms',   target: data.links.termsUrl,   external: true, variant: data.variants.terms },
     data.flags.showPrivacy && data.links.privacyUrl && { copyKey: 'privacy', target: data.links.privacyUrl, external: true, variant: data.variants.privacy },

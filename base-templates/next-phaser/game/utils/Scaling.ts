@@ -24,8 +24,8 @@ export default class Scaling {
   static getDevicePixelRatio(): number {
     const params = new URLSearchParams(window.location.search);
     const forceDpr = params.get('dpr');
-    if (forceDpr) return Math.floor(parseInt(forceDpr));
-    return Math.floor(Math.min(window.devicePixelRatio, 3));
+    const raw = forceDpr ? Number(forceDpr) : window.devicePixelRatio;
+    return Math.max(1, Math.min(3, Math.round(raw || 1)));
   }
 
   static getPixelsByDPR(px: number): number {

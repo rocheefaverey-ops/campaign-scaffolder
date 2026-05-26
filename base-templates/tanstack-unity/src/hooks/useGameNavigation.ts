@@ -9,12 +9,12 @@ export function useGameNavigation() {
   const router = useRouter();
 
   // Preload game route
-  useEffect(() => void router.preloadRoute({ to: '/game', replace: true }), []);
+  useEffect(() => void router.preloadRoute({ to: '{{GAME_ROUTE}}' as never, replace: true }), []);
 
   // Navigation
   const navigate = useCallback(() => {
     const performNavigation = () => {
-      router.navigate({ to: '/game', replace: true });
+      router.navigate({ to: '{{GAME_ROUTE}}' as never, replace: true });
     };
 
     if (isBusy()) {

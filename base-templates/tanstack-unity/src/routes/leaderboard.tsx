@@ -124,10 +124,10 @@ function Leaderboard() {
         </div>
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.5s 0.28s ease both' }}>
-          <StyledButton onClick={() => router.navigate({ to: '/loading-video' as never, replace: true })}>
+          <StyledButton onClick={() => router.navigate({ to: '{{NEXT_AFTER_LEADERBOARD}}' as never, replace: true })}>
             {copy.buttonPlayAgain}
           </StyledButton>
-          <StyledButton alternate onClick={() => router.navigate({ to: '/landing' as never, replace: true })}>
+          <StyledButton alternate onClick={() => router.navigate({ to: '{{FLOW_ENTRY}}' as never, replace: true })}>
             {copy.buttonHome}
           </StyledButton>
         </div>

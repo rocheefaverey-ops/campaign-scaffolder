@@ -1556,6 +1556,24 @@ async function scaffold(options) {
       rmSync(tempDir, { recursive: true, force: true });
     }
 
+    // pnpm creates Windows junctions with absolute targets. Installing while
+    // the project lives in the temp dir leaves node_modules pointing at the
+    // removed temp path after rename, so refresh the install in the final dir.
+    if (!options.skipInstall) {
+      const frontendDir = join(outputDir, 'frontend');
+      console.log(`\n  ${c.cyan('[deps]')} ${c.bold('Refreshing dependencies in final directory…')}`);
+      try {
+        rmSync(join(frontendDir, 'node_modules'), { recursive: true, force: true });
+        execSync('pnpm install', { cwd: frontendDir, stdio: 'inherit' });
+        console.log(`      ${c.green('✔')} dependencies ready`);
+      } catch {
+        console.log(`      ${c.yellow('⚠')} pnpm install failed — run manually in ${frontendDir}`);
+      }
+    }
+
+    ensureNextEnvTypes(outputDir);
+    ensureProjectGitignore(outputDir);
+
     // 4b. Git init — runs on the final directory so no .git handles are
     //     open during the rename above.
     if (!options.isUpdate && !options.skipGit) {
@@ -1599,6 +1617,8 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
     '{{SHOW_LANDING_LEADERBOARD_BUTTON}}': String(optionalExitEnabled('landing', 'leaderboard', false) && hasPageType('leaderboard')),
     '{{SHOW_RESULT_PLAY_AGAIN_BUTTON}}': String(optionalExitEnabled('result', 'playAgain', true)),
     '{{SHOW_RESULT_LEADERBOARD_BUTTON}}': String(optionalExitEnabled('result', 'leaderboard', false) && hasPageType('leaderboard')),
+    '{{GAME_ROUTE}}': routeFor('game', routeMap),
+    '{{LEADERBOARD_ROUTE}}': routeFor('leaderboard', routeMap),
   };
 
   // 1. Copy boilerplate (skipped in update mode)
@@ -1754,6 +1774,31 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
   }
   ok('Brand placeholders installed (replace logo.svg / logo-icon.svg with actual assets)');
 
+  const rootRoutePath = join(frontendDir, 'src', 'routes', '__root.tsx');
+  if (modules.includes('gtm') && existsSync(rootRoutePath)) {
+    let rootSrc = readFileSync(rootRoutePath, 'utf8');
+    if (!rootSrc.includes('googletagmanager.com/gtm.js')) {
+      rootSrc = rootSrc.replace(
+        `      ...(loaderData?.unityEnvironment.url ? [{\n        nonce: loaderData.nonce,\n        children: \`(function(){var s=document.createElement('script');s.src=\${JSON.stringify(\`\${loaderData.unityEnvironment.url}Build/Build.loader.js\`)};document.head.appendChild(s);})()\`,\n      }] : []),`,
+        `      ...(loaderData?.unityEnvironment.url ? [{\n        nonce: loaderData.nonce,\n        children: \`(function(){var s=document.createElement('script');s.src=\${JSON.stringify(\`\${loaderData.unityEnvironment.url}Build/Build.loader.js\`)};document.head.appendChild(s);})()\`,\n      }] : []),\n      ...(loaderData?.gtmId ? [{\n        nonce: loaderData.nonce,\n        children: \`\n          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':\n          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],\n          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=\n          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);\n          })(window,document,'script','dataLayer','\${loaderData.gtmId}');\n        \`,\n      }] : []),`,
+      );
+      writeFileSync(rootRoutePath, rootSrc, 'utf8');
+      ok('GTM script injected into src/routes/__root.tsx');
+    }
+  }
+
+  if (modules.includes('cookie-consent') && existsSync(rootRoutePath)) {
+    let rootSrc = readFileSync(rootRoutePath, 'utf8');
+    if (!rootSrc.includes('consent.cookiebot.com/uc.js')) {
+      rootSrc = rootSrc.replace(
+        `      ...(loaderData?.unityEnvironment.url ? [{\n        nonce: loaderData.nonce,\n        children: \`(function(){var s=document.createElement('script');s.src=\${JSON.stringify(\`\${loaderData.unityEnvironment.url}Build/Build.loader.js\`)};document.head.appendChild(s);})()\`,\n      }] : []),`,
+        `      ...(loaderData?.unityEnvironment.url ? [{\n        nonce: loaderData.nonce,\n        children: \`(function(){var s=document.createElement('script');s.src=\${JSON.stringify(\`\${loaderData.unityEnvironment.url}Build/Build.loader.js\`)};document.head.appendChild(s);})()\`,\n      }] : []),\n      ...(process.env.NEXT_PUBLIC_COOKIEBOT_CBID ? [{\n        id: 'cookiebot',\n        nonce: loaderData?.nonce,\n        src: 'https://consent.cookiebot.com/uc.js',\n        'data-cbid': process.env.NEXT_PUBLIC_COOKIEBOT_CBID,\n        'data-blockingmode': 'auto',\n        type: 'text/javascript',\n      }] : []),`,
+      );
+      writeFileSync(rootRoutePath, rootSrc, 'utf8');
+      ok('Cookiebot script injected into src/routes/__root.tsx');
+    }
+  }
+
   // 2. Token replacement
   step(2, 'Replacing tokens…');
   // Menu visibility defaults — wizard's menuItemsEnabled, gated by which
@@ -1788,11 +1833,11 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
     '{{PROJECT_NAME}}':              name,
     '{{CAPE_ID}}':                   capeId,
     '{{MARKET}}':                    market,
-    '{{MENU_SHOW_HOME}}':        String(menuItemEnabled('home',        true,  ['/landing'])),
-    '{{MENU_SHOW_RESUME}}':      String(menuItemEnabled('resume',      false, ['/game'])),
-    '{{MENU_SHOW_HOWTOPLAY}}':   String(menuItemEnabled('howToPlay',   true,  ['/tutorial'])),
-    '{{MENU_SHOW_LEADERBOARD}}': String(menuItemEnabled('leaderboard', false, ['/leaderboard'])),
-    '{{MENU_SHOW_VOUCHER}}':     String(menuItemEnabled('voucher',     false, ['/voucher'])),
+    '{{MENU_SHOW_HOME}}':        String(menuItemEnabled('home',        true,  [routeFor('landing', routeMap)])),
+    '{{MENU_SHOW_RESUME}}':      String(menuItemEnabled('resume',      false, [routeFor('game', routeMap)])),
+    '{{MENU_SHOW_HOWTOPLAY}}':   String(menuItemEnabled('howToPlay',   true,  [routeFor('tutorial', routeMap)])),
+    '{{MENU_SHOW_LEADERBOARD}}': String(menuItemEnabled('leaderboard', false, [routeFor('leaderboard', routeMap)])),
+    '{{MENU_SHOW_VOUCHER}}':     String(menuItemEnabled('voucher',     false, [routeFor('voucher', routeMap)])),
     '{{MENU_SHOW_TERMS}}':       String(menuItemEnabled('terms',       true,  [])),
     '{{MENU_SHOW_PRIVACY}}':     String(menuItemEnabled('privacy',     true,  [])),
     '{{MENU_SHOW_FAQ}}':         String(menuItemEnabled('faq',         false, ['/faq'])),
@@ -1893,10 +1938,10 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
   // 3b. Remove excluded pages + generate page builder output
   const normalizedPages = pages;
 
-  const BUILDABLE_TS = ['landing', 'tutorial', 'result', 'register'];
-  const ROUTE_FILES  = { landing: 'landing.tsx', tutorial: 'tutorial.tsx', game: 'game.tsx', register: 'register.tsx', result: 'result.tsx' };
-  const LOADER_FILES = { landing: 'LandingLoader.ts', tutorial: 'TutorialLoader.ts', register: 'RegisterLoader.ts', result: 'ResultLoader.ts' };
-  const LEGACY_LOADER_FILES = { landing: 'landingLoader.ts', tutorial: 'tutorialLoader.ts', register: 'registerLoader.ts', result: 'resultLoader.ts' };
+  const BUILDABLE_TS = ['landing', 'tutorial', 'result', 'register', 'leaderboard'];
+  const ROUTE_FILES  = { landing: 'landing.tsx', tutorial: 'tutorial.tsx', game: 'game.tsx', register: 'register.tsx', result: 'result.tsx', leaderboard: 'leaderboard.tsx' };
+  const LOADER_FILES = { landing: 'LandingLoader.ts', tutorial: 'TutorialLoader.ts', register: 'RegisterLoader.ts', result: 'ResultLoader.ts', leaderboard: 'LeaderboardLoader.ts' };
+  const LEGACY_LOADER_FILES = { landing: 'landingLoader.ts', tutorial: 'tutorialLoader.ts', register: 'registerLoader.ts', result: 'resultLoader.ts', leaderboard: 'leaderboardLoader.ts' };
   const routesDir  = join(frontendDir, 'src', 'routes');
   const loadersDir = join(frontendDir, 'src', 'loaders');
   const legacyLoadersDir = join(routesDir, '-loaders');
@@ -2350,6 +2395,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
   };
   const replacedCount = tokenReplaceDir(frontendDir, tokens);
   ok(`${replacedCount} file(s) updated`);
+  patchRouteAwareRuntime(frontendDir, pages, routeMap, flowTokens);
 
   // Log the flow so the developer can see it
   const flowSequence = pages.map(p => routeFor(p, routeMap));
@@ -2532,7 +2578,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
   }
 
   // ── Write final .scaffolded with everything that was done ────────────────────
-  const _flowTokens       = computeFlowTokens(pages, regMode, flowExits, flowEntry, pageTypes);
+  const _flowTokens       = computeFlowTokens(pages, regMode, flowExits, flowEntry, pageTypes, routeMap);
   const _packages         = collectPackages(modules);
   const _envVarNames      = collectEnvVars(modules).map(e => e.varName);
   const _cspPatches       = collectCspPatches(modules).map(p => ({ module: p.moduleId, patch: p.cspPatch }));
@@ -2682,6 +2728,53 @@ const TEXT_FILENAMES = new Set([
 // inside `dist/`, `.output/`, `.vite/`, etc. and the artefacts ship corrupt.
 const SKIP_DIRS = new Set(['node_modules', '.next', 'dist', 'dist-ssr', '.output', '.vite', '.tanstack', '.nitro', 'build', '.turbo', '.cache']);
 
+function patchRouteAwareRuntime(frontendDir, pages = [], routeMap = {}, flowTokens = {}) {
+  const routeOf = (id) => routeFor(id, routeMap);
+  const slugOf = (route) => route.replace(/^\//, '').replace(/\/$/, '');
+  const routeInstanceMap = Object.fromEntries(
+    (pages ?? []).map((id) => [slugOf(routeOf(id)), id]),
+  );
+
+  const instanceHookPath = join(frontendDir, 'hooks', 'useInstanceId.ts');
+  if (existsSync(instanceHookPath)) {
+    let src = readFileSync(instanceHookPath, 'utf8');
+    const mapLiteral = JSON.stringify(routeInstanceMap, null, 2).replaceAll('"', "'");
+    if (!src.includes('ROUTE_INSTANCE_IDS')) {
+      src = src.replace(
+        `import { usePathname } from 'next/navigation';\n`,
+        `import { usePathname } from 'next/navigation';\n\nconst ROUTE_INSTANCE_IDS: Record<string, string> = ${mapLiteral};\n`,
+      );
+    } else {
+      src = src.replace(/const ROUTE_INSTANCE_IDS: Record<string, string> = \{[\s\S]*?\};/, `const ROUTE_INSTANCE_IDS: Record<string, string> = ${mapLiteral};`);
+    }
+    src = src.replace(
+      `  return first ?? fallback;\n`,
+      `  return (first ? ROUTE_INSTANCE_IDS[first] : undefined) ?? first ?? fallback;\n`,
+    );
+    writeFileSync(instanceHookPath, src, 'utf8');
+  }
+
+  const menuPath = join(frontendDir, 'app', '(campaign)', 'menu', 'page.tsx');
+  if (existsSync(menuPath)) {
+    let src = readFileSync(menuPath, 'utf8');
+    const available = (pages ?? []).map((id) => routeOf(id)).join('|');
+    src = src
+      .replace(/'\/video\|\/intro-video\|\/loading-video\|\/ad-video\|\/landing\|\/onboarding\|\/video-2\|\/gameplay\|\/result'/, `'${available}'`)
+      .replace(/target: '\/landing'/g, `target: '${routeOf('landing')}'`)
+      .replace(/target: '\/gameplay'/g, `target: '${routeOf('game')}'`)
+      .replace(/target: '\/onboarding'/g, `target: '${routeOf('tutorial')}'`);
+    writeFileSync(menuPath, src, 'utf8');
+  }
+
+  const resultPath = join(frontendDir, 'app', '(campaign)', 'result', 'page.tsx');
+  if (existsSync(resultPath)) {
+    const nextAfterResult = flowTokens['{{NEXT_AFTER_RESULT}}'] ?? routeOf('landing');
+    let src = readFileSync(resultPath, 'utf8');
+    src = src.replace(/navigate\('\/landing'\), autoNavSec \* 1000\)/, `navigate('${nextAfterResult}'), autoNavSec * 1000)`);
+    writeFileSync(resultPath, src, 'utf8');
+  }
+}
+
 function tokenReplaceDir(dir, tokens) {
   let count = 0;
   const walk = (d) => {
@@ -2794,6 +2887,43 @@ function acquireLock(outputDir) {
 
 function releaseLock(lockPath) {
   try { if (existsSync(lockPath)) rmSync(lockPath); } catch { /* best-effort */ }
+}
+
+function ensureNextEnvTypes(outputDir) {
+  const nextEnvPath = join(outputDir, 'frontend', 'next-env.d.ts');
+  if (existsSync(nextEnvPath)) return;
+  writeFileSync(
+    nextEnvPath,
+    [
+      '/// <reference types="next" />',
+      '/// <reference types="next/image-types/global" />',
+      'import "./.next/dev/types/routes.d.ts";',
+      '',
+      '// NOTE: This file should not be edited',
+      '// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.',
+      '',
+    ].join('\n'),
+    'utf8',
+  );
+}
+
+function ensureProjectGitignore(outputDir) {
+  const ignorePath = join(outputDir, '.gitignore');
+  const required = [
+    'node_modules/',
+    '.next/',
+    'out/',
+    'dist/',
+    '.env',
+    '.env.local',
+    '*.tsbuildinfo',
+  ];
+  const existing = existsSync(ignorePath) ? readFileSync(ignorePath, 'utf8') : '';
+  const lines = existing.split(/\r?\n/).map((line) => line.trim());
+  const missing = required.filter((line) => !lines.includes(line));
+  if (missing.length === 0) return;
+  const prefix = existing && !existing.endsWith('\n') ? '\n' : '';
+  writeFileSync(ignorePath, existing + prefix + missing.join('\n') + '\n', 'utf8');
 }
 
 // ─── CSP patching ─────────────────────────────────────────────────────────────

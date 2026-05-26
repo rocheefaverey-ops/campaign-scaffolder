@@ -12,10 +12,10 @@ export const securityMiddleware = createMiddleware().server(({ next }) => {
     default-src 'none';
     connect-src 'self' https://region1.google-analytics.com ${extractBaseUrl(process.env.UNITY_BASE_URL ?? '')} https://config.uca.cloud.unity3d.com https://cdp.cloud.unity3d.com;
     script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval' ${isLocal() ? "'unsafe-eval'" : ''};
-    style-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com ${extractBaseUrl(process.env.CAPE_BASE_URL ?? '')};
     media-src 'self' blob: ${extractBaseUrl(process.env.CAPE_BASE_URL ?? '')};
     img-src 'self' data: blob: ${extractBaseUrl(process.env.CAPE_BASE_URL ?? '')};
-    font-src 'self';
+    font-src 'self' data: https://fonts.gstatic.com ${extractBaseUrl(process.env.CAPE_BASE_URL ?? '')};
     frame-ancestors 'none';
     ${!isLocal() ? 'upgrade-insecure-requests' : ''}
   `;

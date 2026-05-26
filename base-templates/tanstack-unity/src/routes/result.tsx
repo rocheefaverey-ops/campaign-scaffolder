@@ -25,9 +25,9 @@ function Result() {
   const result = useUnityStore((state) => state.result);
   const { copy, backgroundUrl, logoUrl, winImageUrl } = Route.useLoaderData();
   const router = useRouter();
-  const nextRoute = '/leaderboard';
-  const playAgainRoute = '/game';
-  const leaderboardRoute = '/leaderboard';
+  const nextRoute = '{{NEXT_AFTER_RESULT}}';
+  const playAgainRoute = '{{PLAY_AGAIN_ROUTE}}';
+  const leaderboardRoute = '{{RESULT_LEADERBOARD_ROUTE}}';
   const resultCopy = copy as typeof copy & Record<string, string | undefined>;
   const showPlayAgainButton = JSON.parse('true') as boolean;
   const showLeaderboardButton = JSON.parse('false') as boolean;

@@ -44,7 +44,7 @@ function Game() {
   const endListener = useCallback((data: string) => {
     console.info('GAME ENDED', data);
     setResult(data);
-    void router.navigate({ to: '/result', replace: true });
+    void router.navigate({ to: '{{NEXT_AFTER_GAME}}' as never, replace: true });
   }, []);
 
   const apiListener = useCallback((data: string) => {
@@ -153,7 +153,7 @@ function Game() {
     });
 
     // Prefetch score route
-    void router.preloadRoute({ to: '/result' });
+    void router.preloadRoute({ to: '{{NEXT_AFTER_GAME}}' as never });
 
     return () => {
       setUnityVisible(false);
