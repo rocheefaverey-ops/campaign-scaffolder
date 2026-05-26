@@ -972,7 +972,11 @@ async function runWizard(pre) {
       }
     }
 
-    return { stack, name, capeId, market, game: 'unity', pages: tsPages, regMode: 'none', modules: [], gtmId, iframe: false, outputDir, tsPageElementSelections, selectedGame, unityCdnUrl, capeAutoPublished, capePublishedUrl, isUpdate: pre.isUpdate ?? false };
+    // Resolve modules from the page selection (page-required + implies chains)
+    // so the scaffolder can apply manifest files, env vars, and CSP patches
+    // for tanstack the same way it does for next.
+    const tsModules = resolveModules('unity', tsPages, pre.modules ?? []);
+    return { stack, name, capeId, market, game: 'unity', pages: tsPages, regMode: 'none', modules: tsModules, gtmId, iframe: false, outputDir, tsPageElementSelections, selectedGame, unityCdnUrl, capeAutoPublished, capePublishedUrl, isUpdate: pre.isUpdate ?? false };
   }
 
   // 4b. Game picker — shown when Unity is chosen but no specific game was pre-selected
@@ -1579,7 +1583,7 @@ async function scaffold(options) {
   releaseLock(lockPath);
 }
 
-async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], gtmId = '', tsPageElementSelections = {}, selectedGame = null, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, pageSettings = {}, pageTypes = {}, routeMap = {}, menuItemsEnabled = {}, _wizardMeta = null }) {
+async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], modules = [], gtmId = '', tsPageElementSelections = {}, selectedGame = null, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, pageSettings = {}, pageTypes = {}, routeMap = {}, menuItemsEnabled = {}, _wizardMeta = null }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -1625,6 +1629,40 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
     if (!isUpdate) return null;
     try { return JSON.parse(readFileSync(join(outputDir, '.scaffolded'), 'utf8')).createdAt; } catch { return null; }
   })();
+
+  // 1a. Apply module manifests — generic equivalent of the manifest loop in
+  // scaffoldNext. For tanstack we only copy entries explicitly tagged
+  // `stacks: ["tanstack"]` because entries without a stacks filter use
+  // Next-style dest paths (components/_modules/...) that would land in the
+  // wrong place. Module env vars are also appended to env.dist and module
+  // CSP patches are deferred to step 1d below so they target the final
+  // SecurityMiddleware.ts.
+  if (!isUpdate && modules.length > 0) {
+    step('1a', `Applying ${modules.length} module manifest(s)…`);
+    for (const moduleId of modules) {
+      let manifest;
+      try { manifest = loadManifest(moduleId); }
+      catch { warn(`[${moduleId}] manifest unreadable — skipping.`); continue; }
+      const moduleDir = join(MODULES_DIR, moduleId);
+      let copied = 0;
+      for (const file of manifest.files ?? []) {
+        if (!file.src || !file.dest) continue;
+        if (!Array.isArray(file.stacks) || !file.stacks.includes('tanstack')) continue;
+        if (file.requires && !modules.includes(file.requires)) continue;
+        const srcPath  = join(moduleDir, file.src);
+        const destPath = join(frontendDir, file.dest);
+        if (!existsSync(srcPath)) { warn(`[${moduleId}] source missing: ${file.src}`); continue; }
+        try {
+          mkdirSync(dirname(destPath), { recursive: true });
+          cpSync(srcPath, destPath);
+          copied++;
+        } catch (e) {
+          warn(`[${moduleId}] failed to copy ${file.src}: ${e.message}`);
+        }
+      }
+      if (copied > 0) ok(`[${moduleId}] ${copied} file(s)`);
+    }
+  }
 
   // 1b. Install Livewall brand placeholder images
   step('1b', 'Installing brand placeholder images…');
@@ -1763,6 +1801,23 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
   };
   const replaced = tokenReplaceDir(frontendDir, tokens);
   ok(`${replaced} file(s) updated`);
+
+  // 2b. Apply module CSP patches to SecurityMiddleware.ts and append module
+  // env vars to env.dist / .env.example. Before this step landed, every
+  // tanstack module's cspPatch silently no-op'd (no injection point existed)
+  // and module env vars never reached the scaffolded project's env file.
+  if (modules.length > 0) {
+    const cspPatches = collectCspPatches(modules);
+    if (cspPatches.length > 0) {
+      const cspChanged = patchTanstackSecurityMiddleware(frontendDir, cspPatches);
+      if (cspChanged) ok(`SecurityMiddleware.ts patched (${cspPatches.length} module CSP rule set(s))`);
+    }
+    const envVars = collectEnvVars(modules);
+    if (envVars.length > 0) {
+      appendEnvVars(frontendDir, envVars);
+      ok(`${envVars.length} env var(s) appended to env.dist / .env.example`);
+    }
+  }
 
   // 3. Pre-fill .env
   step(3, 'Pre-filling .env…');
@@ -2015,6 +2070,22 @@ export function useGameNavigation() {
       ok('dependencies installed');
     } catch {
       warn('pnpm install failed — run manually: cd frontend && pnpm install');
+    }
+    // Module-declared packages. Same argv-form spawnSync pattern as
+    // scaffoldNext so a typo'd manifest entry can't escape into a shell.
+    const { prod: modProd, dev: modDev } = collectPackages(modules);
+    const pnpmCmd = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+    if (modProd.length > 0) {
+      console.log(`      ${c.dim('pnpm add ' + modProd.join(' '))}`);
+      const r = spawnSync(pnpmCmd, ['add', ...modProd], { cwd: frontendDir, stdio: 'inherit' });
+      if (r.status === 0) ok(`prod: ${modProd.join(', ')}`);
+      else warn(`run manually: pnpm add ${modProd.join(' ')}`);
+    }
+    if (modDev.length > 0) {
+      console.log(`      ${c.dim('pnpm add -D ' + modDev.join(' '))}`);
+      const r = spawnSync(pnpmCmd, ['add', '-D', ...modDev], { cwd: frontendDir, stdio: 'inherit' });
+      if (r.status === 0) ok(`dev: ${modDev.join(', ')}`);
+      else warn(`run manually: pnpm add -D ${modDev.join(' ')}`);
     }
   }
 
@@ -2801,6 +2872,42 @@ function isValidCspSource(val) {
   if (/^'sha(256|384|512)-[A-Za-z0-9+/]+=*'$/.test(v))        return true;
   if (/^[a-z][a-z0-9+\-.]*:$/.test(v))                        return true;  // scheme-only
   if (/^(https?|wss?):\/\/[^\s;,'"\\]+$/.test(v))             return true;  // host
+  return false;
+}
+
+/**
+ * TanStack analogue of patchMiddlewareCsp. The tanstack-unity base ships a
+ * security middleware at src/server/middleware/SecurityMiddleware.ts that
+ * builds a CSP template literal at request time; we patch the same way as
+ * the Next proxy.ts — find the directive line, append the value before the
+ * trailing `;`. Returns true when any directive was modified.
+ *
+ * Called after generic module application so cspPatch entries from voucher,
+ * gtm, cookie-consent, etc actually reach the runtime header instead of
+ * silently no-op'ing (the original bug — there was no tanstack injection
+ * point at all).
+ */
+function patchTanstackSecurityMiddleware(frontendDir, patches) {
+  const p = join(frontendDir, 'src', 'server', 'middleware', 'SecurityMiddleware.ts');
+  if (!existsSync(p)) return false;
+  let src = readFileSync(p, 'utf8');
+  let changed = false;
+  for (const { moduleId, cspPatch } of patches) {
+    for (const [directive, values] of Object.entries(cspPatch)) {
+      const targets = directive === 'extras' ? values.map(v => ['script-src', v]) : values.map(v => [directive, v]);
+      for (const [dir, val] of targets) {
+        if (!isValidCspSource(val)) {
+          throw new Error(
+            `[${moduleId}] Invalid CSP source value "${val}" for directive "${dir}".\n` +
+            `  Accepted: keywords like 'self', host origins like https://example.com, data:, blob:\n` +
+            `  Fix the manifest at modules/${moduleId}/manifest.json before retrying.`,
+          );
+        }
+        if (!src.includes(val)) { src = appendToCspDirective(src, dir, val); changed = true; }
+      }
+    }
+  }
+  if (changed) { writeFileSync(p, src, 'utf8'); return true; }
   return false;
 }
 
