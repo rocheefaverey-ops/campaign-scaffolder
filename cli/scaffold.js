@@ -27,7 +27,7 @@ import { existsSync, mkdirSync, cpSync, rmSync, renameSync, readdirSync, statSyn
 import { join, resolve, dirname, relative } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { networkInterfaces, tmpdir } from 'os';
-import { execSync, spawn } from 'child_process';
+import { execSync, spawn, spawnSync } from 'child_process';
 import { printPostScaffoldMessage } from './post-scaffold-message.js';
 import { PAGE_ELEMENTS, PAGE_DEFAULTS, ELEMENT_CATALOGUE, buildPage } from './page-builder.js';
 import { TS_PAGE_ELEMENTS, TS_PAGE_DEFAULTS, TS_ELEMENT_CATALOGUE, TS_ALL_PAGES, TS_PAGE_ROUTES, buildTsPage } from './tanstack-page-builder.js';
@@ -1953,7 +1953,23 @@ export function useGameNavigation() {
   };
   writeFileSync(join(outputDir, '.scaffolded'), JSON.stringify(scaffoldedConfig, null, 2), 'utf8');
   ok('.scaffolded config written');
-  writeChecklistFile(outputDir, scaffoldedConfig);
+
+  // Emit cape-format.json so the post-scaffold checklist's "push the
+  // generated format" step has something to reference. Previously only the
+  // Next path wrote this file, so TanStack scaffolds left the user without
+  // an inspectable / push-able format artifact.
+  const capeFormatSpec = buildTanStackCapeFormat({
+    instances:        pages.map((id) => ({ id, type: pageTypes[id] ?? id })),
+    pageTypes,
+    tsPageElementSelections,
+    flowEnabledExits,
+    menuItemsEnabled,
+  });
+  const capeFormatFile = join(outputDir, 'cape-format.json');
+  writeFileSync(capeFormatFile, JSON.stringify(capeFormatSpec, null, 2), 'utf8');
+  ok('cape-format.json written');
+
+  writeChecklistFile(outputDir, { ...scaffoldedConfig, capeFormatFile });
   ok('SCAFFOLD_CHECKLIST.md written');
   writeDebugFile(outputDir, scaffoldedConfig);
   ok('SCAFFOLD_DEBUG.json written');
@@ -2351,15 +2367,22 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     } catch {
       warn('pnpm install failed — run manually in the project directory');
     }
+    // Pass package names as argv (not interpolated into a shell string) so
+    // a typo'd or malicious manifest entry like "foo;rm -rf x" can't escape
+    // into a shell command. Use pnpm.cmd on Windows; spawnSync resolves
+    // PATHEXT but we're explicit for clarity.
+    const pnpmCmd = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
     if (prod.length > 0) {
       console.log(`      ${c.dim('pnpm add ' + prod.join(' '))}`);
-      try { execSync(`pnpm add ${prod.join(' ')}`, { cwd: frontendDir, stdio: 'inherit' }); ok(`prod: ${prod.join(', ')}`); }
-      catch { warn(`run manually: pnpm add ${prod.join(' ')}`); }
+      const r = spawnSync(pnpmCmd, ['add', ...prod], { cwd: frontendDir, stdio: 'inherit' });
+      if (r.status === 0) ok(`prod: ${prod.join(', ')}`);
+      else warn(`run manually: pnpm add ${prod.join(' ')}`);
     }
     if (dev.length > 0) {
       console.log(`      ${c.dim('pnpm add -D ' + dev.join(' '))}`);
-      try { execSync(`pnpm add -D ${dev.join(' ')}`, { cwd: frontendDir, stdio: 'inherit' }); ok(`dev: ${dev.join(', ')}`); }
-      catch { warn(`run manually: pnpm add -D ${dev.join(' ')}`); }
+      const r = spawnSync(pnpmCmd, ['add', '-D', ...dev], { cwd: frontendDir, stdio: 'inherit' });
+      if (r.status === 0) ok(`dev: ${dev.join(', ')}`);
+      else warn(`run manually: pnpm add -D ${dev.join(' ')}`);
     }
   }
 
