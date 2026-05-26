@@ -312,11 +312,10 @@ app.post('/api/frontend-preview/start', async (req, reply) => {
     });
 
     try {
-      await waitForHttp(url, 90000);
+      await waitForHttp(url, 90000, { earlyExit: () => earlyExitCode });
     } catch (waitErr) {
       const detail = logBuffer.trim().slice(-2000) || '(no output captured)';
-      const exitNote = earlyExitCode !== null ? ` Process exited with code ${earlyExitCode}.` : '';
-      throw new Error(`${waitErr.message}${exitNote}\n--- Dev server output ---\n${detail}`);
+      throw new Error(`${waitErr.message}\n--- Dev server output ---\n${detail}`);
     }
 
     return { ok: true, url, outputDir };
@@ -398,11 +397,10 @@ app.post('/api/scaffolded-project/start', async (req, reply) => {
     });
 
     try {
-      await waitForHttp(url, 90000);
+      await waitForHttp(url, 90000, { earlyExit: () => earlyExitCode });
     } catch (waitErr) {
       const detail = logBuffer.trim().slice(-2000) || '(no output captured)';
-      const exitNote = earlyExitCode !== null ? ` Process exited with code ${earlyExitCode}.` : '';
-      throw new Error(`${waitErr.message}${exitNote}\n--- Dev server output ---\n${detail}`);
+      throw new Error(`${waitErr.message}\n--- Dev server output ---\n${detail}`);
     }
 
     return { ok: true, url };
@@ -757,9 +755,15 @@ function findOpenPort(start, end) {
   return tryPort(start);
 }
 
-async function waitForHttp(url, timeoutMs) {
+async function waitForHttp(url, timeoutMs, { earlyExit } = {}) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    // If the dev server child has already exited, polling for 90s is pointless —
+    // surface the failure immediately so the user sees the captured output.
+    const exitCode = earlyExit?.();
+    if (exitCode !== null && exitCode !== undefined) {
+      throw new Error(`Preview server exited with code ${exitCode} before becoming ready at ${url}.`);
+    }
     try {
       const res = await fetch(url, { method: 'GET' });
       if (res.status < 500) return;
