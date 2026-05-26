@@ -303,6 +303,7 @@ function parseArgs(argv) {
     else if (key === 'recreate' || key === 'rebuild') args.recreate = true;
     else if (key === 'skip-install') args.skipInstall = true;
     else if (key === 'skip-git') args.skipGit = true;
+    else if (key === 'force-dirty') args.forceDirty = true;
     else if (key === 'route') {
       const colonIdx = val.indexOf(':');
       if (colonIdx > 0) {
@@ -1434,16 +1435,75 @@ async function enforceConfigValidation(options, { yes = false } = {}) {
  *               prevents two runs targeting the same directory from racing.
  *               SIGINT / any thrown error triggers cleanup of the temp dir.
  *
- * Update mode  — operates directly on the existing project.  Git is the
- *               safety net; no temp dir is used.
+ * Update mode  — operates directly on the existing project.  Git IS the
+ *               safety net: we require a git repo and a clean working tree,
+ *               capture HEAD as a snapshot before the rewrite, acquire the
+ *               same .scaffold.lock as create mode, and on SIGINT/error roll
+ *               back via `git reset --hard <snapshot> && git clean -fd`.
+ *               `--force-dirty` skips the clean-tree precondition for
+ *               advanced users who accept the risk.
  */
 async function scaffold(options) {
   const { outputDir, isUpdate = false } = options;
 
-  // ── Update mode: no temp dir, git handles rollback ──────────────────────────
+  // ── Update mode: lock + git snapshot + rollback on abort ───────────────────
   if (isUpdate) {
-    if (options.stack === 'tanstack') return scaffoldTanstack(options);
-    return scaffoldNext(options);
+    // 1. Pre-flight git checks. Without a git work tree there's nothing to
+    //    roll back to — refuse rather than silently leave a torn project on
+    //    failure. --recreate is the escape hatch for non-git targets.
+    const gitState = gitGetState(outputDir);
+    if (!gitState.isRepo) {
+      throw new Error(
+        `--update requires a git repository at:\n  ${outputDir}\n\n` +
+        `Without git there is no safe way to roll back a failed update.\n` +
+        `Run \`git init && git add . && git commit -m "checkpoint"\` first, ` +
+        `or use --recreate to scaffold fresh.`,
+      );
+    }
+    if (!gitState.head) {
+      // Brand-new git repo with no commits yet — no snapshot ref to restore.
+      throw new Error(
+        `--update requires at least one commit in ${outputDir} so we have a ` +
+        `snapshot to roll back to. Run \`git add . && git commit -m "checkpoint"\` first.`,
+      );
+    }
+    if (!gitState.clean && !options.forceDirty) {
+      throw new Error(
+        `Refusing to update — working tree at ${outputDir} has ${gitState.changedCount} uncommitted change(s).\n\n` +
+        `Commit or stash your work first so an aborted update can be rolled back cleanly.\n` +
+        `If you understand the risk, re-run with --force-dirty (your uncommitted edits ` +
+        `may be lost on rollback).`,
+      );
+    }
+
+    // 2. Acquire the lock so two concurrent updates can't race on the same tree.
+    const lockPath = acquireLock(outputDir);
+    const baseRef  = gitState.head;
+    let aborted    = true; // optimistic — flipped to false on the success path
+
+    const unregister = registerCleanup(() => {
+      if (aborted) {
+        console.error(`\n  ${c.yellow('⟲')} Rolling back ${outputDir} to ${baseRef.slice(0, 7)}…`);
+        if (gitRollback(outputDir, baseRef)) {
+          console.error(`  ${c.green('✓')} Rollback complete.`);
+        } else {
+          console.error(`  ${c.red('✘')} Rollback FAILED. Recover manually with:\n      git -C "${outputDir}" reset --hard ${baseRef} && git -C "${outputDir}" clean -fd`);
+        }
+      }
+      releaseLock(lockPath);
+    });
+
+    try {
+      if (options.stack === 'tanstack') await scaffoldTanstack(options);
+      else                              await scaffoldNext(options);
+      aborted = false; // success — leave changes for gitCommitUpdate
+      unregister();
+      releaseLock(lockPath);
+      return;
+    } catch (err) {
+      runCleanup(); // triggers rollback via the hook above
+      throw err;
+    }
   }
 
   // ── Create mode ─────────────────────────────────────────────────────────────
@@ -3196,6 +3256,44 @@ function gitCommitUpdate(outputDir, projectName) {
   }
 }
 
+/**
+ * Inspect the git state of a target directory used for --update. Returns:
+ *   { isRepo, head, clean, changedCount }
+ * where `head` is the current commit SHA (or null if there is no HEAD yet)
+ * and `clean` is true when both the index and working tree are empty per
+ * `git status --porcelain`. Used to gate update mode on a recoverable
+ * snapshot and to remember the SHA so a mid-flight failure can roll back.
+ */
+function gitGetState(outputDir) {
+  const safe = (cmd) => {
+    try { return execSync(cmd, { cwd: outputDir, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); }
+    catch { return null; }
+  };
+  const isRepo = safe('git rev-parse --is-inside-work-tree') === 'true';
+  if (!isRepo) return { isRepo: false, head: null, clean: true, changedCount: 0 };
+  const head = safe('git rev-parse HEAD');
+  const porcelain = safe('git status --porcelain') ?? '';
+  const lines = porcelain.split('\n').filter(Boolean);
+  return { isRepo: true, head, clean: lines.length === 0, changedCount: lines.length };
+}
+
+/**
+ * Restore a git work tree to the given snapshot SHA. Combines a hard reset
+ * with `git clean -fd` so any untracked files written by the aborted scaffold
+ * also disappear. Best-effort; failures are swallowed because this runs inside
+ * cleanup hooks where throwing would mask the original error.
+ */
+function gitRollback(outputDir, baseRef) {
+  if (!baseRef) return false;
+  try {
+    execSync(`git reset --hard ${baseRef}`, { cwd: outputDir, stdio: 'pipe' });
+    execSync('git clean -fd', { cwd: outputDir, stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ─── Update Mode wizard ───────────────────────────────────────────────────────
 /**
  * Targeted three-choice wizard for updating an existing scaffolded project.
@@ -3565,8 +3663,36 @@ async function main() {
     catch { throw new Error(`Could not read .scaffolded config in ${targetDir}`); }
     existing.outputDir = targetDir;
 
+    // Pre-flight the git invariants BEFORE prompting the user, so a doomed
+    // update fails fast instead of wasting them through the wizard prompts.
+    // (Mirrors the checks in `scaffold()` — kept in sync intentionally.)
+    const updGit = gitGetState(targetDir);
+    if (!updGit.isRepo) {
+      throw new Error(
+        `--update requires a git repository at:\n  ${targetDir}\n\n` +
+        `Without git there is no safe way to roll back a failed update.\n` +
+        `Run \`git init && git add . && git commit -m "checkpoint"\` first, ` +
+        `or use --recreate to scaffold fresh.`,
+      );
+    }
+    if (!updGit.head) {
+      throw new Error(
+        `--update requires at least one commit in ${targetDir} so we have a ` +
+        `snapshot to roll back to. Run \`git add . && git commit -m "checkpoint"\` first.`,
+      );
+    }
+    if (!updGit.clean && !args.forceDirty) {
+      throw new Error(
+        `Refusing to update — working tree at ${targetDir} has ${updGit.changedCount} uncommitted change(s).\n\n` +
+        `Commit or stash your work first so an aborted update can be rolled back cleanly.\n` +
+        `If you understand the risk, re-run with --force-dirty (your uncommitted edits ` +
+        `may be lost on rollback).`,
+      );
+    }
+
     const options = await runUpdateWizard(existing, args);
     if (!options) { console.log('\n  Geen wijzigingen. Klaar.\n'); process.exit(0); }
+    options.forceDirty = Boolean(args.forceDirty);
     await enforceConfigValidation(options, { yes: args.yes });
     await scaffold(options);
     return;
@@ -3767,6 +3893,10 @@ async function main() {
       }
       options.isUpdate   = true;
       options.updateType = 'wizard-config';
+      // The wizard surfaces git status to the user and gates dirty trees in
+      // the UI. If the user explicitly overrode (`override` checkbox), the
+      // wizard sets cfg.forceDirty so this scaffolder skips the same check.
+      options.forceDirty = Boolean(cfg.forceDirty);
       // Preserve createdAt from the existing marker — scaffoldNext re-reads it
       // when isUpdate is set, but only if .scaffolded is at the project root.
     }
