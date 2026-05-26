@@ -696,10 +696,17 @@ function pipeLines(stream, onLine) {
   stream.setEncoding('utf8');
   stream.on('data', (chunk) => {
     buf += chunk;
-    let idx;
-    while ((idx = buf.indexOf('\n')) !== -1) {
-      const line = stripAnsi(buf.slice(0, idx).replace(/\r$/, ''));
-      buf = buf.slice(idx + 1);
+    // Match CRLF, LF, or CR. Splitting on CR (not just LF) lets us flush
+    // Windows-style progress spinners (`Installing… \r`) that overwrite the
+    // current line instead of advancing — without this they accumulate in
+    // `buf` until the next real newline and arrive as one mega-line.
+    let m;
+    while ((m = buf.match(/\r\n|\n|\r/)) !== null) {
+      // A trailing CR at the very end of buf might be the first half of a
+      // CRLF that will arrive in the next chunk. Hold off until we know.
+      if (m[0] === '\r' && m.index === buf.length - 1) break;
+      const line = stripAnsi(buf.slice(0, m.index));
+      buf = buf.slice(m.index + m[0].length);
       if (line.length) onLine(line);
     }
   });
@@ -783,6 +790,21 @@ function stopFrontendPreview() {
 process.on('SIGINT', stopFrontendPreview);
 process.on('SIGTERM', stopFrontendPreview);
 process.on('exit', stopFrontendPreview);
+// On Windows a crashed Fastify previously left the dev-server child process
+// orphaned and holding port 4300. Catch both unhandled paths, kill the
+// child, then re-throw / re-exit so the failure is still loud.
+process.on('uncaughtException', (err) => {
+  // eslint-disable-next-line no-console
+  console.error('[wizard-server] uncaughtException:', err);
+  stopFrontendPreview();
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  // eslint-disable-next-line no-console
+  console.error('[wizard-server] unhandledRejection:', reason);
+  stopFrontendPreview();
+  process.exit(1);
+});
 
 function stripAnsi(s) {
   // Minimal ANSI/CSI stripper — good enough for terminal log capture.

@@ -25,6 +25,10 @@ export default function App() {
   const [maxReachedStep, setMaxReachedStep] = useState(0);
   const [serverUp, setServerUp]             = useState<boolean | null>(null);
   const [auth, setAuth]                     = useState<AuthStatus | null>(null);
+  // Inline validation message shown when the user clicks Next on an invalid
+  // step. Used to be a blocking `alert()` — accessibility-hostile and threw
+  // away any accidental stack trace. Cleared on step change.
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => { ping().then(setServerUp); }, []);
 
@@ -45,16 +49,17 @@ export default function App() {
 
   const next = () => {
     const err = validateCurrent();
-    if (err) { alert(err); return; }
+    if (err) { setValidationError(err); return; }
+    setValidationError(null);
     const newIdx = Math.min(stepIdx + 1, STEPS.length - 1);
     setMaxReachedStep((m) => Math.max(m, newIdx));
     setStepIdx(newIdx);
   };
 
-  const back = () => setStepIdx((i) => Math.max(i - 1, 0));
+  const back = () => { setValidationError(null); setStepIdx((i) => Math.max(i - 1, 0)); };
 
   const jumpToStep = (i: number) => {
-    if (i !== stepIdx && i <= maxReachedStep) setStepIdx(i);
+    if (i !== stepIdx && i <= maxReachedStep) { setValidationError(null); setStepIdx(i); }
   };
 
   return (
@@ -89,6 +94,11 @@ export default function App() {
             }
           }}
         />
+        {validationError && (
+          <div className="banner banner--err" role="alert">
+            {validationError}
+          </div>
+        )}
       </main>
 
       <footer className="app__foot">
