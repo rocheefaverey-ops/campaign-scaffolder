@@ -29,7 +29,7 @@ pnpm analyze         # Bundle analysis
 2. **`components/_core/`** is always present — these directories are empty stubs until the CLI fills them with module files.
 3. **Server Actions only.** Client Components never call `fetch()` directly.
 4. **GameContext** is the single source of truth for campaign state, persisted to localStorage.
-5. **CSP nonce** flows: `middleware.ts` → `x-nonce` header → `layout.tsx` → `FontInjector`.
+5. **CSP nonce** flows: `proxy.ts` → `x-nonce` header → `layout.tsx` → `FontInjector`.
 6. **CAPE data** is fetched once at root layout (server, 5-min TTL) and flows down via props/context.
 
 ## Path Aliases

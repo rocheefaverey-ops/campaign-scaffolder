@@ -93,7 +93,7 @@ See the README for the full flag list and the page/module catalogue.
 3. Resolves `implies` chains (e.g. `leaderboard` → adds `scoring` automatically)
 4. Token-replaces `{{PROJECT_NAME}}`, `{{CAPE_ID}}`, `{{MARKET}}`, `{{NEXT_AFTER_*}}` flow tokens, `{{MENU_SHOW_*}}` visibility, branding patches, etc.
 5. Appends module-specific env vars to `.env.example`
-6. Patches `middleware.ts` CSP with `manifest.cspPatch` entries (Next stack)
+6. Patches `proxy.ts` CSP with `manifest.cspPatch` entries (Next stack)
 7. Builds the CAPE format schema (`cape-format-builder.js`) and uploads it if requested
 8. Runs `pnpm install` for any packages declared in manifests
 9. `git init` + initial commit, prints a colour-coded post-scaffold checklist
@@ -112,9 +112,7 @@ See the README for the full flag list and the page/module catalogue.
     { "src": "components/...", "dest": "components/_modules/{module-name}/..." }
   ],
   "packages": ["package-name"],
-  "env": [
-    { "key": "MODULE_VAR", "description": "What this does" }
-  ],
+  "envVars": ["MODULE_VAR"],
   "cspPatch": {
     "script-src": ["https://cdn.example.com"]
   },
@@ -127,7 +125,7 @@ See the README for the full flag list and the page/module catalogue.
 
 ### Common module gotchas
 
-- **CSP conflicts**: Check `middleware.ts` if adding external scripts — duplicate directives cause issues
+- **CSP conflicts**: Check `proxy.ts` if adding external scripts — duplicate directives cause issues
 - **Import paths**: Always use relative imports from `_modules/{module-name}/`, not absolute aliases
 - **Env vars**: Document required vars in manifest; missing ones cause runtime errors
 - **Implies chains**: Test transitive dependencies (if A implies B and B implies C, verify C installs)
@@ -250,7 +248,7 @@ Build-time seeds (used as the in-code fallback when CAPE returns nothing) come f
 - Check file encoding is UTF-8 (some text editors default to UTF-16)
 
 **"CSP violation for script" after scaffolding**
-- Check `middleware.ts` for duplicate `script-src` directives
+- Check `proxy.ts` for duplicate `script-src` directives
 - Module's `cspPatch` may conflict with base-template defaults
 - Use `--yes` to bypass, inspect output before adding to CSP
 
