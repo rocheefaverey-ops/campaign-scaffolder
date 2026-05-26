@@ -67,17 +67,17 @@
   },
   "files": {
     "landing": {
-      "heroImage":       [{ "url": "/assets/background.mp4" }],
-      "backgroundImage": [{ "url": "/assets/background.mp4" }]
+      "heroImage":       [{ "url": "/assets/background-loop.mp4" }],
+      "backgroundImage": [{ "url": "/assets/background-loop.mp4" }]
     },
     "onboarding": {
-      "step1Image": [{ "url": "/assets/background.mp4" }],
-      "step2Image": [{ "url": "/assets/background.mp4" }],
-      "step3Image": [{ "url": "/assets/background.mp4" }]
+      "step1Image": [{ "url": "/assets/background-loop.mp4" }],
+      "step2Image": [{ "url": "/assets/background-loop.mp4" }],
+      "step3Image": [{ "url": "/assets/background-loop.mp4" }]
     },
     "result": {
-      "winImage":  [{ "url": "/assets/background.mp4" }],
-      "loseImage": [{ "url": "/assets/background.mp4" }]
+      "winImage":  [{ "url": "/assets/background-loop.mp4" }],
+      "loseImage": [{ "url": "/assets/background-loop.mp4" }]
     }
   }
 }
