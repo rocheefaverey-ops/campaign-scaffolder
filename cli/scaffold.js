@@ -1728,9 +1728,26 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
     if (!intent) return false;
     return requiredRoutes.every((r) => generatedRouteSet.has(r));
   };
+  // Rename the base template's package.json `name` field to the project
+  // slug. Previously this was done with a blanket string-replace of the
+  // literal `engagement-frontend-tanstack`, which would have over-rewritten
+  // any future file that mentioned the original repo (README references,
+  // CI configs, comments, lockfile entries). Target the one field that
+  // actually needs changing.
+  const tsPkgPath = join(frontendDir, 'package.json');
+  if (existsSync(tsPkgPath)) {
+    try {
+      const pkg = JSON.parse(readFileSync(tsPkgPath, 'utf8'));
+      if (pkg && typeof pkg === 'object' && pkg.name !== name) {
+        pkg.name = name;
+        writeFileSync(tsPkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+      }
+    } catch (e) {
+      warn(`Could not update package.json name field: ${e.message}`);
+    }
+  }
   const tokens = {
     '{{PROJECT_NAME}}':              name,
-    'engagement-frontend-tanstack':  name,
     '{{CAPE_ID}}':                   capeId,
     '{{MARKET}}':                    market,
     '{{MENU_SHOW_HOME}}':        String(menuItemEnabled('home',        true,  ['/landing'])),
@@ -2629,11 +2646,17 @@ const TEXT_FILENAMES = new Set([
   'env.dist',
 ]);
 
+// Directory names that contain only build/install output. Walking into them
+// during token replacement is at best wasted work (huge trees) and at worst
+// dangerous — a re-scaffold after `pnpm build` would rewrite minified JS
+// inside `dist/`, `.output/`, `.vite/`, etc. and the artefacts ship corrupt.
+const SKIP_DIRS = new Set(['node_modules', '.next', 'dist', 'dist-ssr', '.output', '.vite', '.tanstack', '.nitro', 'build', '.turbo', '.cache']);
+
 function tokenReplaceDir(dir, tokens) {
   let count = 0;
   const walk = (d) => {
     for (const entry of readdirSync(d)) {
-      if (entry === 'node_modules' || entry === '.next') continue;
+      if (SKIP_DIRS.has(entry)) continue;
       const full = join(d, entry);
       if (statSync(full).isDirectory()) { walk(full); continue; }
       const ext = entry.includes('.') ? '.' + entry.split('.').pop() : '';
@@ -2716,7 +2739,26 @@ function acquireLock(outputDir) {
     }
   }
   mkdirSync(dirname(lockPath), { recursive: true });
-  writeFileSync(lockPath, JSON.stringify({ pid: process.pid, outputDir, startedAt: new Date().toISOString() }), 'utf8');
+  // `flag: 'wx'` makes the write fail (EEXIST) if the file already exists.
+  // Without this, two CLI invocations that both pass the existsSync check
+  // above in the same instant would both proceed — the second one's
+  // writeFileSync would silently clobber the first. With wx, the loser
+  // gets a clean error.
+  try {
+    writeFileSync(
+      lockPath,
+      JSON.stringify({ pid: process.pid, outputDir, startedAt: new Date().toISOString() }),
+      { encoding: 'utf8', flag: 'wx' },
+    );
+  } catch (e) {
+    if (e.code === 'EEXIST') {
+      throw new Error(
+        `A scaffold run for ${outputDir} started concurrently and acquired the lock first.\n` +
+        `Wait for it to finish, or delete the lock if it crashed:\n  del "${lockPath}"`,
+      );
+    }
+    throw e;
+  }
   return lockPath;
 }
 
