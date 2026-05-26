@@ -166,7 +166,31 @@ const app = Fastify({
   logger: false,
   ajv: { customOptions: { coerceTypes: false, useDefaults: false } },
 });
-await app.register(cors, { origin: true });
+
+// The wizard binds to 127.0.0.1, but a browser tab on any site can still
+// reach 127.0.0.1 via fetch(). With `origin: true` (the old default), Fastify
+// reflected any Origin and allowed cross-site pages to trigger /api/scaffold,
+// /api/load-existing, /api/git-status, etc. Lock to the wizard's own origins
+// only: the Fastify server (PORT) and the Vite dev server (5173).
+const ALLOWED_ORIGINS = [
+  `http://localhost:${PORT}`,
+  `http://127.0.0.1:${PORT}`,
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
+await app.register(cors, { origin: ALLOWED_ORIGINS });
+
+// Defense in depth: even if CORS config drifts, reject mutating requests
+// whose Origin header is set and not in the allow-list. Origin is absent
+// for same-origin GETs from older browsers and for non-browser clients
+// (curl, the CLI itself) — those keep working.
+app.addHook('preHandler', async (req, reply) => {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return;
+  const origin = req.headers.origin;
+  if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+    return reply.code(403).send({ error: 'Cross-origin request blocked.' });
+  }
+});
 
 // Serve the built wizard UI when present; in dev Vite serves it on :5173 and
 // proxies /api + /events here, so this static handler is a no-op then.
