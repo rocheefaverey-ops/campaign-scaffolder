@@ -141,6 +141,62 @@ if (warnings.length > 0) {
   failures.push(`TanStack rich-flow test produced unexpected warnings:\n  ${warnings.join('\n  ')}`);
 }
 
+// ── Test 3c: duplicate page types keep per-instance element selections ───────
+warnings.length = 0;
+const multiLandingFlow = buildNextCapeFormat({
+  instances: [
+    { id: 'landing-1', type: 'landing' },
+    { id: 'landing-2', type: 'landing' },
+  ],
+  pageElementSelections: {
+    'landing-1': ['title'],
+    'landing-2': ['subtitle'],
+  },
+});
+const multiLandingTabs = multiLandingFlow.interfaceSetup.pages.find((p) => p.path === 'pages').tabs;
+const landingOneModels = collectModels(multiLandingTabs.find((t) => t.path === 'landing-1'));
+const landingTwoModels = collectModels(multiLandingTabs.find((t) => t.path === 'landing-2'));
+if (!landingOneModels.has('copy.landing-1.headline')) {
+  failures.push('Multi-instance test: landing-1 did not include its selected headline field.');
+}
+if (landingOneModels.has('copy.landing-1.subline')) {
+  failures.push('Multi-instance test: landing-1 inherited landing-2 subline selection.');
+}
+if (!landingTwoModels.has('copy.landing-2.subline')) {
+  failures.push('Multi-instance test: landing-2 did not include its selected subline field.');
+}
+if (landingTwoModels.has('copy.landing-2.headline')) {
+  failures.push('Multi-instance test: landing-2 inherited landing-1 headline selection.');
+}
+if (warnings.length > 0) {
+  failures.push(`Multi-instance test produced unexpected warnings:\n  ${warnings.join('\n  ')}`);
+}
+
+warnings.length = 0;
+const multiTanStackLandingFlow = buildTanStackCapeFormat({
+  pages: ['landing-1', 'landing-2'],
+  instances: [
+    { id: 'landing-1', type: 'landing' },
+    { id: 'landing-2', type: 'landing' },
+  ],
+  tsPageElementSelections: {
+    'landing-1': ['title'],
+    'landing-2': ['subtitle'],
+  },
+});
+const multiTanStackTabs = multiTanStackLandingFlow.interfaceSetup.pages.find((p) => p.path === 'pages').tabs;
+const tanStackLandingOneModels = collectModels(multiTanStackTabs.find((t) => t.path === 'landing-1'));
+const tanStackLandingTwoModels = collectModels(multiTanStackTabs.find((t) => t.path === 'landing-2'));
+if (!tanStackLandingOneModels.has('copy.landing-1.headline') || tanStackLandingOneModels.has('copy.landing-1.subline')) {
+  failures.push('TanStack multi-instance test: landing-1 did not keep its own element selection.');
+}
+if (!tanStackLandingTwoModels.has('copy.landing-2.subline') || tanStackLandingTwoModels.has('copy.landing-2.headline')) {
+  failures.push('TanStack multi-instance test: landing-2 did not keep its own element selection.');
+}
+if (warnings.length > 0) {
+  failures.push(`TanStack multi-instance test produced unexpected warnings:\n  ${warnings.join('\n  ')}`);
+}
+
 let generatedBooleanFields = 0;
 let generatedSwitchFields = 0;
 let generatedYesNoSelectFields = 0;

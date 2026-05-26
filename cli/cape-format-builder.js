@@ -386,22 +386,23 @@ function nextLandingTab(instanceId, els, flowEnabledExits = {}) {
   const g = (f) => `general.${instanceId}.${f}`;
   const fp = (f) => `files.${instanceId}.${f}`;
   const k = (s) => fieldKey('next-landing', TYPE, instanceId, s);
+  const has = (...ids) => els.length === 0 || ids.some((id) => els.includes(id));
 
   const items = [
     asset(    g('background'), 'Background', k('bg')),
     assetLogo(g('logo'),       'Logo',       k('logo')),
   ];
   items.push(textML(c('kicker'),   'Kicker (small label above headline)', k('kicker'),   'Live experience'));
-  items.push(textML(c('headline'), 'Headline',                            k('headline'), 'Welcome'));
-  items.push(textML(c('subline'),  'Subline',                             k('subline'),  'Are you ready to play?'));
-  items.push(textML(c('cta'), 'Play button', k('cta'), 'Play'));
-  items.push(textML(c('ctaReturning'), 'Returning player button', k('cta-returning'), 'Play again'));
-  items.push(textML(c('leaderboardCta'), 'Returning leaderboard button', k('leaderboard-cta'), 'Leaderboard'));
+  if (has('title', 'headline')) items.push(textML(c('headline'), 'Headline', k('headline'), 'Welcome'));
+  if (has('subtitle', 'subline')) items.push(textML(c('subline'), 'Subline', k('subline'), 'Are you ready to play?'));
+  if (has('cta-primary', 'cta-play')) items.push(textML(c('cta'), 'Play button', k('cta'), 'Play'));
+  if (has('cta-primary', 'cta-play')) items.push(textML(c('ctaReturning'), 'Returning player button', k('cta-returning'), 'Play again'));
+  if (has('cta-secondary', 'cta-leaderboard')) items.push(textML(c('leaderboardCta'), 'Returning leaderboard button', k('leaderboard-cta'), 'Leaderboard'));
 
   // Secondary "Leaderboard" button copy — only when the wizard's
   // {instanceId}.leaderboard exit toggle is on.
   const showLeaderboard = flowEnabledExits[`${instanceId}.leaderboard`] ?? false;
-  items.push(textML(c('ctaLeaderboard'), 'Leaderboard button', k('cta2'), 'Leaderboard'));
+  if (has('cta-secondary', 'cta-leaderboard')) items.push(textML(c('ctaLeaderboard'), 'Leaderboard button', k('cta2'), 'Leaderboard'));
 
   const blocks = [block(blockKey('next-landing', TYPE, instanceId, 'copy'), 'Copy', items.filter(i => i.type === 'textMultiLanguage'))];
   const assets = items.filter(i => i.type === 'assetSelector');
@@ -721,8 +722,9 @@ export function buildNextCapeFormat({
   // shape so existing campaigns migrate cleanly; duplicates get their own
   // CAPE tab labelled "Type · id" with copy keys at copy.{instanceId}.*
   for (const inst of flow) {
-    const type = VIDEO_PAGE_IDS.has(inst.id) ? 'video' : inst.id;
-    const els = pageElementSelections[type] ?? [];
+    const rawType = inst.type ?? pageTypes[inst.id] ?? inst.id;
+    const type = VIDEO_PAGE_IDS.has(inst.id) || VIDEO_PAGE_IDS.has(rawType) ? 'video' : rawType;
+    const els = pageElementSelections[inst.id] ?? pageElementSelections[type] ?? [];
     switch (type) {
       case 'video':
         pageTabs.push(nextVideoTab(inst.id));
@@ -731,7 +733,7 @@ export function buildNextCapeFormat({
         pageTabs.push(nextLandingTab(inst.id, els, flowEnabledExits));
         break;
       case 'tutorial': {
-        const stepCount = pageElementSelections[`${type}__stepCount`] ?? 3;
+        const stepCount = pageElementSelections[`${inst.id}__stepCount`] ?? pageElementSelections[`${type}__stepCount`] ?? 3;
         pageTabs.push(nextOnboardingTab(inst.id, els, stepCount));
         break;
       }

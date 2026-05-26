@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { type ScaffoldConfig } from './shared/config.ts';
 import { initialScaffoldConfig } from './shared/projectNameDefaults.ts';
 import { fromScaffolded } from './shared/fromScaffolded.ts';
@@ -192,7 +193,7 @@ function OpenExistingButton({ onLoaded }: { onLoaded: (cfg: ScaffoldConfig) => v
         ⇪ Open existing
       </button>
 
-      {open && (
+      {open && createPortal(
         <div className="modal-backdrop" onClick={() => !busy && setOpen(false)}>
           <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
             <header className="modal__head">
@@ -231,7 +232,8 @@ function OpenExistingButton({ onLoaded }: { onLoaded: (cfg: ScaffoldConfig) => v
               True update mode (rewrite in place, preserve git diff) is on the roadmap.
             </p>
           </form>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

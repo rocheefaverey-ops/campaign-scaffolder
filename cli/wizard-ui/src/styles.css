@@ -618,6 +618,7 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 
 .modal {
   background: #fff;
+  color: var(--color-text);
   border-radius: 16px;
   padding: 22px;
   max-width: 460px; width: 100%;
@@ -625,6 +626,10 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   box-shadow: 0 30px 80px rgba(14, 14, 14, 0.32);
   animation: modal-slide 0.2s ease;
 }
+.modal .btn--primary { color: var(--color-text); }
+.modal .btn--tertiary,
+.modal .btn--ghost { color: var(--color-text); }
+.modal .btn:disabled { color: var(--color-text); }
 @keyframes modal-slide { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 .modal__head {
@@ -638,7 +643,9 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 6px; color: var(--color-text-soft);
 }
+.modal .modal__close { color: var(--color-text-soft); }
 .modal__close:hover { background: rgba(14,14,14,0.06); color: var(--color-text); }
+.modal .modal__close:hover { color: var(--color-text); }
 .modal__close:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .modal__foot {
