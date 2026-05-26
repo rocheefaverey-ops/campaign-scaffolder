@@ -74,6 +74,11 @@ export function startScaffold(
   onLog:   (e: LogEvent) => void,
 ): BuildHandle {
   let aborted = false;
+  // Holds the EventSource once it opens so `cancel` can close it. Before
+  // this, cancel only flipped `aborted` and the SSE stayed open until the
+  // server happened to send `done` or close the connection — which could
+  // be the full lifetime of the build for an aborted client.
+  let es: EventSource | null = null;
 
   const done = (async (): Promise<{ ok: boolean; code: number; outputDir?: string }> => {
     const res = await fetch('/api/scaffold', {
@@ -88,7 +93,8 @@ export function startScaffold(
     const { jobId } = await res.json() as { jobId: string };
 
     return new Promise((resolve) => {
-      const es = new EventSource(`/events?jobId=${encodeURIComponent(jobId)}`);
+      if (aborted) { resolve({ ok: false, code: -1 }); return; }
+      es = new EventSource(`/events?jobId=${encodeURIComponent(jobId)}`);
 
       es.addEventListener('log', (ev) => {
         if (aborted) return;
@@ -97,7 +103,7 @@ export function startScaffold(
       });
 
       es.addEventListener('done', (ev) => {
-        es.close();
+        es?.close();
         if (aborted) return;
         try {
           const data = JSON.parse((ev as MessageEvent).data) as { ok: boolean; code: number; outputDir?: string };
@@ -108,7 +114,7 @@ export function startScaffold(
       });
 
       es.onerror = () => {
-        es.close();
+        es?.close();
         if (!aborted) resolve({ ok: false, code: -1 });
       };
     });
@@ -116,7 +122,7 @@ export function startScaffold(
 
   return {
     done,
-    cancel: () => { aborted = true; },
+    cancel: () => { aborted = true; es?.close(); },
   };
 }
 

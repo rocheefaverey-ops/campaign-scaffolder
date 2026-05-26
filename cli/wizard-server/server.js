@@ -146,6 +146,11 @@ function emit(job, level, line) {
   }
 }
 
+// Grace period before a finished job is dropped from the in-memory map. A
+// late-joining SSE client (browser tab opened just after the build ends)
+// can still reconnect, see the buffered logs, and receive the `done` event.
+const JOB_RETENTION_MS = 5 * 60 * 1000;
+
 function finish(job, result) {
   job.done   = true;
   job.result = result;
@@ -154,6 +159,9 @@ function finish(job, result) {
     res.end();
   }
   job.clients.clear();
+  // Without this the `jobs` map grew unbounded for the wizard's lifetime —
+  // every scaffold/preview run leaked one entry plus its buffered log lines.
+  setTimeout(() => { jobs.delete(job.id); }, JOB_RETENTION_MS).unref();
 }
 
 // ─── Server bootstrap ────────────────────────────────────────────────────────
