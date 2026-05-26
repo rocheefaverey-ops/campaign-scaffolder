@@ -363,10 +363,13 @@ function computeFlowTokens(pages, regMode = 'none', flowExits = {}, flowEntry = 
   tokens['{{FLOW_ENTRY}}'] = entry ? routeOf(entry) : '/';
 
   // NEXT_AFTER_* per page — token uses the page ID (uppercased).
-  // The wizard does the same when emitting source code via token rename.
+  // Page IDs with a hyphen (intro-video, loading-video, ad-video) get the
+  // hyphen mapped to an underscore so the token reads as a single identifier
+  // (`{{NEXT_AFTER_INTRO_VIDEO}}`). The per-page rewrite in scaffoldNext does
+  // the same transform — keep both call sites in sync.
   for (let i = 0; i < sequence.length; i++) {
     const id       = sequence[i];
-    const tokenKey = `{{NEXT_AFTER_${id.toUpperCase()}}}`;
+    const tokenKey = `{{NEXT_AFTER_${id.toUpperCase().replace(/-/g, '_')}}}`;
     const override = flowExits[`${id}.next`];
     if (override && inFlow(override)) {
       tokens[tokenKey] = routeOf(override);
@@ -1824,7 +1827,15 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], g
         warn(`No TanStack video route template found for "${id}".`);
         continue;
       }
-      cpSync(srcRoute, join(routesDir, `${id}.tsx`));
+      // Read + replace + write rather than cpSync — the earlier
+      // tanstackFlowTokens pass already ran, so any unresolved tokens in the
+      // copied file would survive into the scaffold (e.g. {{NEXT_AFTER_INTRO_VIDEO}}
+      // shipping as a literal string).
+      let routeSrc = readFileSync(srcRoute, 'utf8');
+      for (const [from, to] of Object.entries(tanstackFlowTokens)) {
+        if (routeSrc.includes(from)) routeSrc = routeSrc.replaceAll(from, to);
+      }
+      writeFileSync(join(routesDir, `${id}.tsx`), routeSrc, 'utf8');
       ok(`Video route "${id}" installed`);
     }
   }
@@ -2104,7 +2115,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
       try {
         let src = readFileSync(srcPagePath, 'utf8');
         src = src.split('{{VIDEO_PAGE_ID}}').join(id);
-        src = src.split('{{NEXT_AFTER_VIDEO_PAGE}}').join(`{{NEXT_AFTER_${id.toUpperCase()}}}`);
+        src = src.split('{{NEXT_AFTER_VIDEO_PAGE}}').join(`{{NEXT_AFTER_${id.toUpperCase().replace(/-/g, '_')}}}`);
         mkdirSync(dirname(destPagePath), { recursive: true });
         writeFileSync(destPagePath, src, 'utf8');
         ok(`Video route "${id}" -> ${c.dim(destPagePath)}`);
