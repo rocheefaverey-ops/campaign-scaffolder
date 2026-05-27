@@ -598,6 +598,7 @@ const scaffoldConfigSchema = {
     flowEntry:        { type: 'string' },
     flowEnabledExits: { type: 'object' },
     flowButtonVariants: { type: 'object' },
+    flowRules: { type: 'object' },
     menuItemsEnabled: { type: 'object' },
     menuButtonVariants: { type: 'object' },
     buildMode:        { type: 'string', enum: ['create', 'update', 'recreate'] },

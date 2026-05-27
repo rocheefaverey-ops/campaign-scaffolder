@@ -1,7 +1,7 @@
 import {
   DEFAULT_CONFIG, defaultPageSettings, defaultEnabledExits, defaultFlowButtonVariants,
   defaultMenuItemsEnabled, defaultMenuButtonVariants, defaultRouteForType,
-  defaultPagesForStack,
+  defaultPagesForStack, defaultFlowRulesForPages,
   type ScaffoldConfig, type PageInstance, type Stack, type Engine, type Market, type RegMode, type PageSettings,
   type ButtonVariant,
 } from './config.ts';
@@ -63,6 +63,12 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
   const flowButtonVariants: Record<string, ButtonVariant> = (wizard.flowButtonVariants && typeof wizard.flowButtonVariants === 'object')
     ? { ...defaultFlowButtonVariants(), ...wizard.flowButtonVariants as Record<string, ButtonVariant> }
     : defaultFlowButtonVariants();
+  const rawFlowRules = (wizard.flowRules && typeof wizard.flowRules === 'object')
+    ? wizard.flowRules
+    : (raw.flowRules && typeof raw.flowRules === 'object' ? raw.flowRules : undefined);
+  const flowRules = rawFlowRules
+    ? { ...defaultFlowRulesForPages(pages), ...rawFlowRules as ScaffoldConfig['flowRules'] }
+    : defaultFlowRulesForPages(pages);
   const menuItemsEnabled: Record<string, boolean> = (wizard.menuItemsEnabled && typeof wizard.menuItemsEnabled === 'object')
     ? wizard.menuItemsEnabled as Record<string, boolean>
     : defaultMenuItemsEnabled();
@@ -108,6 +114,7 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
     flowEntry,
     flowEnabledExits,
     flowButtonVariants,
+    flowRules,
     menuItemsEnabled,
     menuButtonVariants,
     // fromScaffolded() is only called from the "Open existing" flow.

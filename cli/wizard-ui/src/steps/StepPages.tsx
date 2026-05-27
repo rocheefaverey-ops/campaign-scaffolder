@@ -11,7 +11,8 @@ import { CSS } from '@dnd-kit/utilities';
 
 import {
   pagesForStack, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, BUTTON_VARIANTS, defaultRouteForType, deriveRegMode,
-  type ScaffoldConfig, type PageSettings, type StepProps, type PageInstance, type ButtonVariant,
+  FLOW_RULE_OPTIONS, FLOW_RULES_BY_PAGE, defaultFlowRuleForType,
+  type ScaffoldConfig, type PageSettings, type StepProps, type PageInstance, type ButtonVariant, type PageFlowRule, type FlowRuleMode,
 } from '../shared/config.ts';
 import PageSettingsCard from './PageSettingsCard.tsx';
 import PreviewPane from './PreviewPane.tsx';
@@ -71,10 +72,19 @@ export default function StepPages({ config, setConfig }: StepProps) {
 
     const next = [...inFlow];
     next.splice(insertAt, 0, { id, type, route });
-    setConfig({ ...config, pages: next });
+    setConfig({
+      ...config,
+      pages: next,
+      flowRules: {
+        ...(config.flowRules ?? {}),
+        [id]: defaultFlowRuleForType(type),
+      },
+    });
   };
   const removeInstance = (id: string) => {
-    setConfig({ ...config, pages: inFlow.filter(i => i.id !== id) });
+    const nextRules = { ...(config.flowRules ?? {}) };
+    delete nextRules[id];
+    setConfig({ ...config, pages: inFlow.filter(i => i.id !== id), flowRules: nextRules });
   };
 
   const onChangeRoute = (instanceId: string, raw: string) => {
@@ -128,7 +138,17 @@ export default function StepPages({ config, setConfig }: StepProps) {
                   enabledExits={config.flowEnabledExits}
                   buttonVariants={config.flowButtonVariants}
                   pageSettings={config.pageSettings}
+                  flowRules={config.flowRules ?? {}}
                   setPageSettings={(next) => setConfig({ ...config, pageSettings: next })}
+                  onChangeRule={(pageId, rule) => {
+                    setConfig({
+                      ...config,
+                      flowRules: {
+                        ...(config.flowRules ?? {}),
+                        [pageId]: rule,
+                      },
+                    });
+                  }}
                   onChangeExit={(pageId, exitKey, target) => {
                     const k = `${pageId}.${exitKey}`;
                     const next = { ...config.flowExits };
@@ -253,7 +273,9 @@ interface FlowCardProps {
   enabledExits:     Record<string, boolean>;
   buttonVariants:   Record<string, ButtonVariant>;
   pageSettings:     PageSettings;
+  flowRules:        Record<string, PageFlowRule>;
   setPageSettings:  (next: PageSettings) => void;
+  onChangeRule:     (pageId: string, rule: PageFlowRule) => void;
   onChangeExit:     (pageId: string, exitKey: string, target: string) => void;
   onToggleExit:     (pageId: string, exitKey: string, enabled: boolean) => void;
   onChangeVariant:  (pageId: string, exitKey: string, variant: ButtonVariant) => void;
@@ -264,7 +286,7 @@ interface FlowCardProps {
 
 function FlowCard({
   instance, index, isLast, inFlow, flowExits, enabledExits, buttonVariants,
-  pageSettings, setPageSettings,
+  pageSettings, flowRules, setPageSettings, onChangeRule,
   onChangeExit, onToggleExit, onChangeVariant, onRemove, onChangeRoute, onBlurRoute,
 }: FlowCardProps) {
   const meta = pageMeta(instance.type);
@@ -306,6 +328,12 @@ function FlowCard({
   };
 
   const title = instance.id === instance.type ? meta.label : `${meta.label} · ${instance.id}`;
+  const currentRule = flowRules[instance.id] ?? defaultFlowRuleForType(instance.type);
+  const supportedRuleModes = FLOW_RULES_BY_PAGE[instance.type] ?? ['always'];
+  const ruleOptions = FLOW_RULE_OPTIONS.filter((option) => supportedRuleModes.includes(option.value));
+  const selectedRule = FLOW_RULE_OPTIONS.find((option) => option.value === currentRule.mode);
+  const defaultSkipId = inFlow[index + 1]?.id ?? inFlow[0]?.id ?? '';
+  const skipChoice = currentRule.skipTo ?? '';
 
   return (
     <li
@@ -421,6 +449,50 @@ function FlowCard({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {ruleOptions.length > 1 && otherInstances.length > 0 && (
+        <div className="flow-card__behavior">
+          <div className="flow-card__behavior-copy">
+            <strong>Behavior</strong>
+            <span>{selectedRule?.hint ?? 'Choose when this page should appear.'}</span>
+          </div>
+          <div className="flow-card__behavior-controls">
+            <select
+              value={currentRule.mode}
+              onChange={(e) => {
+                const mode = e.target.value as FlowRuleMode;
+                onChangeRule(instance.id, {
+                  ...currentRule,
+                  mode,
+                  skipTo: mode === 'always' ? undefined : currentRule.skipTo,
+                });
+              }}
+              aria-label={`Behavior for ${title}`}
+            >
+              {ruleOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            {currentRule.mode !== 'always' && (
+              <select
+                value={skipChoice}
+                onChange={(e) => {
+                  onChangeRule(instance.id, {
+                    ...currentRule,
+                    skipTo: e.target.value || undefined,
+                  });
+                }}
+                aria-label={`Skip destination for ${title}`}
+              >
+                <option value="">{`Skip to default · ${otherInstances.find(o => o.id === defaultSkipId)?.label ?? 'next page'}`}</option>
+                {otherInstances.map((o) => (
+                  <option key={o.id} value={o.id}>{o.label}</option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
       )}
 

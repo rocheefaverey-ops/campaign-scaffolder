@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useCapeData } from '@hooks/useCapeData';
 import { useInstanceId } from '@hooks/useInstanceId';
 import { useSafeNavigation } from '@hooks/useSafeNavigation';
+import { useGameContext } from '@hooks/useGameContext';
 import { getCapeImage, getCapeBoolean, getCapeNumber, buildCopyResolver, buildImageResolver } from '@utils/getCapeData';
 import Voucher from '@components/_modules/Voucher/Voucher';
 import Button from '@components/_core/Button/Button';
@@ -13,6 +15,15 @@ export default function VoucherPage() {
   const instanceId   = useInstanceId('voucher');
   const t   = buildCopyResolver(capeData, 'voucher', instanceId);
   const img = buildImageResolver(capeData, 'voucher', instanceId);
+  const { voucherCode } = useGameContext() as { voucherCode?: string };
+  const flowRule = '{{FLOW_RULE_VOUCHER}}';
+  const skipRoute = '{{FLOW_SKIP_VOUCHER}}';
+  const voucherViewedKey = 'lw_voucher_viewed_{{CAPE_ID}}';
+  const wasVoucherViewed = () =>
+    typeof window !== 'undefined' && window.localStorage.getItem(voucherViewedKey) === '1';
+  const markVoucherViewed = () => {
+    try { window.localStorage.setItem(voucherViewedKey, '1'); } catch { /* private mode */ }
+  };
 
   const bgUrl    = img('background')
                || getCapeImage(capeData, 'general.landing.background')
@@ -29,6 +40,17 @@ export default function VoucherPage() {
   const cta        = t('cta',      'Continue');
   const showQr     = getCapeBoolean(capeData, `settings.pages.${instanceId}.showQr`,     true);
   const codeLength = getCapeNumber (capeData, `settings.pages.${instanceId}.codeLength`, 0);
+
+  useEffect(() => {
+    const needsVoucher = flowRule === 'voucher-required' || flowRule === 'voucher-once';
+    if (needsVoucher && !voucherCode) {
+      navigate(skipRoute);
+      return;
+    }
+    if (flowRule === 'voucher-once' && wasVoucherViewed()) {
+      navigate(skipRoute);
+    }
+  }, [voucherCode]);
 
   return (
     <div className="campaign-screen campaign-screen--hero">
@@ -67,7 +89,10 @@ export default function VoucherPage() {
         </div>
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.5s 0.32s ease both' }}>
-          <Button variant={'{{BUTTON_VARIANT_VOUCHER_NEXT}}' as any} className="w-full" size="lg" onClick={() => navigate('{{NEXT_AFTER_VOUCHER}}')}>
+          <Button variant={'{{BUTTON_VARIANT_VOUCHER_NEXT}}' as any} className="w-full" size="lg" onClick={() => {
+            if (flowRule === 'voucher-once') markVoucherViewed();
+            navigate('{{NEXT_AFTER_VOUCHER}}');
+          }}>
             {cta}
           </Button>
         </div>

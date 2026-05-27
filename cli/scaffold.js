@@ -413,6 +413,48 @@ function computeFlowTokens(pages, regMode = 'none', flowExits = {}, flowEntry = 
   return tokens;
 }
 
+function defaultFlowRuleMode(type) {
+  switch (type) {
+    case 'tutorial': return 'once-per-browser';
+    case 'register': return 'skip-if-registered';
+    case 'voucher': return 'voucher-once';
+    default: return 'always';
+  }
+}
+
+function computeFlowRuleTokens(pages = [], flowRules = {}, flowExits = {}, flowEntry = '', pageTypes = {}, routeMap = {}) {
+  const flowTokens = computeFlowTokens(pages, 'none', flowExits, flowEntry, pageTypes, routeMap);
+  const routeOf = (id) => routeMap[id] || routeFor(pageTypes[id] ?? id, routeMap);
+  const tokens = {};
+
+  for (let i = 0; i < pages.length; i++) {
+    const id = pages[i];
+    const type = pageTypes[id] ?? id;
+    const key = id.toUpperCase().replace(/-/g, '_');
+    const rule = flowRules?.[id] && typeof flowRules[id] === 'object'
+      ? flowRules[id]
+      : { mode: defaultFlowRuleMode(type) };
+    const mode = typeof rule.mode === 'string' ? rule.mode : defaultFlowRuleMode(type);
+    const defaultSkip = flowTokens[`{{NEXT_AFTER_${key}}}`] || routeOf(pages[i + 1]) || routeOf(pages[0]) || '/';
+    const skipTo = typeof rule.skipTo === 'string' && rule.skipTo
+      ? (routeOf(rule.skipTo) || defaultSkip)
+      : defaultSkip;
+
+    tokens[`{{FLOW_RULE_${key}}}`] = mode;
+    tokens[`{{FLOW_SKIP_${key}}}`] = skipTo;
+
+    const typeKey = type.toUpperCase().replace(/-/g, '_');
+    if (typeKey !== key) {
+      const typeRuleToken = `{{FLOW_RULE_${typeKey}}}`;
+      const typeSkipToken = `{{FLOW_SKIP_${typeKey}}}`;
+      if (!(typeRuleToken in tokens)) tokens[typeRuleToken] = mode;
+      if (!(typeSkipToken in tokens)) tokens[typeSkipToken] = skipTo;
+    }
+  }
+
+  return tokens;
+}
+
 // ─── Interactive wizard ───────────────────────────────────────────────────────
 
 /** Single-shot prompt — creates a fresh readline, asks one question, closes it. */
@@ -1601,13 +1643,14 @@ async function scaffold(options) {
   releaseLock(lockPath);
 }
 
-async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], modules = [], gtmId = '', tsPageElementSelections = {}, selectedGame = null, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, pageSettings = {}, pageTypes = {}, routeMap = {}, menuItemsEnabled = {}, _wizardMeta = null }) {
+async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], modules = [], gtmId = '', tsPageElementSelections = {}, selectedGame = null, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowRules = {}, pageSettings = {}, pageTypes = {}, routeMap = {}, menuItemsEnabled = {}, _wizardMeta = null }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
 
   const frontendDir = join(outputDir, 'frontend');
   const flowTokens = computeFlowTokens(pages, 'none', flowExits, flowEntry, pageTypes, routeMap);
+  const flowRuleTokens = computeFlowRuleTokens(pages, flowRules, flowExits, flowEntry, pageTypes, routeMap);
   const unityBootMode = normalizeUnityBootMode(pageSettings);
   const onboardingFirstRunOnly = landingOnboardingFirstRunOnly(_wizardMeta);
   const optionalExitEnabled = (pageId, exitKey, defaultValue = false) =>
@@ -1847,6 +1890,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
     '{{MENU_SHOW_FAQ}}':         String(menuItemEnabled('faq',         false, ['/faq'])),
     '{{MENU_SHOW_LEAVE}}':       String(menuItemEnabled('leave',       true,  [])),
     ...tanstackFlowTokens,
+    ...flowRuleTokens,
   };
   const replaced = tokenReplaceDir(frontendDir, tokens);
   ok(`${replaced} file(s) updated`);
@@ -2125,6 +2169,7 @@ export function useGameNavigation() {
     pages,
     tsPageElementSelections,
     pageSettings: Object.keys(pageSettings ?? {}).length > 0 ? pageSettings : undefined,
+    flowRules: Object.keys(flowRules ?? {}).length > 0 ? flowRules : undefined,
     wizard: _wizardMeta ?? undefined,
     // Tooling
     gtmId: gtmId || undefined,
@@ -2162,7 +2207,7 @@ export function useGameNavigation() {
   printPostScaffoldMessage({ projectName: name, capeId, market, modules: [], outputDir: _tsFinalFrontendDir, stack: 'tanstack', capeAutoPublished, capePublishedUrl });
 }
 
-async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowButtonVariants = {}, menuItemsEnabled = {}, menuButtonVariants = {}, pageTypes = {}, _wizardMeta = null, routeMap = {} }) {
+async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowButtonVariants = {}, flowRules = {}, menuItemsEnabled = {}, menuButtonVariants = {}, pageTypes = {}, _wizardMeta = null, routeMap = {} }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -2331,6 +2376,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
   // 3. Token replacement
   step(3, 'Replacing tokens...');
   const flowTokens = computeFlowTokens(pages, regMode, flowExits, flowEntry, pageTypes, routeMap);
+  const flowRuleTokens = computeFlowRuleTokens(pages, flowRules, flowExits, flowEntry, pageTypes, routeMap);
   const availableCampaignRoutes = pages.map((id) => routeFor(id, routeMap));
   const onboardingFirstRunOnly = landingOnboardingFirstRunOnly(_wizardMeta);
   const buttonVariant = (pageId, exitKey, fallback = 'primary') => {
@@ -2397,6 +2443,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     '{{MENU_SHOW_FAQ}}':         String(menuItemEnabled('faq',         false, ['/faq'])),
     '{{MENU_SHOW_LEAVE}}':       String(menuItemEnabled('leave',       true,  [])),
     ...flowTokens,
+    ...flowRuleTokens,
   };
   const replacedCount = tokenReplaceDir(frontendDir, tokens);
   ok(`${replacedCount} file(s) updated`);
@@ -2608,6 +2655,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     flow:         _flowTokens,
     flowExits:    Object.keys(flowExits).length > 0 ? flowExits : undefined,
     flowEntry:    flowEntry || undefined,
+    flowRules:    Object.keys(flowRules).length > 0 ? flowRules : undefined,
     // Page element selections (page builder output)
     pageElementSelections: Object.keys(pageElementSelections).length > 0 ? pageElementSelections : undefined,
     // Modules (full resolved list + optional-only list)
@@ -3888,6 +3936,7 @@ async function main() {
       unityCdnUrl:           existing.unityCdnUrl || '',
       pageTypes:             existing.pageTypes ?? inferPageTypes(existing.pages ?? []),
       flowExits:             existing.flowExits ?? {},
+      flowRules:             existing.flowRules ?? existing.wizard?.flowRules ?? {},
     };
 
     await enforceConfigValidation(options, { yes: args.yes });
@@ -4079,6 +4128,7 @@ async function main() {
       flowEntry:               typeof cfg.flowEntry === 'string' ? cfg.flowEntry : '',
       flowEnabledExits:        (cfg.flowEnabledExits && typeof cfg.flowEnabledExits === 'object') ? cfg.flowEnabledExits : {},
       flowButtonVariants:      (cfg.flowButtonVariants && typeof cfg.flowButtonVariants === 'object') ? cfg.flowButtonVariants : {},
+      flowRules:               (cfg.flowRules && typeof cfg.flowRules === 'object') ? cfg.flowRules : {},
       pageSettings:            (cfg.pageSettings && typeof cfg.pageSettings === 'object') ? cfg.pageSettings : {},
       // Menu visibility — drives which menu copy keys make it into the
       // generated CAPE format. The /menu route reads the matching CAPE flags.
@@ -4099,6 +4149,7 @@ async function main() {
         pageSettings:       (cfg.pageSettings && Object.keys(cfg.pageSettings).length > 0)             ? cfg.pageSettings       : undefined,
         flowEnabledExits:   (cfg.flowEnabledExits && Object.keys(cfg.flowEnabledExits).length > 0)     ? cfg.flowEnabledExits   : undefined,
         flowButtonVariants: (cfg.flowButtonVariants && Object.keys(cfg.flowButtonVariants).length > 0) ? cfg.flowButtonVariants : undefined,
+        flowRules:          (cfg.flowRules && Object.keys(cfg.flowRules).length > 0)                   ? cfg.flowRules          : undefined,
         menuItemsEnabled:   (cfg.menuItemsEnabled && Object.keys(cfg.menuItemsEnabled).length > 0)     ? cfg.menuItemsEnabled   : undefined,
         menuButtonVariants: (cfg.menuButtonVariants && Object.keys(cfg.menuButtonVariants).length > 0) ? cfg.menuButtonVariants : undefined,
         defaultLanguage:    cfg.defaultLanguage    || undefined,

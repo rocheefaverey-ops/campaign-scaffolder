@@ -14,12 +14,14 @@ export default function RegisterPage() {
   const instanceId   = useInstanceId('register');
   const t            = buildCopyResolver(capeData, 'register', instanceId);
   const { alreadyRegistered } = useGameContext();
+  const flowRule = '{{FLOW_RULE_REGISTER}}';
+  const skipRoute = '{{FLOW_SKIP_REGISTER}}';
 
   // Skip the registration page once the user has registered for this campaign.
   // `alreadyRegistered` is rehydrated from persistent storage on mount, so this
   // also covers reloads and returning visitors.
   useEffect(() => {
-    if (alreadyRegistered) navigate('{{NEXT_AFTER_REGISTER}}');
+    if (flowRule === 'skip-if-registered' && alreadyRegistered) navigate(skipRoute);
   }, [alreadyRegistered]);
 
   const headline = t('headline', 'Register');

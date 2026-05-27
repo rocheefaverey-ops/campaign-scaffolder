@@ -641,6 +641,59 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   border-color: transparent;
 }
 
+.flow-card__behavior {
+  grid-column: 3 / -1;
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-line);
+  min-width: 0;
+}
+
+.flow-card__behavior-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.flow-card__behavior-copy strong {
+  font-size: 12px;
+}
+
+.flow-card__behavior-copy span {
+  color: var(--color-text-soft);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.flow-card__behavior-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+
+.flow-card__behavior-controls select {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 5px 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  min-width: 0;
+  width: 100%;
+}
+
+.flow-card__behavior-controls select:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
 /* Inline page settings — nested inside an expanded flow card. The
    PageSettingsCard's own outer chrome is suppressed so it reads as a region
    of the parent card rather than a card-within-a-card. */
@@ -853,6 +906,10 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
     grid-template-columns: 1fr;
   }
   .flow-card__exit-controls {
+    grid-template-columns: 1fr;
+  }
+  .flow-card__behavior,
+  .flow-card__behavior-controls {
     grid-template-columns: 1fr;
   }
 }

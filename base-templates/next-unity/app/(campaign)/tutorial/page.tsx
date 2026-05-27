@@ -1,12 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCapeData } from '@hooks/useCapeData';
 import { useInstanceId } from '@hooks/useInstanceId';
 import { useSafeNavigation } from '@hooks/useSafeNavigation';
 import { getCapeText, getCapeImage, getCapeBoolean, buildCopyResolver, buildImageResolver, isVideoUrl } from '@utils/getCapeData';
 import Button from '@components/_core/Button/Button';
+
+const ONBOARDING_KEY = 'lw_onboarding_done_{{CAPE_ID}}';
+const FLOW_RULE = '{{FLOW_RULE_TUTORIAL}}';
+const SKIP_ROUTE = '{{FLOW_SKIP_TUTORIAL}}';
+const isOnboardingDone = () =>
+  typeof window !== 'undefined' && window.localStorage.getItem(ONBOARDING_KEY) === '1';
+const markOnboardingDone = () => {
+  try { window.localStorage.setItem(ONBOARDING_KEY, '1'); } catch { /* private mode */ }
+};
 
 /**
  * Tutorial page — layout adapts to how many steps CAPE has populated:
@@ -29,6 +38,12 @@ export default function TutorialPage() {
   const instanceId   = useInstanceId('tutorial');
   const t   = buildCopyResolver(capeData, 'tutorial', instanceId);
   const img = buildImageResolver(capeData, 'tutorial', instanceId);
+
+  useEffect(() => {
+    if (FLOW_RULE === 'once-per-browser' && isOnboardingDone()) {
+      navigate(SKIP_ROUTE);
+    }
+  }, []);
 
   // Always-on visuals (mirror landing)
   const bgUrl   = img('background')
@@ -90,7 +105,10 @@ export default function TutorialPage() {
   const showBody     = isMulti ? currentStep.body  : (steps[0]?.body  || subline);
   const showCta      = isMulti && !isLastSlide ? ctaNext : ctaFinal;
 
-  const advance = () => navigate('{{NEXT_AFTER_TUTORIAL}}');
+  const advance = () => {
+    if (FLOW_RULE === 'once-per-browser') markOnboardingDone();
+    navigate('{{NEXT_AFTER_TUTORIAL}}');
+  };
   const onCtaClick = () => {
     if (!isMulti || isLastSlide) advance();
     else setSlideIdx(i => Math.min(i + 1, steps.length - 1));
@@ -101,7 +119,7 @@ export default function TutorialPage() {
       <div className="campaign-screen campaign-screen--tutorial-card">
         <div className="campaign-tutorial-card">
           {isMulti && (
-            <button className="campaign-close campaign-tutorial-card__close" aria-label="Close" onClick={() => router.back()}>Ã—</button>
+            <button className="campaign-close campaign-tutorial-card__close" aria-label="Close" onClick={() => router.back()}>Close</button>
           )}
           <div className="campaign-tutorial-card__visual">
             {showBg && (
@@ -138,7 +156,7 @@ export default function TutorialPage() {
             </Button>
             {allowSkip && !isLastSlide && (
               <button type="button" onClick={advance} className="campaign-skip" aria-label="Skip tutorial">
-                Skip â†’
+                Skip
               </button>
             )}
           </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { STACK_OPTIONS, defaultPagesForStack, defaultEnabledExits, defaultFlowButtonVariants, defaultMenuItemsEnabled, type StackOption, type StepProps } from '../shared/config.ts';
+import { STACK_OPTIONS, defaultPagesForStack, defaultEnabledExits, defaultFlowButtonVariants, defaultMenuItemsEnabled, defaultFlowRulesForPages, type StackOption, type StepProps } from '../shared/config.ts';
 import { autoNameVersion } from '../shared/projectNameDefaults.ts';
 
 export default function StepStack({ config, setConfig }: StepProps) {
@@ -23,18 +23,20 @@ export default function StepStack({ config, setConfig }: StepProps) {
                 onClick={() => {
                   const v = autoNameVersion(config.name);
                   const name = v ? `${opt.id}-${opt.engine}-scaf-v${v}` : config.name;
+                  const pages = defaultPagesForStack(opt.id);
                   setConfig({
                     ...config,
                     stack: opt.id,
                     game: opt.engine,
                     gameId: opt.id === 'tanstack' && opt.engine === 'unity' ? 'nhl-crush' : undefined,
                     name,
-                    pages: defaultPagesForStack(opt.id),
+                    pages,
                     regMode: opt.id === 'tanstack' ? 'none' : config.regMode,
                     modules: opt.id === 'tanstack' ? [] : config.modules,
                     flowExits: {},
                     flowEnabledExits: defaultEnabledExits(),
                     flowButtonVariants: defaultFlowButtonVariants(),
+                    flowRules: defaultFlowRulesForPages(pages),
                     menuItemsEnabled: opt.id === 'tanstack' ? { ...defaultMenuItemsEnabled(), home: false, howToPlay: false } : config.menuItemsEnabled,
                   });
                 }}

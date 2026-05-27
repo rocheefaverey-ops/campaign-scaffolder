@@ -15,6 +15,8 @@ export const Route = createFileRoute('/register')({
 });
 
 const REGISTERED_KEY = 'lw_registered_{{CAPE_ID}}';
+const FLOW_RULE = '{{FLOW_RULE_REGISTER}}';
+const SKIP_ROUTE = '{{FLOW_SKIP_REGISTER}}';
 const isRegistered = () => typeof window !== 'undefined' && window.localStorage.getItem(REGISTERED_KEY) === '1';
 const markRegistered = () => { try { window.localStorage.setItem(REGISTERED_KEY, '1'); } catch { /* private mode */ } };
 
@@ -26,8 +28,8 @@ function Register() {
 
   // Skip the registration page once the user has registered for this campaign.
   useEffect(() => {
-    if (isRegistered()) {
-      router.navigate({ to: '{{NEXT_AFTER_REGISTER}}' as never, replace: true });
+    if (FLOW_RULE === 'skip-if-registered' && isRegistered()) {
+      router.navigate({ to: SKIP_ROUTE as never, replace: true });
     }
   }, []);
 
@@ -72,7 +74,7 @@ function Register() {
 
       try {
         await sleep(2000);
-        markRegistered();
+        if (FLOW_RULE === 'skip-if-registered') markRegistered();
         router.navigate({ to: '{{NEXT_AFTER_REGISTER}}' as never, replace: true });
       } catch (e) {
         console.error('Error during form submission:', e);

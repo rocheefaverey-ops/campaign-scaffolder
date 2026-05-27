@@ -22,6 +22,12 @@ export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'dark' | 'dan
  *   recreate - Delete outputDir first, then a fresh `create`. Destructive.
  */
 export type BuildMode = 'create' | 'update' | 'recreate';
+export type FlowRuleMode =
+  | 'always'
+  | 'once-per-browser'
+  | 'skip-if-registered'
+  | 'voucher-required'
+  | 'voucher-once';
 
 export interface LanguageOption { code: string; label: string; group?: string }
 /**
@@ -180,6 +186,12 @@ export interface ScaffoldConfig {
   flowEnabledExits: Record<string, boolean>;
   flowButtonVariants: Record<string, ButtonVariant>;
   /**
+   * Per-page runtime behavior, keyed by page instance id. Routing answers
+   * where a button goes; this answers whether the page should be shown at
+   * all for the current visitor.
+   */
+  flowRules: Record<string, PageFlowRule>;
+  /**
    * Per-menu-item visibility, keyed by item id (see MENU_ITEMS). Persisted
    * to CAPE as `settings.menu.show{Id}`. The /menu route reads these flags
    * and renders only the enabled items.
@@ -210,6 +222,57 @@ export interface ScaffoldConfig {
 
 export type SettingValue = string | number | boolean;
 export type PageSettings = Record<string, Record<string, SettingValue>>;
+
+export interface PageFlowRule {
+  mode: FlowRuleMode;
+  skipTo?: string;
+}
+
+export interface FlowRuleOption {
+  value: FlowRuleMode;
+  label: string;
+  hint: string;
+}
+
+export const FLOW_RULE_OPTIONS: FlowRuleOption[] = [
+  { value: 'always',             label: 'Always show',             hint: 'The page appears every time the route is reached.' },
+  { value: 'once-per-browser',   label: 'Show once',               hint: 'After the visitor continues, future visits skip this page.' },
+  { value: 'skip-if-registered', label: 'Skip after registration', hint: 'Registered visitors skip this page.' },
+  { value: 'voucher-required',   label: 'Only with voucher',       hint: 'Skip when there is no voucher code available.' },
+  { value: 'voucher-once',       label: 'Voucher once',            hint: 'Show only when a voucher exists and has not been viewed yet.' },
+];
+
+export const FLOW_RULES_BY_PAGE: Record<string, FlowRuleMode[]> = {
+  landing:     ['always'],
+  tutorial:    ['always', 'once-per-browser'],
+  register:    ['always', 'skip-if-registered'],
+  game:        ['always'],
+  result:      ['always'],
+  voucher:     ['always', 'voucher-required', 'voucher-once'],
+  leaderboard: ['always'],
+  'intro-video':   ['always', 'once-per-browser'],
+  'loading-video': ['always'],
+  'ad-video':      ['always', 'once-per-browser'],
+};
+
+export function defaultFlowRuleForType(type: string): PageFlowRule {
+  switch (type) {
+    case 'tutorial':
+      return { mode: 'once-per-browser' };
+    case 'register':
+      return { mode: 'skip-if-registered' };
+    case 'voucher':
+      return { mode: 'voucher-once' };
+    default:
+      return { mode: 'always' };
+  }
+}
+
+export function defaultFlowRulesForPages(pages: PageInstance[]): Record<string, PageFlowRule> {
+  const out: Record<string, PageFlowRule> = {};
+  for (const page of pages) out[page.id] = defaultFlowRuleForType(page.type);
+  return out;
+}
 
 export interface SettingDef {
   key:      string;
@@ -648,6 +711,7 @@ export const DEFAULT_CONFIG: ScaffoldConfig = {
   flowEntry:          undefined,
   flowEnabledExits:   defaultEnabledExits(),
   flowButtonVariants: defaultFlowButtonVariants(),
+  flowRules:          defaultFlowRulesForPages(defaultPagesForStack('next')),
   menuItemsEnabled:   defaultMenuItemsEnabled(),
   menuButtonVariants: defaultMenuButtonVariants(),
   buildMode:          'create',

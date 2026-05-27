@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './tutorial.module.scss';
 import type { IContentSliderHandle } from '~/components/slider/ContentSlider.tsx';
 import { ContentSlider } from '~/components/slider/ContentSlider.tsx';
@@ -16,6 +16,10 @@ export const Route = createFileRoute('/tutorial')({
 });
 
 const ONBOARDING_KEY = 'lw_onboarding_done_{{CAPE_ID}}';
+const FLOW_RULE = '{{FLOW_RULE_TUTORIAL}}';
+const SKIP_ROUTE = '{{FLOW_SKIP_TUTORIAL}}';
+const isOnboardingDone = () =>
+  typeof window !== 'undefined' && window.localStorage.getItem(ONBOARDING_KEY) === '1';
 const markOnboardingDone = () => {
   try { window.localStorage.setItem(ONBOARDING_KEY, '1'); } catch { /* private mode */ }
 };
@@ -25,8 +29,13 @@ function Tutorial() {
   const router = useRouter();
   const nextRoute = '{{NEXT_AFTER_TUTORIAL}}';
   const isPending = false;
+  useEffect(() => {
+    if (FLOW_RULE === 'once-per-browser' && isOnboardingDone()) {
+      void router.navigate({ to: SKIP_ROUTE as never, replace: true });
+    }
+  }, [router]);
   const navigate = () => {
-    markOnboardingDone();
+    if (FLOW_RULE === 'once-per-browser') markOnboardingDone();
     void router.navigate({ to: nextRoute as never, replace: true });
   };
   const contentRef = useRef<IContentSliderHandle>(null);

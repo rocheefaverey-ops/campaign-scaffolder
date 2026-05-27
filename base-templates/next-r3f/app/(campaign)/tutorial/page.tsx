@@ -1,12 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCapeData } from '@hooks/useCapeData';
 import { useInstanceId } from '@hooks/useInstanceId';
 import { useSafeNavigation } from '@hooks/useSafeNavigation';
 import { getCapeText, getCapeImage, getCapeBoolean, buildCopyResolver, buildImageResolver, isVideoUrl } from '@utils/getCapeData';
 import Button from '@components/_core/Button/Button';
+
+const ONBOARDING_KEY = 'lw_onboarding_done_{{CAPE_ID}}';
+const FLOW_RULE = '{{FLOW_RULE_TUTORIAL}}';
+const SKIP_ROUTE = '{{FLOW_SKIP_TUTORIAL}}';
+const isOnboardingDone = () =>
+  typeof window !== 'undefined' && window.localStorage.getItem(ONBOARDING_KEY) === '1';
+const markOnboardingDone = () => {
+  try { window.localStorage.setItem(ONBOARDING_KEY, '1'); } catch { /* private mode */ }
+};
 
 /**
  * Tutorial page — layout adapts to how many steps CAPE has populated:
@@ -29,6 +38,12 @@ export default function TutorialPage() {
   const instanceId   = useInstanceId('tutorial');
   const t   = buildCopyResolver(capeData, 'tutorial', instanceId);
   const img = buildImageResolver(capeData, 'tutorial', instanceId);
+
+  useEffect(() => {
+    if (FLOW_RULE === 'once-per-browser' && isOnboardingDone()) {
+      navigate(SKIP_ROUTE);
+    }
+  }, []);
 
   // Always-on visuals (mirror landing)
   const bgUrl   = img('background')
@@ -72,6 +87,9 @@ export default function TutorialPage() {
   const ctaFinal  = t('cta',      "Let's go");
   const ctaNext   = t('ctaNext',  'Continue');
   const allowSkip = getCapeBoolean(capeData, `settings.pages.${instanceId}.allowSkip`, false);
+  const screenLayout = getCapeText(capeData, `settings.pages.${instanceId}.screenLayout`, 'fullBleedHero') === 'card'
+    ? 'card'
+    : 'fullBleedHero';
 
   const [slideIdx, setSlideIdx] = useState(0);
   // With DEFAULT_STEPS providing 3 baseline steps, isMulti is always true
@@ -87,11 +105,65 @@ export default function TutorialPage() {
   const showBody     = isMulti ? currentStep.body  : (steps[0]?.body  || subline);
   const showCta      = isMulti && !isLastSlide ? ctaNext : ctaFinal;
 
-  const advance = () => navigate('{{NEXT_AFTER_TUTORIAL}}');
+  const advance = () => {
+    if (FLOW_RULE === 'once-per-browser') markOnboardingDone();
+    navigate('{{NEXT_AFTER_TUTORIAL}}');
+  };
   const onCtaClick = () => {
     if (!isMulti || isLastSlide) advance();
     else setSlideIdx(i => Math.min(i + 1, steps.length - 1));
   };
+
+  if (screenLayout === 'card') {
+    return (
+      <div className="campaign-screen campaign-screen--tutorial-card">
+        <div className="campaign-tutorial-card">
+          {isMulti && (
+            <button className="campaign-close campaign-tutorial-card__close" aria-label="Close" onClick={() => router.back()}>Close</button>
+          )}
+          <div className="campaign-tutorial-card__visual">
+            {showBg && (
+              isVideoUrl(showBg)
+                ? <video src={showBg} className="campaign-tutorial-card__media" autoPlay muted loop playsInline aria-hidden key={showBg} />
+                // eslint-disable-next-line @next/next/no-img-element
+                : <img src={showBg} alt="" className="campaign-tutorial-card__media" aria-hidden key={showBg} />
+            )}
+          </div>
+
+          <div key={slideIdx} className="campaign-stack campaign-tutorial-card__copy" style={{ animation: 'fadeIn 0.32s ease both' }}>
+            <p className="campaign-kicker">{kicker}</p>
+            <h1 className="campaign-title campaign-title--compact">{showHeadline}</h1>
+            {showBody && <p className="campaign-copy max-w-[28rem] text-base sm:text-lg">{showBody}</p>}
+          </div>
+
+          <div className="campaign-actions">
+            {isMulti && (
+              <div className="campaign-pagination" role="tablist" aria-label="Tutorial progress">
+                {steps.map((_, i) => (
+                  <button
+                    key={i}
+                    role="tab"
+                    aria-selected={i === slideIdx}
+                    aria-label={`Go to slide ${i + 1}`}
+                    className={`campaign-pagination__dot${i === slideIdx ? ' is-active' : ''}`}
+                    onClick={() => setSlideIdx(i)}
+                  />
+                ))}
+              </div>
+            )}
+            <Button variant={'{{BUTTON_VARIANT_TUTORIAL_NEXT}}' as any} className="w-full" size="lg" onClick={onCtaClick}>
+              {showCta}
+            </Button>
+            {allowSkip && !isLastSlide && (
+              <button type="button" onClick={advance} className="campaign-skip" aria-label="Skip tutorial">
+                Skip
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="campaign-screen campaign-screen--hero">
