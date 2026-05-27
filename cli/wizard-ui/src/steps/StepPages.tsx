@@ -230,7 +230,7 @@ function AddPageMenu({ availablePages, typeCounts, onAdd }: AddPageMenuProps) {
   const allAdded = addable.length === 0;
 
   return (
-    <div className="add-page" ref={wrapRef}>
+    <div className={`add-page${open ? ' is-open' : ''}`} ref={wrapRef}>
       <button
         type="button"
         className="add-page__trigger"
