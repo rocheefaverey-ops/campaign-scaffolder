@@ -124,10 +124,7 @@ export default function PreviewPane({ config }: Props) {
               title={p.route}
             >
               <span className="preview-pane__tab-num">{i + 1}</span>
-              <span className="preview-pane__tab-text">
-                <span className="preview-pane__tab-label">{label}</span>
-                <span className="preview-pane__tab-route">{p.route}</span>
-              </span>
+              <span className="preview-pane__tab-label">{label}</span>
             </button>
           );
         })}
@@ -534,7 +531,7 @@ function VoucherPreview({ config, instance, navigate, onMenu }: { config: Scaffo
             <span className="pp-voucher__code">{code}</span>
             {showQr && <div className="pp-voucher__qr" aria-hidden>▦</div>}
           </div>
-          <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Done" onClick={() => navigate(instance.id, 'next')} />
+          <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />
         </div>
       </div>
     </div>

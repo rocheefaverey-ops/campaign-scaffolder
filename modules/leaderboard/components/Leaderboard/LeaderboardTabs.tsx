@@ -4,7 +4,7 @@ import type { LeaderboardType } from '@/types/actions/leaderboard';
 const TABS: { label: string; value: LeaderboardType }[] = [
   { label: 'Daily', value: 'daily' },
   { label: 'Weekly', value: 'weekly' },
-  { label: 'All Time', value: 'total' },
+  { label: 'All time', value: 'total' },
 ];
 
 interface LeaderboardTabsProps {
@@ -15,17 +15,18 @@ interface LeaderboardTabsProps {
 export default function LeaderboardTabs({ active, onChange }: LeaderboardTabsProps) {
   return (
     <div
-      className="flex rounded-full p-1"
-      style={{ background: 'var(--surface-elevated)', border: '1px solid var(--line-soft)' }}
+      className="grid grid-cols-3 gap-1 rounded-xl p-1"
+      style={{ background: 'rgba(26, 26, 26, 0.06)', border: '1px solid var(--line-soft)' }}
     >
       {TABS.map((tab) => (
         <button
           key={tab.value}
+          type="button"
           onClick={() => onChange(tab.value)}
           className={cn(
-            'flex-1 rounded-full py-2 text-sm font-bold uppercase tracking-wider transition-all duration-200',
+            'min-h-10 rounded-lg px-2 text-xs font-bold uppercase tracking-[0.14em] transition-all duration-200',
             active === tab.value
-              ? 'bg-[var(--color-primary)] text-[var(--text-primary)] shadow-[var(--shadow-card)]'
+              ? 'bg-[var(--surface-ink)] text-[var(--text-inverse)] shadow-[var(--shadow-card)]'
               : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
           )}
         >

@@ -249,7 +249,7 @@ function tsRegisterTab(els) {
   }
   if (els.includes('field-optin-1')) {
     items.push(
-      textML('copy.registration.optinTextOne',  'Opt-in 1 Text',  'ts-reg-optin1text',  'I agree to the <a href="/terms">terms and conditions</a>.'),
+      textML('copy.registration.optinTextOne',  'Opt-in 1 Text',  'ts-reg-optin1text',  'I agree to the ###terms and conditions###.'),
       textML('copy.registration.optinErrorOne', 'Opt-in 1 Error', 'ts-reg-optin1error', 'This field is required.'),
     );
   }
@@ -605,7 +605,7 @@ function nextLeaderboardTab(instanceId = 'leaderboard') {
       textML(c('scoreLabel'), 'Score column label',k('scorelabel'), 'Score'),
       textML(c('youLabel'),   '"You" label',       k('youlabel'),   'You'),
       textML(c('emptyState'), 'Empty state',       k('empty'),      'No scores yet.'),
-      textML(c('ctaDone'),    'Done button',       k('ctadone'),    'Done'),
+      textML(c('ctaDone'),    'Continue button',   k('ctadone'),    'Continue'),
     ]),
   ], true);
 }
@@ -623,7 +623,7 @@ function nextRegistrationTab(instanceId = 'register') {
       textML(c('labelInfix'),      'Infix label',       k('label-infix'),  'Infix'),
       textML(c('labelLastName'),   'Last name label',   k('label-last'),   'Last name'),
       textML(c('labelEmail'),      'Email label',       k('label-email'),  'Email'),
-      textML(c('optIn1'),          'Terms opt-in',      k('optin1'),       'I agree to the <a href="/terms">terms and conditions</a>.'),
+      textML(c('optIn1'),          'Terms opt-in',      k('optin1'),       'I agree to the ###terms and conditions###.'),
       textML(c('optIn2'),          'Newsletter opt-in', k('optin2'),       'Yes, I would like to receive news and offers.'),
       textML(c('successHeadline'), 'Success headline',  k('successh'),     'Thanks for registering!'),
       textML(c('successBody'),     'Success body',      k('successb'),     "We'll get in touch if you win."),
@@ -654,7 +654,7 @@ function nextVoucherTab(instanceId = 'voucher') {
       textML(c('codeLabel'),   'Code label',   k('codelabel'),   'Code'),
       textML(c('expiryLabel'), 'Expiry label', k('expirylabel'), 'Valid until'),
       text(  c('expiryDate'),  'Expiry date',  k('expirydate'),  ''),
-      textML(c('cta'),         'Done button',  k('cta'),         'Done'),
+      textML(c('cta'),         'Continue button',  k('cta'),         'Continue'),
       textML(c('ctaShare'),    'Share button', k('ctashare'),    'Share'),
     ]),
   ], true);

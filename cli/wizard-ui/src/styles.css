@@ -51,8 +51,7 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root {
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
 }
 
 body {
@@ -64,14 +63,15 @@ body {
 }
 
 .app {
-  height: 100dvh;
-  min-height: 0;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  overflow: hidden;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 .app__head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   padding: 18px 32px;
   border-bottom: 1px solid var(--color-line);
   display: flex; align-items: center; justify-content: space-between;
@@ -150,15 +150,15 @@ body {
 }
 
 .app__main {
+  flex: 1 0 auto;
   padding: 32px;
   max-width: 1120px; width: 100%;
   margin: 0 auto;
   display: flex; flex-direction: column; gap: 24px;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
 }
 .app__foot {
+  position: sticky;
+  bottom: 0;
   padding: 12px 32px;
   border-top: 1px solid var(--color-line);
   background: #FAFDF5;
@@ -405,13 +405,25 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 .banner--warn { background: color-mix(in srgb, var(--color-warn) 14%, transparent);    color: var(--color-warn); }
 .banner--err  { background: color-mix(in srgb, var(--color-error) 14%, transparent);   color: var(--color-error); }
 
-/* ─── Pages step — two-column layout + drag-and-drop ─────────────────────── */
+/* ─── Pages step — flow column + sticky preview ──────────────────────────── */
 
-.pages-grid {
-  display: grid; grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.35fr); gap: 16px;
+.pages-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+  gap: 20px;
   align-items: start;
 }
-@media (max-width: 760px) { .pages-grid { grid-template-columns: 1fr; } }
+.pages-layout__preview {
+  position: sticky;
+  /* The app shell's header (.app__head) is itself sticky at top: 0 and
+     ~56px tall. Without clearing it, the preview slides under the header
+     once the user scrolls and its top is clipped behind the dark bar. */
+  top: 72px;
+}
+@media (max-width: 900px) {
+  .pages-layout { grid-template-columns: 1fr; }
+  .pages-layout__preview { position: static; }
+}
 
 .pages-col {
   background: #fff; border: 1px solid var(--color-line);
@@ -460,15 +472,20 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   border: 1px solid var(--color-line-strong);
   border-radius: 12px; padding: 12px;
   display: grid;
-  grid-template-columns: 22px 28px minmax(0, 1fr) 26px;
+  grid-template-columns: 22px 28px minmax(0, 1fr) auto;
   align-items: start;
   gap: 8px 10px;
   box-shadow: 0 1px 0 rgba(14,14,14,0.04);
   min-width: 0;
+  transition: border-color .12s ease, box-shadow .12s ease;
 }
 .flow-card.is-dragging {
   box-shadow: 0 12px 28px rgba(14,14,14,0.18);
   border-color: var(--color-secondary);
+}
+.flow-card.is-expanded {
+  border-color: var(--color-line-strong);
+  box-shadow: 0 4px 14px rgba(14,14,14,0.08);
 }
 .flow-card__handle {
   cursor: grab; user-select: none;
@@ -510,6 +527,40 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 }
 .flow-card__route-input--error {
   color: var(--color-error);
+}
+.flow-card__actions {
+  display: flex; align-items: center; gap: 4px;
+  align-self: start;
+}
+.flow-card__settings-btn {
+  font: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 10px;
+  border: 1px solid var(--color-line); border-radius: 999px;
+  background: #fff; color: var(--color-text-soft);
+  font-size: 12px;
+  transition: background-color .12s ease, color .12s ease, border-color .12s ease;
+}
+.flow-card__settings-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-line-strong);
+}
+.flow-card__settings-btn.is-active {
+  background: var(--color-primary);
+  color: var(--color-text);
+  border-color: var(--color-primary);
+}
+.flow-card__settings-btn-label { font-weight: 600; }
+.flow-card__chev {
+  display: inline-block;
+  transition: transform .15s ease;
+  font-size: 10px;
+  opacity: 0.7;
+}
+.flow-card__chev.is-open { transform: rotate(180deg); }
+@media (max-width: 520px) {
+  .flow-card__settings-btn-label { display: none; }
+  .flow-card__settings-btn { padding: 0 8px; }
 }
 .flow-card__remove {
   font: inherit; cursor: pointer;
@@ -588,6 +639,93 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
   border-color: transparent;
+}
+
+/* Inline page settings — nested inside an expanded flow card. The
+   PageSettingsCard's own outer chrome is suppressed so it reads as a region
+   of the parent card rather than a card-within-a-card. */
+.flow-card__settings {
+  grid-column: 3 / -1;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-line);
+}
+.flow-card__settings .page-settings-card {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  border-radius: 0;
+}
+.flow-card__settings .page-settings-card__head {
+  display: none;
+}
+
+/* Add page button + popover — bottom of the flow list. */
+.add-page {
+  position: relative;
+  align-self: flex-start;
+  margin-top: 6px;
+}
+.add-page__trigger {
+  font: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 14px;
+  background: #fff;
+  border: 1px dashed var(--color-line-strong);
+  border-radius: 999px;
+  color: var(--color-text-soft);
+  font-size: 13px;
+  transition: border-color .12s ease, background-color .12s ease, color .12s ease;
+}
+.add-page__trigger:hover:not(:disabled) {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  border-style: solid;
+  color: var(--color-text);
+}
+.add-page__trigger:disabled {
+  cursor: not-allowed; opacity: 0.55;
+}
+.add-page__plus {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(14,14,14,0.06);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+}
+.add-page__trigger:hover:not(:disabled) .add-page__plus {
+  background: rgba(14,14,14,0.12);
+}
+.add-page__menu {
+  position: absolute;
+  left: 0; top: calc(100% + 6px);
+  z-index: 30;
+  min-width: 280px; max-width: 360px;
+  max-height: 320px; overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(14,14,14,0.12);
+  padding: 6px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.add-page__item {
+  font: inherit; cursor: pointer; text-align: left;
+  background: transparent; border: 0; border-radius: 8px;
+  padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 2px;
+  color: var(--color-text);
+}
+.add-page__item:hover, .add-page__item:focus-visible {
+  background: rgba(14,14,14,0.05);
+  outline: none;
+}
+.add-page__item strong { font-weight: 600; font-size: 13px; }
+.add-page__hint {
+  color: var(--color-text-soft);
+  font-size: 11.5px; line-height: 1.35;
 }
 
 .reg-mode {
@@ -736,10 +874,9 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   color: var(--color-text-soft);
 }
 
-/* ─── Live preview pane (StepPages, sits between flow + page settings) ──── */
+/* ─── Live preview pane (StepPages right column, sticky) ─────────────────── */
 
 .preview-pane {
-  margin-top: 8px;
   padding: 14px;
   background:
     radial-gradient(circle at 50% 0%, rgba(14,14,14,0.04), transparent 60%),
@@ -815,20 +952,10 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   background: var(--color-primary);
   color: var(--color-text);
 }
-.preview-pane__tab-text {
-  display: inline-flex; flex-direction: column;
-  line-height: 1.1; text-align: left;
-}
-.preview-pane__tab-label { font-size: 12px; }
-.preview-pane__tab-route {
-  font-size: 10px;
-  color: var(--color-text-soft);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: -0.01em;
-}
-.preview-pane__tab.is-active .preview-pane__tab-route {
-  color: var(--color-text);
-  opacity: 0.7;
+.preview-pane__tab-label {
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 /* Subtle slide-up + fade on page change. Triggered by a keyed wrapper in

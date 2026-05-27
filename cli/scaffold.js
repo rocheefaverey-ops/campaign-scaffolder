@@ -1609,6 +1609,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
   const frontendDir = join(outputDir, 'frontend');
   const flowTokens = computeFlowTokens(pages, 'none', flowExits, flowEntry, pageTypes, routeMap);
   const unityBootMode = normalizeUnityBootMode(pageSettings);
+  const onboardingFirstRunOnly = landingOnboardingFirstRunOnly(_wizardMeta);
   const optionalExitEnabled = (pageId, exitKey, defaultValue = false) =>
     Boolean(flowEnabledExits?.[`${pageId}.${exitKey}`] ?? defaultValue);
   const hasPageType = (type) => pages.some((id) => (pageTypes[id] ?? id) === type);
@@ -1618,6 +1619,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
     '{{SHOW_LANDING_LEADERBOARD_BUTTON}}': String(optionalExitEnabled('landing', 'leaderboard', false) && hasPageType('leaderboard')),
     '{{SHOW_RESULT_PLAY_AGAIN_BUTTON}}': String(optionalExitEnabled('result', 'playAgain', true)),
     '{{SHOW_RESULT_LEADERBOARD_BUTTON}}': String(optionalExitEnabled('result', 'leaderboard', false) && hasPageType('leaderboard')),
+    '{{LANDING_ONBOARDING_FIRST_RUN_ONLY}}': onboardingFirstRunOnly ? 'true' : 'false',
     '{{UNITY_BOOT_MODE}}': unityBootMode,
     '{{GAME_ROUTE}}': routeFor('game', routeMap),
     '{{LEADERBOARD_ROUTE}}': routeFor('leaderboard', routeMap),

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ALL_PAGES, type StepProps } from '../shared/config.ts';
+import { type StepProps } from '../shared/config.ts';
+import { autoModulesForPages } from '../shared/resolveModules.ts';
 import { listModules, type ModuleInfo } from '../bridge.ts';
 
 const FALLBACK_MODULES: ModuleInfo[] = [
@@ -120,27 +121,4 @@ function moduleSupportedByPages(moduleId: string, pageTypes: string[]): boolean 
   const supported = MODULE_PAGE_SUPPORT[moduleId];
   if (!supported) return false;
   return supported.some((pageType) => pageTypes.includes(pageType));
-}
-
-function autoModulesForPages(pageTypes: string[], catalog: ModuleInfo[]): Map<string, string> {
-  const auto = new Map<string, string>();
-  for (const pageType of pageTypes) {
-    const meta = ALL_PAGES.find((page) => page.id === pageType);
-    if (meta?.requires) auto.set(meta.requires, pageType);
-  }
-
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const module of catalog) {
-      if (!auto.has(module.id)) continue;
-      for (const implied of module.implies) {
-        if (!auto.has(implied)) {
-          auto.set(implied, module.id);
-          changed = true;
-        }
-      }
-    }
-  }
-  return auto;
 }

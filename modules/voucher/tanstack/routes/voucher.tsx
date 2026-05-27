@@ -1,8 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
 import { StyledButton } from '~/components/buttons/StyledButton.tsx';
 import { loadVoucherData } from '~/loaders/VoucherLoader.ts';
-import { useGameNavigation } from '~/hooks/useGameNavigation.ts';
 import { useUnityStore } from '~/hooks/stores/useUnityStore.ts';
 
 export const Route = createFileRoute('/voucher')({
@@ -12,8 +11,10 @@ export const Route = createFileRoute('/voucher')({
 
 function VoucherPage() {
   const { copy, showQr } = Route.useLoaderData();
-  const { navigate } = useGameNavigation();
+  const router = useRouter();
   const voucherCode = useUnityStore((state) => state.result?.voucherCode ?? '');
+
+  const goNext = () => void router.navigate({ to: '{{NEXT_AFTER_VOUCHER}}' as never, replace: true });
 
   const qrUrl = voucherCode
     ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(voucherCode)}`
@@ -35,8 +36,8 @@ function VoucherPage() {
           </div>
 
           <div className="campaign-actions">
-            <StyledButton onClick={navigate}>
-              {copy.ctaDone || 'Done'}
+            <StyledButton onClick={goNext}>
+              {copy.ctaDone || 'Continue'}
             </StyledButton>
           </div>
         </div>

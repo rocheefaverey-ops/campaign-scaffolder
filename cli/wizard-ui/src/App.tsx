@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { Component, useState, useEffect, type ErrorInfo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { type ScaffoldConfig } from './shared/config.ts';
+import { DEFAULT_CONFIG, type ScaffoldConfig } from './shared/config.ts';
 import { initialScaffoldConfig } from './shared/projectNameDefaults.ts';
 import { fromScaffolded } from './shared/fromScaffolded.ts';
 import { ping, getAuthStatus, loadExisting, type AuthStatus } from './bridge.ts';
@@ -20,10 +20,86 @@ const STEPS = [
   { id: 'build',   label: 'Build',   Component: StepBuild },
 ] as const;
 
+// Bump the version suffix if the persisted shape becomes incompatible — old
+// payloads are then ignored instead of crashing the wizard on restore.
+const WIZARD_STATE_KEY = 'livewall-scaffolder.wizardState.v1';
+
+interface PersistedState {
+  config: ScaffoldConfig;
+  stepIdx: number;
+  maxReachedStep: number;
+}
+
+function readPersistedState(): PersistedState | null {
+  // Opt-out via URL — `?reset` clears persistence before reading. Handy when
+  // a stale payload is breaking the wizard and the user can't reach the UI's
+  // Start-fresh button.
+  try {
+    if (typeof window !== 'undefined' && window.location.search.includes('reset')) {
+      window.localStorage.removeItem(WIZARD_STATE_KEY);
+      return null;
+    }
+  } catch { /* ignore */ }
+
+  try {
+    const raw = window.localStorage.getItem(WIZARD_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedState;
+    if (!parsed || typeof parsed !== 'object' || !parsed.config) return null;
+    parsed.config = sanitizeConfig(parsed.config);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Reconcile a persisted config with DEFAULT_CONFIG so that:
+ *   - every key DEFAULT_CONFIG defines is present (missing → default),
+ *   - object-typed keys are never null/undefined/wrong-shape (e.g. an old
+ *     payload with `pageSettings: null` would otherwise crash on first read).
+ * Top-level only — nested fields with their own defaults (per-page settings)
+ * are still merged at use-site via `?? def.default`.
+ */
+function sanitizeConfig(raw: Partial<ScaffoldConfig>): ScaffoldConfig {
+  const out: Record<string, unknown> = { ...DEFAULT_CONFIG, ...raw };
+  for (const [key, defaultValue] of Object.entries(DEFAULT_CONFIG)) {
+    const value = out[key];
+    if (defaultValue !== null && typeof defaultValue === 'object') {
+      const isArr = Array.isArray(defaultValue);
+      const ok = isArr ? Array.isArray(value) : (value !== null && typeof value === 'object');
+      if (!ok) out[key] = defaultValue;
+    }
+  }
+  return out as unknown as ScaffoldConfig;
+}
+
+function writePersistedState(state: PersistedState): void {
+  try {
+    window.localStorage.setItem(WIZARD_STATE_KEY, JSON.stringify(state));
+  } catch {
+    // Best-effort — hardened browser contexts can deny storage.
+  }
+}
+
+function clearPersistedState(): void {
+  try { window.localStorage.removeItem(WIZARD_STATE_KEY); } catch { /* ignore */ }
+}
+
 export default function App() {
-  const [config, setConfig]                 = useState<ScaffoldConfig>(() => initialScaffoldConfig());
-  const [stepIdx, setStepIdx]               = useState(0);
-  const [maxReachedStep, setMaxReachedStep] = useState(0);
+  return (
+    <WizardErrorBoundary>
+      <AppInner />
+    </WizardErrorBoundary>
+  );
+}
+
+function AppInner() {
+  const persisted = typeof window !== 'undefined' ? readPersistedState() : null;
+  const [config, setConfig]                 = useState<ScaffoldConfig>(() => persisted?.config ?? initialScaffoldConfig());
+  const [stepIdx, setStepIdx]               = useState(() => persisted?.stepIdx ?? 0);
+  const [maxReachedStep, setMaxReachedStep] = useState(() => persisted?.maxReachedStep ?? 0);
+  const [restored, setRestored]             = useState(persisted !== null);
   const [serverUp, setServerUp]             = useState<boolean | null>(null);
   const [auth, setAuth]                     = useState<AuthStatus | null>(null);
   // Inline validation message shown when the user clicks Next on an invalid
@@ -32,6 +108,23 @@ export default function App() {
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => { ping().then(setServerUp); }, []);
+
+  // Persist wizard progress so a crash, refresh, or accidental close doesn't
+  // wipe everything the user just entered. Restored on next mount; cleared
+  // explicitly via the "Start fresh" button.
+  useEffect(() => {
+    console.log('[persist] writing state', { stepIdx, maxReachedStep, configKeys: Object.keys(config) });
+    writePersistedState({ config, stepIdx, maxReachedStep });
+  }, [config, stepIdx, maxReachedStep]);
+
+  const startFresh = () => {
+    clearPersistedState();
+    setConfig(initialScaffoldConfig());
+    setStepIdx(0);
+    setMaxReachedStep(0);
+    setRestored(false);
+    setValidationError(null);
+  };
 
   // Refresh auth status whenever we land on the CAPE step — the user may
   // have just logged in inline, and the header badge should reflect it.
@@ -88,6 +181,15 @@ export default function App() {
             setMaxReachedStep(last);
             setStepIdx(last);
           }} />
+          <button
+            type="button"
+            className="btn btn--tertiary"
+            style={{ padding: '4px 12px', fontSize: 12 }}
+            onClick={startFresh}
+            title="Discard saved wizard progress and start a new campaign"
+          >
+            ↺ Start fresh
+          </button>
           <AuthBadge auth={auth} />
         </div>
       </header>
@@ -96,6 +198,12 @@ export default function App() {
         {serverUp === false && (
           <div className="banner banner--err">
             Wizard server not reachable on <code>:3737</code>. Make sure <code>pnpm wizard</code> is running.
+          </div>
+        )}
+        {restored && (
+          <div className="banner" role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <span>Resumed your previous wizard progress. Use <strong>Start fresh</strong> in the header to discard it.</span>
+            <button type="button" className="btn btn--tertiary" style={{ padding: '2px 10px', fontSize: 12 }} onClick={() => setRestored(false)}>Dismiss</button>
           </div>
         )}
         <Current
@@ -149,6 +257,49 @@ export default function App() {
       </footer>
     </div>
   );
+}
+
+/**
+ * Catches render errors in the wizard. Without this, a thrown exception in any
+ * step (e.g. dereferencing a missing nested config key) leaves the user with a
+ * blank page and no recourse. Provides a one-click "clear and reload" button.
+ */
+interface WizardErrorBoundaryProps { children: ReactNode }
+interface WizardErrorBoundaryState { error: Error | null }
+
+class WizardErrorBoundary extends Component<WizardErrorBoundaryProps, WizardErrorBoundaryState> {
+  state: WizardErrorBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): WizardErrorBoundaryState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo): void {
+    console.error('[wizard] render crash:', error, info.componentStack);
+  }
+
+  handleReset = (): void => {
+    clearPersistedState();
+    window.location.reload();
+  };
+
+  render(): ReactNode {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 24, maxWidth: 720, margin: '40px auto', fontFamily: 'system-ui, sans-serif' }}>
+          <h2 style={{ marginTop: 0 }}>Wizard crashed</h2>
+          <p>The wizard hit an error while rendering. This usually means saved progress is incompatible with the current code.</p>
+          <pre style={{ background: '#1a1a1a', color: '#f88', padding: 12, borderRadius: 6, overflow: 'auto', fontSize: 12 }}>
+            {this.state.error.message}
+          </pre>
+          <button className="btn btn--primary" onClick={this.handleReset}>
+            ↺ Clear saved state &amp; reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 function AuthBadge({ auth }: { auth: AuthStatus | null }) {

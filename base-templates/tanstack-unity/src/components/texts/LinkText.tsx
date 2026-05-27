@@ -10,9 +10,21 @@ interface ILinkText extends IStyledProps {
   target?: HTMLAttributeAnchorTarget;
 }
 
+// Legacy CAPE copy may contain raw `<a href="...">label</a>` markup. Normalise it
+// to the `###label###` placeholder format so the parser below renders it as a link
+// (using either the inline href, or the corresponding entry from `link` if any).
+const ANCHOR_RE = /<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
+
 export function LinkText({ text, link, target = '_blank', className }: ILinkText) {
-  const linkList = link ? Array.isArray(link) ? link : [link] : [];
-  const parts = text.split(/(###.*?###)/i);
+  const inlineHrefs: string[] = [];
+  const normalised = text.replace(ANCHOR_RE, (_, href: string, label: string) => {
+    inlineHrefs.push(href);
+    return `###${label}###`;
+  });
+
+  const explicitLinks = link ? (Array.isArray(link) ? link : [link]) : [];
+  const linkList = explicitLinks.length > 0 ? explicitLinks : inlineHrefs;
+  const parts = normalised.split(/(###.*?###)/i);
   let linkIndex = 0;
 
   return (

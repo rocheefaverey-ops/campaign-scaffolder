@@ -26,7 +26,7 @@ export default function VoucherPage() {
   const kicker     = t('kicker',   'Reward');
   const headline   = t('headline', 'Your voucher');
   const subline    = t('subline',  '');
-  const cta        = t('cta',      'Done');
+  const cta        = t('cta',      'Continue');
   const showQr     = getCapeBoolean(capeData, `settings.pages.${instanceId}.showQr`,     true);
   const codeLength = getCapeNumber (capeData, `settings.pages.${instanceId}.codeLength`, 0);
 

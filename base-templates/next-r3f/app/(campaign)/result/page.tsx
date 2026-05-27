@@ -11,7 +11,7 @@ import Button from '@components/_core/Button/Button';
 export default function ResultPage() {
   const navigate     = useSafeNavigation();
   const { capeData } = useCapeData();
-  const { score, rank, userName } = useGameContext();
+  const { score, rank, userName, alreadyRegistered } = useGameContext();
   const instanceId = useInstanceId('result');
   const t   = buildCopyResolver(capeData, 'result', instanceId);
   const img = buildImageResolver(capeData, 'result', instanceId);
@@ -94,7 +94,7 @@ export default function ResultPage() {
         </div>
 
         <div className="campaign-actions" style={{ animation: 'fadeIn 0.5s 0.32s ease both' }}>
-          <Button variant={'{{BUTTON_VARIANT_RESULT_NEXT}}' as any} className="w-full" size="lg" onClick={() => navigate('{{NEXT_AFTER_RESULT}}')}>
+          <Button variant={'{{BUTTON_VARIANT_RESULT_NEXT}}' as any} className="w-full" size="lg" onClick={() => navigate(alreadyRegistered ? '{{NEXT_AFTER_REGISTER}}' : '{{NEXT_AFTER_RESULT}}')}>
             {cta}
           </Button>
           {showPlayAgain && (

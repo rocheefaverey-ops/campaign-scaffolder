@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useCapeData } from '@hooks/useCapeData';
 import { useInstanceId } from '@hooks/useInstanceId';
 import { useSafeNavigation } from '@hooks/useSafeNavigation';
+import { useGameContext } from '@hooks/useGameContext';
 import { getCapeBoolean, buildCopyResolver } from '@utils/getCapeData';
 import RegistrationForm from '@components/_modules/RegistrationForm/RegistrationForm';
 
@@ -11,6 +13,14 @@ export default function RegisterPage() {
   const { capeData } = useCapeData();
   const instanceId   = useInstanceId('register');
   const t            = buildCopyResolver(capeData, 'register', instanceId);
+  const { alreadyRegistered } = useGameContext();
+
+  // Skip the registration page once the user has registered for this campaign.
+  // `alreadyRegistered` is rehydrated from persistent storage on mount, so this
+  // also covers reloads and returning visitors.
+  useEffect(() => {
+    if (alreadyRegistered) navigate('{{NEXT_AFTER_REGISTER}}');
+  }, [alreadyRegistered]);
 
   const headline = t('headline', 'Register');
   const subline  = t('subline',  '');

@@ -401,6 +401,15 @@ export const BUTTON_VARIANTS: Array<{ value: ButtonVariant; label: string }> = [
   { value: 'danger',    label: 'Danger' },
 ];
 
+// Order here is the canonical campaign funnel — used as the default
+// insertion order when the user adds a page to the flow, and as the listing
+// order in the "+ Add page" popover. Loose narrative:
+//   pre-game build-up  → gameplay → reward path
+//   landing → intro-video → tutorial → loading-video → register → game →
+//   result → ad-video → voucher → leaderboard
+// Register lands in its pre-game slot by default; users can drag it to land
+// after result, and `regMode` is derived from that position (see
+// deriveRegMode below). There is no separate Registration-timing UI.
 export const ALL_PAGES: PageMeta[] = [
   { id: 'landing',     label: 'Landing',     hint: 'Hero / brand splash with CTA.',             route: '/landing',
     exits: [
@@ -410,14 +419,12 @@ export const ALL_PAGES: PageMeta[] = [
       { key: 'leaderboard', label: 'Leaderboard button',   token: 'LANDING_LEADERBOARD_ROUTE',
         optional: true, defaultEnabled: false, capeFlag: 'showLeaderboardButton', defaultVariant: 'secondary' },
     ] },
-  { id: 'intro-video',   label: 'Intro video',   hint: 'Intro brand video before the game starts.', route: '/intro-video',   requires: 'video',
+  { id: 'intro-video',   label: 'Video 1',   hint: 'A video screen — typically the pre-game intro.', route: '/intro-video',   requires: 'video',
     exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_INTRO_VIDEO' }] },
-  { id: 'loading-video', label: 'Loading video', hint: 'Looping loading screen until the game is ready.', route: '/loading-video', requires: 'video',
-    exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_LOADING_VIDEO' }] },
-  { id: 'ad-video',      label: 'Ad video',      hint: 'Interstitial ad-style video page.',         route: '/ad-video',      requires: 'video',
-    exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_AD_VIDEO' }] },
   { id: 'tutorial',    label: 'Tutorial',    hint: 'How-to-play steps / slides before gameplay.',route: '/tutorial',
     exits: [{ key: 'next', label: 'Start / Final CTA', token: 'NEXT_AFTER_TUTORIAL', defaultVariant: 'primary' }] },
+  { id: 'loading-video', label: 'Loading video', hint: 'Looping loading screen until the game is ready.', route: '/loading-video', requires: 'video',
+    exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_LOADING_VIDEO' }] },
   { id: 'register',    label: 'Register',    hint: 'Player registration form.',                 route: '/register',      requires: 'registration',
     exits: [{ key: 'next', label: 'On submit',       token: 'NEXT_AFTER_REGISTER', defaultVariant: 'primary' }] },
   { id: 'game',        label: 'Game',        hint: 'The actual game canvas.',                   route: '/gameplay',
@@ -430,13 +437,35 @@ export const ALL_PAGES: PageMeta[] = [
       { key: 'leaderboard', label: 'Leaderboard button',  token: 'RESULT_LEADERBOARD_ROUTE',
         optional: true, defaultEnabled: false, capeFlag: 'showLeaderboardButton',  defaultVariant: 'tertiary' },
     ] },
+  { id: 'ad-video',      label: 'Video 2',      hint: 'A second video screen — typically a post-result interstitial.',         route: '/ad-video',      requires: 'video',
+    exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_AD_VIDEO' }] },
+  { id: 'voucher',     label: 'Voucher',     hint: 'Reward code / QR for the prize.',           route: '/voucher',       requires: 'voucher',
+    exits: [{ key: 'next', label: 'Continue button', token: 'NEXT_AFTER_VOUCHER',     defaultVariant: 'primary' }] },
   { id: 'leaderboard', label: 'Leaderboard', hint: 'Top scores + personal best.',               route: '/leaderboard',   requires: 'leaderboard',
     exits: [{ key: 'next', label: 'CTA button',      token: 'NEXT_AFTER_LEADERBOARD', defaultVariant: 'primary' }] },
-  { id: 'voucher',     label: 'Voucher',     hint: 'Reward code / QR for the prize.',           route: '/voucher',       requires: 'voucher',
-    exits: [{ key: 'next', label: 'Done button',     token: 'NEXT_AFTER_VOUCHER',     defaultVariant: 'primary' }] },
 ];
 
 export const ALL_PAGE_IDS: string[] = ALL_PAGES.map(p => p.id);
+
+/**
+ * Derive `regMode` from the actual page positions in the flow:
+ *   - `'gate'`  — register sits before result (pre-game gate)
+ *   - `'after'` — register sits after result (post-result claim)
+ *   - `'none'`  — no register page in the flow
+ *
+ * Used as the single source of truth for regMode; the wizard no longer
+ * stores user-set regMode independently. scaffold.js's legacy
+ * `regMode === 'after'` reorder is still respected for CLI callers, but
+ * becomes a no-op for wizard builds because the page array already encodes
+ * the intent.
+ */
+export function deriveRegMode(pages: PageInstance[]): RegMode {
+  const regIdx    = pages.findIndex((p) => p.type === 'register');
+  if (regIdx < 0) return 'none';
+  const resultIdx = pages.findIndex((p) => p.type === 'result');
+  if (resultIdx < 0) return 'gate';
+  return regIdx > resultIdx ? 'after' : 'gate';
+}
 
 export function pageMeta(id: string): PageMeta | undefined {
   return ALL_PAGES.find(p => p.id === id);

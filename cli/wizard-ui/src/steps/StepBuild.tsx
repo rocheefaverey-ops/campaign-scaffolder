@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { pageMeta, type ScaffoldConfig, type BuildMode, type StepProps, type PageInstance } from '../shared/config.ts';
 import { rememberFreshScaffoldCreated } from '../shared/projectNameDefaults.ts';
-import { startScaffold, startScaffoldedProject, logoutCape, getGitStatus, getDoctorReport, type LogEvent, type GitStatus, type DoctorResult } from '../bridge.ts';
+import { resolveAppliedModules } from '../shared/resolveModules.ts';
+import { startScaffold, startScaffoldedProject, logoutCape, getGitStatus, getDoctorReport, listModules, type LogEvent, type GitStatus, type DoctorResult, type ModuleInfo } from '../bridge.ts';
 
 type BuildState =
   | { kind: 'idle' }
@@ -23,6 +24,7 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
   const logRef = useRef<HTMLDivElement>(null);
   const [doctor, setDoctor] = useState<DoctorResult | null>(null);
   const [doctorLoading, setDoctorLoading] = useState(true);
+  const [moduleCatalog, setModuleCatalog] = useState<ModuleInfo[]>([]);
   const [autoRun, setAutoRun] = useState<AutoRunState>({ kind: 'idle' });
   // Synchronous double-click guard. Setting `state` to 'running' inside
   // `start` re-renders + disables the button, but two clicks dispatched in
@@ -47,6 +49,14 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
     setGit(null);
     getGitStatus(config.loadedProjectDir).then(setGit);
   }, [config.loadedProjectDir]);
+
+  // Fetch the live module catalog so the build summary's resolver lists
+  // exactly the modules scaffold.js will apply (no engine pseudo-modules).
+  useEffect(() => {
+    let cancelled = false;
+    listModules().then((mods) => { if (!cancelled) setModuleCatalog(mods); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,7 +140,7 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
         <p className="step__hint">The wizard will run <code>scaffold.js --config=…</code> with the values below.</p>
       </div>
 
-      <BuildPlan config={config} loaded={isLoadedExisting} />
+      <BuildPlan config={config} loaded={isLoadedExisting} catalog={moduleCatalog} />
 
       <DoctorPanel report={doctor} loading={doctorLoading} onRefresh={async () => {
         setDoctorLoading(true);
@@ -447,8 +457,12 @@ function GitPanel({ git, mode, safety, override, setOverride }:
   );
 }
 
-function BuildPlan({ config, loaded }: { config: ScaffoldConfig; loaded: boolean }) {
-  const resolvedModules = resolveModulesForSummary(config);
+function BuildPlan({ config, loaded, catalog }: { config: ScaffoldConfig; loaded: boolean; catalog: ModuleInfo[] }) {
+  const resolvedModules = resolveAppliedModules({
+    pageTypes: config.pages.map((p) => p.type),
+    extras:    config.modules,
+    catalog,
+  });
   const runtimeRows: Array<[string, string]> = [
     ['Registration', regModeLabel(config.regMode)],
     ['Iframe', config.iframe ? 'enabled' : 'disabled'],
@@ -590,20 +604,3 @@ function formatLanguages(defaultLanguage: string, supportedLanguages: string[]):
   return supported.map((code) => code === defaultLanguage ? `${code} default` : code).join(', ');
 }
 
-function resolveModulesForSummary(config: ScaffoldConfig): string[] {
-  if (config.stack === 'tanstack') return [];
-  const modules = new Set<string>(config.modules);
-  if (config.game === 'unity' || config.game === 'phaser' || config.game === 'r3f' || config.game === 'memory') {
-    modules.add(config.game);
-  }
-
-  const pageTypes = new Set(config.pages.map((p) => p.type));
-  if (pageTypes.has('register')) modules.add('registration');
-  if (pageTypes.has('leaderboard')) modules.add('leaderboard');
-  if (pageTypes.has('voucher')) modules.add('voucher');
-  if (pageTypes.has('video') || pageTypes.has('intro-video') || pageTypes.has('loading-video') || pageTypes.has('ad-video')) modules.add('video');
-  if (pageTypes.has('game') || pageTypes.has('result') || pageTypes.has('register') || pageTypes.has('leaderboard')) modules.add('scoring');
-  if (modules.has('leaderboard') || modules.has('registration')) modules.add('scoring');
-
-  return [...modules];
-}

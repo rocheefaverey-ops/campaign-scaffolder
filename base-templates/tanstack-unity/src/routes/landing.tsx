@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
 import { StyledButton } from '~/components/buttons/StyledButton.tsx';
 import { BaseButton } from '~/components/buttons/BaseButton.tsx';
@@ -10,12 +11,28 @@ export const Route = createFileRoute('/landing')({
   loader: async ({ context }) => await loadLandingData(context.language),
 });
 
+const ONBOARDING_KEY = 'lw_onboarding_done_{{CAPE_ID}}';
+const isOnboardingDone = () =>
+  typeof window !== 'undefined' && window.localStorage.getItem(ONBOARDING_KEY) === '1';
+
 function Landing() {
   const { copy, heroUrl, headerLogoUrl, pageLogoUrl } = Route.useLoaderData();
   const router = useRouter();
-  const nextRoute = '{{NEXT_AFTER_LANDING}}';
+  const nextAfterLanding = '{{NEXT_AFTER_LANDING}}';
+  const nextAfterTutorialRaw = '{{NEXT_AFTER_TUTORIAL}}';
+  const nextAfterTutorial = nextAfterTutorialRaw.startsWith('{{') ? nextAfterLanding : nextAfterTutorialRaw;
+  const onboardingFirstRunOnlyRaw = '{{LANDING_ONBOARDING_FIRST_RUN_ONLY}}';
+  const onboardingFirstRunOnly = onboardingFirstRunOnlyRaw.startsWith('{{')
+    ? true
+    : onboardingFirstRunOnlyRaw === 'true';
   const tutorialRoute = '{{LANDING_TUTORIAL_ROUTE}}';
   const showTutorialButton = JSON.parse('false') as boolean;
+
+  // Rehydrate the "tutorial seen" flag client-side so returning players skip
+  // straight past the tutorial when pressing Play.
+  const [onboardingDone, setOnboardingDone] = useState(false);
+  useEffect(() => { setOnboardingDone(isOnboardingDone()); }, []);
+  const nextRoute = onboardingFirstRunOnly && onboardingDone ? nextAfterTutorial : nextAfterLanding;
 
   const resolvedHeaderLogo = pageLogoUrl || headerLogoUrl || LogoImage;
   const isVideoHero = !!heroUrl && /\.(mp4|webm|mov)$/i.test(heroUrl);

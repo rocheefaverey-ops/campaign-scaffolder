@@ -21,6 +21,11 @@
       "stacks": ["next"]
     },
     {
+      "src": "next/types/leaderboard.ts",
+      "dest": "types/actions/leaderboard.ts",
+      "stacks": ["next"]
+    },
+    {
       "src": "app/(campaign)/leaderboard/page.tsx",
       "dest": "app/(campaign)/leaderboard/page.tsx",
       "stacks": ["next"]

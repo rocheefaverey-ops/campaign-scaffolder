@@ -24,7 +24,17 @@ const SERVER_DIR       = join(SCAFFOLDER_ROOT, 'cli', 'wizard-server');
 const UI_DIR           = join(SCAFFOLDER_ROOT, 'cli', 'wizard-ui');
 const UI_DIST          = join(UI_DIR, 'dist');
 
-const PROD = process.argv.includes('--prod') || existsSync(UI_DIST);
+// Dev mode (Vite + HMR) is the default. Pass `--prod` to serve the prebuilt
+// dist/ bundle instead — useful for users running the wizard without the UI
+// dev dependencies installed, or for testing the bundle locally.
+// (Previously this auto-flipped to prod whenever dist/ existed, which silently
+// stopped HMR for contributors who'd ever run `pnpm wizard:build`.)
+const PROD = process.argv.includes('--prod');
+if (PROD && !existsSync(UI_DIST)) {
+  console.error('\n  [wizard] --prod requested but cli/wizard-ui/dist/ is missing.');
+  console.error('  Run:  pnpm wizard:build\n');
+  process.exit(1);
+}
 
 const SERVER_PORT = 3737;
 const UI_PORT     = 5173;

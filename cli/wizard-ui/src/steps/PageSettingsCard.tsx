@@ -34,10 +34,17 @@ export default function PageSettingsCard({ pageId, schemaType, pageLabel, settin
   const visibleSettings = schema.filter((def) => isVisible(def, resolvedValues));
 
   const update = (key: string, value: SettingValue) => {
-    setSettings({
-      ...settings,
-      [pageId]: { ...pageValues, [key]: value },
-    });
+    console.log('[toggle] update', { pageId, key, value, pageValues, settings });
+    try {
+      setSettings({
+        ...settings,
+        [pageId]: { ...pageValues, [key]: value },
+      });
+      console.log('[toggle] setSettings done');
+    } catch (err) {
+      console.error('[toggle] setSettings threw', err);
+      throw err;
+    }
   };
 
   return (

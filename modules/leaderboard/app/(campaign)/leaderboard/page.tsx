@@ -16,7 +16,7 @@ export default function LeaderboardPage() {
   const headline = t('headline', 'Leaderboard');
   const subline  = t('subline',  '');
   const kicker   = t('kicker',   'Ranking');
-  const ctaDone  = t('ctaDone',  'Done');
+  const ctaDone  = t('ctaDone',  'Continue');
 
   return (
     <div className="campaign-screen">

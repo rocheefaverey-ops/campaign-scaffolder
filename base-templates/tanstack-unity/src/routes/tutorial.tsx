@@ -15,12 +15,20 @@ export const Route = createFileRoute('/tutorial')({
   loader: async ({ context }) => await loadTutorialData(context.language),
 });
 
+const ONBOARDING_KEY = 'lw_onboarding_done_{{CAPE_ID}}';
+const markOnboardingDone = () => {
+  try { window.localStorage.setItem(ONBOARDING_KEY, '1'); } catch { /* private mode */ }
+};
+
 function Tutorial() {
   const { copy, steps, screenLayout, heroUrl, logoUrl } = Route.useLoaderData();
   const router = useRouter();
   const nextRoute = '{{NEXT_AFTER_TUTORIAL}}';
   const isPending = false;
-  const navigate = () => void router.navigate({ to: nextRoute as never, replace: true });
+  const navigate = () => {
+    markOnboardingDone();
+    void router.navigate({ to: nextRoute as never, replace: true });
+  };
   const contentRef = useRef<IContentSliderHandle>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 

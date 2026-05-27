@@ -1,10 +1,15 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 import type { IConfettiConfig } from '~/components/confetti/engine/ConfettiEngine.ts';
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
 import { useUnityStore } from '~/hooks/stores/useUnityStore.ts';
 import { StyledButton } from '~/components/buttons/StyledButton.tsx';
 import { ConfettiOverlay } from '~/components/confetti/ConfettiOverlay.tsx';
 import { loadResultData } from '~/loaders/ResultLoader.ts';
+
+const REGISTERED_KEY = 'lw_registered_{{CAPE_ID}}';
+const isRegistered = () =>
+  typeof window !== 'undefined' && window.localStorage.getItem(REGISTERED_KEY) === '1';
 
 const confettiConfig: IConfettiConfig = {
   maxParticleCount: 30,
@@ -25,7 +30,9 @@ function Result() {
   const result = useUnityStore((state) => state.result);
   const { copy, backgroundUrl, logoUrl, winImageUrl } = Route.useLoaderData();
   const router = useRouter();
-  const nextRoute = '{{NEXT_AFTER_RESULT}}';
+  const nextAfterResult = '{{NEXT_AFTER_RESULT}}';
+  const nextAfterRegisterRaw = '{{NEXT_AFTER_REGISTER}}';
+  const nextAfterRegister = nextAfterRegisterRaw.startsWith('{{') ? nextAfterResult : nextAfterRegisterRaw;
   const playAgainRoute = '{{PLAY_AGAIN_ROUTE}}';
   const leaderboardRoute = '{{RESULT_LEADERBOARD_ROUTE}}';
   const resultCopy = copy as typeof copy & Record<string, string | undefined>;
@@ -33,6 +40,15 @@ function Result() {
   const showLeaderboardButton = JSON.parse('false') as boolean;
   const resultVisualUrl = winImageUrl || backgroundUrl;
   const isVideoVisual = !!resultVisualUrl && /\.(mp4|webm|mov)$/i.test(resultVisualUrl);
+
+  // If the user has already registered for this campaign, skip the register
+  // page on Continue and use the neutral "Continue" label instead of "Register".
+  const [hasRegistered, setHasRegistered] = useState(false);
+  useEffect(() => { setHasRegistered(isRegistered()); }, []);
+  const nextRoute = hasRegistered ? nextAfterRegister : nextAfterResult;
+  const continueLabel = hasRegistered
+    ? (resultCopy.buttonContinue || 'Continue')
+    : (copy.buttonRegister || resultCopy.buttonContinue || 'Continue');
 
   return (
     <PageContainer className="campaign-screen--hero">
@@ -58,7 +74,7 @@ function Result() {
           {copy.description && <p className="campaign-copy" style={{ marginTop: '0.5rem' }}>{copy.description}</p>}
 
           <div className="campaign-actions" style={{ marginTop: '1.5rem' }}>
-            <StyledButton onClick={() => router.navigate({ to: nextRoute as never, replace: true })}>{copy.buttonRegister || resultCopy.buttonContinue || 'Continue'}</StyledButton>
+            <StyledButton onClick={() => router.navigate({ to: nextRoute as never, replace: true })}>{continueLabel}</StyledButton>
             {showPlayAgainButton && (
               <StyledButton onClick={() => router.navigate({ to: playAgainRoute as never, replace: true })} alternate>{resultCopy.buttonPlayAgain || 'Play again'}</StyledButton>
             )}
