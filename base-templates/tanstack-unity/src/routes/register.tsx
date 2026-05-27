@@ -4,10 +4,10 @@ import { useEffect, useState, useTransition } from 'react';
 import styles from './register.module.scss';
 import type { IFormData } from '~/interfaces/form/IFormData.ts';
 import { PageContainer } from '~/components/containers/PageContainer.tsx';
-import { StyledText } from '~/components/texts/StyledText.tsx';
 import { DynamicForm } from '~/components/forms/DynamicForm.tsx';
 import { isProduction, sleep } from '~/utils/Helper.ts';
 import { loadRegisterData } from '~/loaders/RegisterLoader.ts';
+import LogoImage from '~/assets/images/logo.png';
 
 export const Route = createFileRoute('/register')({
   component: Register,
@@ -21,7 +21,7 @@ const isRegistered = () => typeof window !== 'undefined' && window.localStorage.
 const markRegistered = () => { try { window.localStorage.setItem(REGISTERED_KEY, '1'); } catch { /* private mode */ } };
 
 function Register() {
-  const { copy } = Route.useLoaderData();
+  const { copy, backgroundUrl, headerLogoUrl } = Route.useLoaderData();
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const [error, setError] = useState<string>('');
@@ -68,7 +68,6 @@ function Register() {
       console.info('Form submitted:', data);
     }
 
-    // Simulate form processing and navigation (exception will never happen of course, but this is just to demonstrate error handling)
     startTransition(async () => {
       setError('');
 
@@ -83,12 +82,58 @@ function Register() {
     });
   }
 
-  return (
-    <PageContainer className={styles.register}>
-      <StyledText type={'title'} alternate>{copy.title}</StyledText>
-      <StyledText type={'description'} marginTop={8} alternate>{copy.description}</StyledText>
+  const resolvedHeaderLogo = headerLogoUrl || LogoImage;
+  const isVideoBg = !!backgroundUrl && /\.(mp4|webm|mov)$/i.test(backgroundUrl);
 
-      <DynamicForm className={styles.form} formData={formData} buttonText={copy.button} errorText={error} loading={isPending} onSubmit={(data) => processForm(data)} />
+  return (
+    <PageContainer className="campaign-screen--hero">
+      {backgroundUrl && (
+        isVideoBg
+          ? <video src={backgroundUrl} className="campaign-hero-bleed" autoPlay muted loop playsInline aria-hidden />
+          : <img src={backgroundUrl} alt="" className="campaign-hero-bleed" aria-hidden />
+      )}
+      <div className="campaign-hero-shade" aria-hidden />
+
+      <div className="campaign-shell">
+        <header
+          className="campaign-hero-header campaign-hero-header--with-close"
+          style={{ animation: 'fadeIn 0.4s ease both' }}
+        >
+          <img src={resolvedHeaderLogo} alt="Logo" className="campaign-hero-logo" />
+          <button type="button" className="campaign-menu-btn" aria-label="Menu" onClick={() => router.navigate({ to: '/menu' as never })}>
+            <HamburgerIcon />
+          </button>
+        </header>
+
+        <div
+          className="campaign-stack campaign-hero-content"
+          style={{ animation: 'fadeIn 0.5s 0.14s ease both' }}
+        >
+          <h1 className="campaign-title campaign-title--compact">{copy.title}</h1>
+          {copy.description && <p className="campaign-copy">{copy.description}</p>}
+
+          <div className={`campaign-panel ${styles.formPanel}`}>
+            <DynamicForm
+              className={styles.form}
+              formData={formData}
+              buttonText={copy.button}
+              errorText={error}
+              loading={isPending}
+              onSubmit={(data) => processForm(data)}
+            />
+          </div>
+        </div>
+      </div>
     </PageContainer>
+  );
+}
+
+function HamburgerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+      <line x1="4" y1="7"  x2="20" y2="7"  stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="4" y1="17" x2="20" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
   );
 }

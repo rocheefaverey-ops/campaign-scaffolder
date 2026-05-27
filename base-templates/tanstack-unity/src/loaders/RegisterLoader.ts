@@ -1,11 +1,11 @@
-import { getCapeCopy, getCapeTranslatedProperty } from '~/server/cape/CapeProvider.ts';
+import { getCapeCopy, getCapeProperty, getCapeTranslatedProperty } from '~/server/cape/CapeProvider.ts';
 
 export async function loadRegisterData(language: string) {
   const [[
     headline, subline, cta, title, description, button, genericError,
     nameTitle, namePH, nameError, emailTitle, emailPH, emailError, countryTitle, countryError, optText1, optError1, optText2,
     registerHeadline, registerSubline, registerCta, labelFirstName, labelEmail, registerOptIn1, registerOptIn2,
-  ], optLink1] = await Promise.all([
+  ], optLink1, background, headerLogo] = await Promise.all([
     getCapeCopy(language, [
       ['registration', 'headline'],
       ['registration', 'subline'],
@@ -34,6 +34,8 @@ export async function loadRegisterData(language: string) {
       ['register', 'optIn2'],
     ]),
     getCapeTranslatedProperty(language, { type: 'files', path: ['pdfs', 'terms'] }),
+    getCapeProperty({ type: 'general', path: ['landing', 'background'] }),
+    getCapeProperty({ type: 'general', path: ['header', 'logo'] }),
   ]);
 
   return {
@@ -65,5 +67,7 @@ export async function loadRegisterData(language: string) {
         label: registerOptIn2 || optText2,
       },
     },
+    backgroundUrl: background.asFile()?.url ?? null,
+    headerLogoUrl: headerLogo.asFile()?.url ?? null,
   };
 }

@@ -1,8 +1,8 @@
-.register {
-  padding: 24px;
-  background-color: var(--lw-bg, #{$whiteColor});
+.formPanel {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+}
 
-  .form {
-    margin-top: 16px;
-  }
+.form {
+  width: 100%;
 }
