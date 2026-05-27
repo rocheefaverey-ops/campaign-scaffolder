@@ -409,8 +409,8 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 
 .pages-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+  gap: 28px;
   align-items: start;
 }
 .pages-layout__preview {
@@ -427,8 +427,8 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 
 .pages-col {
   background: #fff; border: 1px solid var(--color-line);
-  border-radius: 14px; padding: 14px;
-  display: flex; flex-direction: column; gap: 10px;
+  border-radius: 14px; padding: 18px;
+  display: flex; flex-direction: column; gap: 14px;
   min-width: 0;
   align-self: start;
 }
@@ -463,18 +463,18 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 
 /* Flow column — sortable list */
 .flow-list {
-  list-style: none; display: flex; flex-direction: column; gap: 6px;
+  list-style: none; display: flex; flex-direction: column; gap: 12px;
 }
 
 .flow-card {
   position: relative;
   background: #fff;
   border: 1px solid var(--color-line-strong);
-  border-radius: 12px; padding: 12px;
+  border-radius: 12px; padding: 16px;
   display: grid;
-  grid-template-columns: 22px 28px minmax(0, 1fr) auto;
+  grid-template-columns: 24px 32px minmax(0, 1fr) auto;
   align-items: start;
-  gap: 8px 10px;
+  gap: 12px 14px;
   box-shadow: 0 1px 0 rgba(14,14,14,0.04);
   min-width: 0;
   transition: border-color .12s ease, box-shadow .12s ease;
@@ -574,16 +574,16 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   color: var(--color-error);
 }
 .flow-card__arrow {
-  position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: -18px; transform: translateX(-50%);
   color: var(--color-text-soft); font-size: 14px; line-height: 1;
   pointer-events: none;
 }
 
 /* Per-exit destination row(s). Sits below the main card row, spans full width. */
 .flow-card__exits {
-  grid-column: 3 / -1;
+  grid-column: 1 / -1;
   display: flex; flex-direction: column; gap: 8px;
-  padding-top: 8px;
+  padding-top: 12px;
   border-top: 1px dashed var(--color-line);
   min-width: 0;
 }
@@ -642,13 +642,16 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 }
 
 .flow-card__behavior {
-  grid-column: 3 / -1;
+  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1.25fr);
+  gap: 16px;
   align-items: center;
-  padding-top: 8px;
-  border-top: 1px dashed var(--color-line);
+  margin-top: 2px;
+  padding: 14px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-primary) 9%, #fff);
   min-width: 0;
 }
 
@@ -656,7 +659,7 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .flow-card__behavior-copy strong {
@@ -672,14 +675,27 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 .flow-card__behavior-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
+}
+
+.flow-card__behavior-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.flow-card__behavior-field span {
+  color: var(--color-text-soft);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .flow-card__behavior-controls select {
   font: inherit;
   font-size: 12.5px;
-  padding: 5px 8px;
+  padding: 8px 10px;
   border: 1px solid var(--color-line);
   border-radius: 6px;
   background: #fff;

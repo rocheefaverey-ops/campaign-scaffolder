@@ -459,38 +459,44 @@ function FlowCard({
             <span>{selectedRule?.hint ?? 'Choose when this page should appear.'}</span>
           </div>
           <div className="flow-card__behavior-controls">
-            <select
-              value={currentRule.mode}
-              onChange={(e) => {
-                const mode = e.target.value as FlowRuleMode;
-                onChangeRule(instance.id, {
-                  ...currentRule,
-                  mode,
-                  skipTo: mode === 'always' ? undefined : currentRule.skipTo,
-                });
-              }}
-              aria-label={`Behavior for ${title}`}
-            >
-              {ruleOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            {currentRule.mode !== 'always' && (
+            <label className="flow-card__behavior-field">
+              <span>When to show</span>
               <select
-                value={skipChoice}
+                value={currentRule.mode}
                 onChange={(e) => {
+                  const mode = e.target.value as FlowRuleMode;
                   onChangeRule(instance.id, {
                     ...currentRule,
-                    skipTo: e.target.value || undefined,
+                    mode,
+                    skipTo: mode === 'always' ? undefined : currentRule.skipTo,
                   });
                 }}
-                aria-label={`Skip destination for ${title}`}
+                aria-label={`Behavior for ${title}`}
               >
-                <option value="">{`Skip to default · ${otherInstances.find(o => o.id === defaultSkipId)?.label ?? 'next page'}`}</option>
-                {otherInstances.map((o) => (
-                  <option key={o.id} value={o.id}>{o.label}</option>
+                {ruleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
+            </label>
+            {currentRule.mode !== 'always' && (
+              <label className="flow-card__behavior-field">
+                <span>If skipped, go to</span>
+                <select
+                  value={skipChoice}
+                  onChange={(e) => {
+                    onChangeRule(instance.id, {
+                      ...currentRule,
+                      skipTo: e.target.value || undefined,
+                    });
+                  }}
+                  aria-label={`Skip destination for ${title}`}
+                >
+                  <option value="">{`Default · ${otherInstances.find(o => o.id === defaultSkipId)?.label ?? 'next page'}`}</option>
+                  {otherInstances.map((o) => (
+                    <option key={o.id} value={o.id}>{o.label}</option>
+                  ))}
+                </select>
+              </label>
             )}
           </div>
         </div>
