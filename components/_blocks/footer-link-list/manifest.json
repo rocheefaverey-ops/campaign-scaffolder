@@ -1,0 +1,17 @@
+{
+  "name": "footer-link-list",
+  "displayName": "Footer link list",
+  "description": "Bottom row of legal/supporting links (terms, privacy, rules).",
+  "files": [
+    { "src": "FooterLinkList.tsx", "dest": "components/_blocks/footer-link-list/FooterLinkList.tsx" },
+    { "src": "FooterLinkList.module.scss", "dest": "components/_blocks/footer-link-list/FooterLinkList.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {},
+  "capeBindings": {
+    "links": "{pageType}.footerLinks[] — array of { label, href }"
+  },
+  "usableOn": ["landing", "result", "voucher", "end"]
+}
