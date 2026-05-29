@@ -48,4 +48,21 @@ describe('buildBlockDrivenLanding', () => {
     const noBg = minimalBlocks.filter((b) => b.name !== 'background');
     assert.throws(() => buildBlockDrivenLanding(noBg), /background/);
   });
+
+  it('emits a "use client" directive at the top of the output', () => {
+    const out = buildBlockDrivenLanding(minimalBlocks);
+    assert.match(out, /^'use client';/);
+  });
+
+  it('omits useRouter import & binding when no cta-group block is present', () => {
+    const blocksWithoutCta = minimalBlocks.filter((b) => b.name !== 'cta-group');
+    const out = buildBlockDrivenLanding(blocksWithoutCta);
+    assert.doesNotMatch(out, /useRouter/);
+  });
+
+  it('emits useRouter import & binding when cta-group IS present', () => {
+    const out = buildBlockDrivenLanding(minimalBlocks);
+    assert.match(out, /import \{ useRouter \} from 'next\/navigation';/);
+    assert.match(out, /const router = useRouter\(\);/);
+  });
 });

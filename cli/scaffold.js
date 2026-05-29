@@ -2526,6 +2526,14 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     const { buildBlockDrivenLanding } = await import('./page-builder.js');
 
     const allBlocks = listBlocks();
+    const knownNames = new Set(allBlocks.map((b) => b.manifest.name));
+    const unknown = blocksConfig.landing.blocks.filter((b) => !knownNames.has(b.name));
+    if (unknown.length > 0) {
+      throw new Error(
+        `Unknown blocks referenced in blocks-config landing list: ${unknown.map((b) => b.name).join(', ')}. ` +
+        `Available: ${[...knownNames].sort().join(', ')}`,
+      );
+    }
     const requested = blocksConfig.landing.blocks.map((b) => b.name);
     const blocksToCopy = allBlocks.filter((b) => requested.includes(b.manifest.name));
 
