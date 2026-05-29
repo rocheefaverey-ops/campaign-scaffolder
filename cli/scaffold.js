@@ -296,6 +296,7 @@ function parseArgs(argv) {
     else if (key === 'gtm-id')   args.gtmId    = val;
     else if (key === 'output')   args.output   = val;
     else if (key === 'config')   args.config   = val;
+    else if (key === 'blocks-config') args.blocksConfig = val;
     else if (key === 'iframe')   args.iframe   = true;
     else if (key === 'update' || key === 'u') args.update = true;
     else if (key === 'yes' || key === 'y') args.yes = true;
@@ -2207,7 +2208,7 @@ export function useGameNavigation() {
   printPostScaffoldMessage({ projectName: name, capeId, market, modules: [], outputDir: _tsFinalFrontendDir, stack: 'tanstack', capeAutoPublished, capePublishedUrl });
 }
 
-async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowButtonVariants = {}, flowRules = {}, menuItemsEnabled = {}, menuButtonVariants = {}, pageTypes = {}, _wizardMeta = null, routeMap = {} }) {
+async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowButtonVariants = {}, flowRules = {}, menuItemsEnabled = {}, menuButtonVariants = {}, pageTypes = {}, _wizardMeta = null, routeMap = {}, blocksConfig = null }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -2512,6 +2513,35 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     }
 
     ok(`${generated} page(s) generated`);
+  }
+
+  // 3b'. Block-driven landing override (Plan 1; wizard will populate this in Plan 2).
+  // When --blocks-config supplies a `landing.blocks` list, replace whatever the
+  // legacy page builder produced for landing with a block-composed file.
+  if (blocksConfig?.landing?.blocks?.length) {
+    step('3b′', 'Generating block-driven landing page…');
+    const { listBlocks, copyBlockFiles } = await import('./block-resolver.js');
+    const { buildBlockDrivenLanding } = await import('./page-builder.js');
+
+    const allBlocks = listBlocks();
+    const requested = blocksConfig.landing.blocks.map((b) => b.name);
+    const blocksToCopy = allBlocks.filter((b) => requested.includes(b.manifest.name));
+
+    // Token map mirrors the patterns used by tokenReplaceDir above. Keys are
+    // bare names (no braces) because copyBlockFiles wraps them.
+    const blockTokens = {
+      PROJECT_NAME: name,
+      CAPE_ID: capeId,
+      MARKET: market,
+    };
+
+    copyBlockFiles(blocksToCopy, outputDir, blockTokens);
+
+    const tsx = buildBlockDrivenLanding(blocksConfig.landing.blocks);
+    const landingPath = join(outputDir, 'app/landing/page.tsx');
+    mkdirSync(dirname(landingPath), { recursive: true });
+    writeFileSync(landingPath, tsx, 'utf8');
+    ok('landing page generated from block list');
   }
 
   // 3c. Rename (campaign) route folders to match custom routeMap slugs.
@@ -4365,6 +4395,21 @@ async function main() {
       console.log('');
     }
 
+    // Block-driven landing override (Plan 1; wizard will populate this in Plan 2).
+    // Read the optional --blocks-config=<path> JSON into options.blocksConfig.
+    let nonInteractiveBlocksConfig = null;
+    if (args.blocksConfig) {
+      const blocksConfigPath = resolve(args.blocksConfig);
+      if (!existsSync(blocksConfigPath)) {
+        throw new Error(`--blocks-config file not found: ${blocksConfigPath}`);
+      }
+      try {
+        nonInteractiveBlocksConfig = JSON.parse(readFileSync(blocksConfigPath, 'utf8'));
+      } catch (e) {
+        throw new Error(`Could not parse --blocks-config JSON at ${blocksConfigPath}: ${e.message}`);
+      }
+    }
+
     options = {
       stack,
       name:      args.name,
@@ -4382,6 +4427,7 @@ async function main() {
       outputDir: args.output ? resolve(args.output) : resolve(SCAFFOLDER_ROOT, '..', args.name),
       skipInstall: Boolean(args.skipInstall),
       skipGit: Boolean(args.skipGit),
+      blocksConfig: nonInteractiveBlocksConfig,
       pageTypes,
       flowExits: pages.includes('result') && pages.includes('landing') ? { 'result.next': 'landing' } : {},
       flowEnabledExits: { 'landing.leaderboard': false, 'result.playAgain': true, 'result.leaderboard': false },
