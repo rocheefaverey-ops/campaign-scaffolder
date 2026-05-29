@@ -1,0 +1,22 @@
+{
+  "name": "title-block",
+  "displayName": "Title block",
+  "description": "Headline with optional kicker (small text above) and subtitle (smaller text below).",
+  "files": [
+    { "src": "TitleBlock.tsx", "dest": "components/_blocks/title-block/TitleBlock.tsx" },
+    { "src": "TitleBlock.module.scss", "dest": "components/_blocks/title-block/TitleBlock.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "showKicker": { "kind": "boolean", "default": false },
+    "showSubtitle": { "kind": "boolean", "default": false }
+  },
+  "capeBindings": {
+    "kicker": "{pageType}.kicker (i18n)",
+    "title": "{pageType}.title (i18n, required)",
+    "subtitle": "{pageType}.subtitle (i18n)"
+  },
+  "usableOn": ["landing", "onboarding", "result", "leaderboard", "register", "voucher", "end"]
+}
