@@ -1,6 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateManifest } from '../block-manifest.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(__dirname, '..', '..');
 
 describe('validateManifest', () => {
   it('accepts a minimal valid manifest', () => {
@@ -107,5 +113,14 @@ describe('validateManifest', () => {
     assert.ok(r.errors.some((e) => e.includes('files[0] must be an object')));
     // Should NOT also emit "missing src" / "missing dest" — one clear error per entry.
     assert.equal(r.errors.filter((e) => e.startsWith('files[0]')).length, 1);
+  });
+});
+
+describe('real block manifests on disk', () => {
+  it('background/manifest.json is valid', () => {
+    const raw = readFileSync(join(repoRoot, 'components/_blocks/background/manifest.json'), 'utf8');
+    const m = JSON.parse(raw);
+    const r = validateManifest(m);
+    assert.equal(r.ok, true, `errors: ${r.errors.join('; ')}`);
   });
 });
