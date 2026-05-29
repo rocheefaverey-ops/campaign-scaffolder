@@ -1,0 +1,21 @@
+{
+  "name": "header-chrome",
+  "displayName": "Header chrome",
+  "description": "Top-of-page slots: left + right corner controls (menu, help, close, back, decorative icon, or none).",
+  "files": [
+    { "src": "HeaderChrome.tsx", "dest": "components/_blocks/header-chrome/HeaderChrome.tsx" },
+    { "src": "HeaderChrome.module.scss", "dest": "components/_blocks/header-chrome/HeaderChrome.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "leftSlot": { "kind": "enum", "of": ["none", "menu", "help", "close", "back", "decorative-icon"], "default": "none" },
+    "rightSlot": { "kind": "enum", "of": ["none", "menu", "help", "close", "back", "decorative-icon"], "default": "none" }
+  },
+  "capeBindings": {
+    "leftIcon": "branding.icons.{leftSlot} — optional override icon asset",
+    "rightIcon": "branding.icons.{rightSlot}"
+  },
+  "usableOn": ["landing", "onboarding", "result", "leaderboard", "register", "voucher", "end", "menu", "video"]
+}
