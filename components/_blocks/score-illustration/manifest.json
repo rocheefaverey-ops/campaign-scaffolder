@@ -1,0 +1,17 @@
+{
+  "name": "score-illustration",
+  "displayName": "Score illustration",
+  "description": "Optional score/result visual.",
+  "files": [
+    { "src": "ScoreIllustration.tsx", "dest": "components/_blocks/score-illustration/ScoreIllustration.tsx" },
+    { "src": "ScoreIllustration.module.scss", "dest": "components/_blocks/score-illustration/ScoreIllustration.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {},
+  "capeBindings": {
+    "image": "{pageType}.scoreImage | image | score/result illustration"
+  },
+  "usableOn": ["result"]
+}

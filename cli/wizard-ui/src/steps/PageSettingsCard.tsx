@@ -1,9 +1,11 @@
 import {
+  defaultBlocksForPage,
   PAGE_SETTINGS_SCHEMA,
-  type PageSettings,
+  type ScaffoldConfig,
   type SettingDef,
   type SettingValue,
 } from '../shared/config.ts';
+import BlockListEditor from './BlockListEditor.tsx';
 
 interface Props {
   /** Instance id — what settings are keyed by (e.g. "video", "video-2"). */
@@ -14,8 +16,8 @@ interface Props {
    */
   schemaType:  string;
   pageLabel:   string;
-  settings:    PageSettings;
-  setSettings: (next: PageSettings) => void;
+  config:      ScaffoldConfig;
+  setConfig:   (next: ScaffoldConfig) => void;
 }
 
 /**
@@ -23,28 +25,27 @@ interface Props {
  * Returns null if the type has no schema entry — the caller can blindly map
  * over flow instances and only the ones with settings surface.
  */
-export default function PageSettingsCard({ pageId, schemaType, pageLabel, settings, setSettings }: Props) {
-  const schema = PAGE_SETTINGS_SCHEMA[schemaType];
-  if (!schema || schema.length === 0) return null;
+export default function PageSettingsCard({ pageId, schemaType, pageLabel, config, setConfig }: Props) {
+  const schema = PAGE_SETTINGS_SCHEMA[schemaType] ?? [];
+  const blocks = config.pageBlocks?.[pageId] ?? defaultBlocksForPage(schemaType);
+  const hasPageSettings = schema.length > 0;
+  const hasBlocks = Object.keys(blocks.blocks ?? {}).length > 0;
+  if (!hasPageSettings && !hasBlocks) return null;
 
-  const pageValues = settings[pageId] ?? {};
+  const pageValues = config.pageSettings[pageId] ?? {};
   const resolvedValues = Object.fromEntries(
     schema.map((def) => [def.key, pageValues[def.key] ?? def.default]),
   ) as Record<string, SettingValue>;
   const visibleSettings = schema.filter((def) => isVisible(def, resolvedValues));
 
   const update = (key: string, value: SettingValue) => {
-    console.log('[toggle] update', { pageId, key, value, pageValues, settings });
-    try {
-      setSettings({
-        ...settings,
+    setConfig({
+      ...config,
+      pageSettings: {
+        ...config.pageSettings,
         [pageId]: { ...pageValues, [key]: value },
-      });
-      console.log('[toggle] setSettings done');
-    } catch (err) {
-      console.error('[toggle] setSettings threw', err);
-      throw err;
-    }
+      },
+    });
   };
 
   return (
@@ -54,18 +55,37 @@ export default function PageSettingsCard({ pageId, schemaType, pageLabel, settin
         <code className="page-settings-card__path">settings.pages.{pageId}</code>
       </header>
 
-      <div className="page-settings-card__body">
-        {visibleSettings.map((def) => (
-          <SettingControl
-            key={def.key}
-            def={def}
-            value={pageValues[def.key] ?? def.default}
-            isDefault={(pageValues[def.key] ?? def.default) === def.default}
-            onChange={(v) => update(def.key, v)}
-            onReset={() => update(def.key, def.default)}
-          />
-        ))}
-      </div>
+      {visibleSettings.length > 0 && (
+        <div className="page-settings-card__body">
+          {visibleSettings.map((def) => (
+            <SettingControl
+              key={def.key}
+              def={def}
+              value={pageValues[def.key] ?? def.default}
+              isDefault={(pageValues[def.key] ?? def.default) === def.default}
+              onChange={(v) => update(def.key, v)}
+              onReset={() => update(def.key, def.default)}
+            />
+          ))}
+        </div>
+      )}
+
+      {hasBlocks && (
+        <BlockListEditor
+          pageId={pageId}
+          pageType={schemaType}
+          value={blocks}
+          onChange={(next) => {
+            setConfig({
+              ...config,
+              pageBlocks: {
+                ...(config.pageBlocks ?? {}),
+                [pageId]: next,
+              },
+            });
+          }}
+        />
+      )}
     </section>
   );
 }

@@ -1,0 +1,18 @@
+{
+  "name": "timer",
+  "displayName": "Timer",
+  "description": "Countdown or count-up timer.",
+  "files": [
+    { "src": "Timer.tsx", "dest": "components/_blocks/timer/Timer.tsx" },
+    { "src": "Timer.module.scss", "dest": "components/_blocks/timer/Timer.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "mode": { "kind": "enum", "of": ["countdown", "countup"], "default": "countdown" },
+    "durationSec": { "kind": "number", "min": 5, "max": 600, "default": 60 }
+  },
+  "capeBindings": {},
+  "usableOn": ["game"]
+}

@@ -14,9 +14,9 @@
     "showSubtitle": { "kind": "boolean", "default": false }
   },
   "capeBindings": {
-    "kicker": "{pageType}.kicker (i18n)",
-    "title": "{pageType}.title (i18n, required)",
-    "subtitle": "{pageType}.subtitle (i18n)"
+    "kicker": "{pageType}.kicker | i18n-string | small text above the title",
+    "title": "{pageType}.title | i18n-string | headline",
+    "subtitle": "{pageType}.subtitle | i18n-string | supporting text below the title"
   },
   "usableOn": ["landing", "onboarding", "result", "leaderboard", "register", "voucher", "end"]
 }

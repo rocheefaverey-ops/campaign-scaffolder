@@ -14,8 +14,8 @@
     "rightSlot": { "kind": "enum", "of": ["none", "menu", "help", "close", "back", "decorative-icon"], "default": "none" }
   },
   "capeBindings": {
-    "leftIcon": "branding.icons.{leftSlot} — optional override icon asset",
-    "rightIcon": "branding.icons.{rightSlot}"
+    "leftIcon": "branding.icons.left | image | optional left slot override icon",
+    "rightIcon": "branding.icons.right | image | optional right slot override icon"
   },
   "usableOn": ["landing", "onboarding", "result", "leaderboard", "register", "voucher", "end", "menu", "video"]
 }

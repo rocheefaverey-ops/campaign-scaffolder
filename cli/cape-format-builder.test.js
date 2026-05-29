@@ -11,7 +11,7 @@
  * Exits non-zero on any failure.
  */
 
-import { buildNextCapeFormat, buildTanStackCapeFormat, KNOWN_PAGE_TYPES } from './cape-format-builder.js';
+import { buildNextCapeFormat, buildTanStackCapeFormat, emitBlockDrivenFields, KNOWN_PAGE_TYPES } from './cape-format-builder.js';
 import { stripInterfaceSetupForCapeSave } from './cape-client.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -231,6 +231,18 @@ if (menuVariantFields.length !== 9 || menuVariantFields.some((field) => field.ty
 }
 if (menuVariantFields.some((field) => !field.options?.primary || !field.options?.secondary || !field.options?.tertiary || !field.options?.danger)) {
   failures.push('Menu button style dropdowns are missing one or more required button variants.');
+}
+
+// Test 3d: block-driven fields are emitted from manifest bindings.
+const blockFields = emitBlockDrivenFields('landing', [
+  { name: 'background' },
+  { name: 'title-block' },
+]);
+const blockModels = new Set(blockFields.map((field) => field.name ?? field.model));
+for (const expected of ['landing.background', 'landing.title']) {
+  if (!blockModels.has(expected)) {
+    failures.push(`Block-driven CAPE fields test: expected "${expected}" missing.`);
+  }
 }
 
 // ── Test 4: KNOWN_PAGE_TYPES and the wizard's ALL_PAGES stay in sync ─────────

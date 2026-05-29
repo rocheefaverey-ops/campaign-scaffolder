@@ -1,0 +1,15 @@
+.box {
+  margin: 1rem auto;
+  width: min(22rem, calc(100% - 2rem));
+  border: 1px dashed currentColor;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  color: inherit;
+  padding: 1rem;
+  display: grid;
+  gap: 0.35rem;
+  text-align: center;
+  cursor: pointer;
+}
+.label, .hint { font-size: 0.75rem; opacity: 0.72; }
+.box strong { font-size: 1.5rem; letter-spacing: 0.08em; }

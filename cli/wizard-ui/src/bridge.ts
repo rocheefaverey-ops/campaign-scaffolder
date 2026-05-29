@@ -6,6 +6,7 @@
  */
 
 import type { ScaffoldConfig } from './shared/config.ts';
+import type { BlockCatalogItem } from './shared/blocksCatalogue.ts';
 
 export type LogLevel = 'info' | 'success' | 'warn' | 'error';
 export interface LogEvent {
@@ -154,6 +155,17 @@ export async function listModules(): Promise<ModuleInfo[]> {
     if (!res.ok) return [];
     const data = await res.json().catch(() => ({}));
     return Array.isArray(data?.modules) ? data.modules as ModuleInfo[] : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function listBlocks(): Promise<BlockCatalogItem[]> {
+  try {
+    const res = await fetch('/api/blocks');
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => ({}));
+    return Array.isArray(data?.blocks) ? data.blocks as BlockCatalogItem[] : [];
   } catch {
     return [];
   }

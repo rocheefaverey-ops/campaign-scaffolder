@@ -1,0 +1,19 @@
+{
+  "name": "top-n-highlight",
+  "displayName": "Top N highlight",
+  "description": "Small explanatory badge for top-ranked players.",
+  "files": [
+    { "src": "TopNHighlight.tsx", "dest": "components/_blocks/top-n-highlight/TopNHighlight.tsx" },
+    { "src": "TopNHighlight.module.scss", "dest": "components/_blocks/top-n-highlight/TopNHighlight.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "count": { "kind": "number", "min": 1, "max": 10, "default": 3 }
+  },
+  "capeBindings": {
+    "label": "{pageType}.topNLabel | i18n-string | top rank highlight label"
+  },
+  "usableOn": ["leaderboard"]
+}

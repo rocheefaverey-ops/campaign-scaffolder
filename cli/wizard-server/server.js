@@ -28,6 +28,7 @@ import { validateAuth, login as capeLogin, clearTokenCache } from '../cape-clien
 import { loadGameRegistry } from '../game-registry.js';
 import { KNOWN_PAGE_TYPES } from '../cape-format-builder.js';
 import { runDoctor } from '../core/health.js';
+import { listBlocks } from '../block-resolver.js';
 
 const __filename     = fileURLToPath(import.meta.url);
 const __dirname      = dirname(__filename);
@@ -228,6 +229,17 @@ app.get('/api/games', async (req) => {
 });
 
 app.get('/api/modules', async () => ({ modules: MODULE_CATALOG }));
+
+app.get('/api/blocks', async () => ({
+  blocks: listBlocks().map(({ manifest }) => ({
+    name:        manifest.name,
+    displayName: manifest.displayName,
+    description: manifest.description ?? '',
+    usableOn:    manifest.usableOn ?? [],
+    settings:    manifest.settings ?? {},
+    capeBindings: manifest.capeBindings ?? {},
+  })),
+}));
 
 app.get('/api/doctor', async () => runDoctor());
 
@@ -594,6 +606,7 @@ const scaffoldConfigSchema = {
     iframe:           { type: 'boolean' },
     outputDir:        { type: 'string' },
     pageSettings:     { type: 'object' },
+    pageBlocks:       { type: 'object' },
     flowExits:        { type: 'object' },
     flowEntry:        { type: 'string' },
     flowEnabledExits: { type: 'object' },

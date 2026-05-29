@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { STACK_OPTIONS, defaultPagesForStack, defaultEnabledExits, defaultFlowButtonVariants, defaultMenuItemsEnabled, defaultFlowRulesForPages, type StackOption, type StepProps } from '../shared/config.ts';
+import { STACK_OPTIONS, defaultPagesForStack, defaultEnabledExits, defaultFlowButtonVariants, defaultMenuItemsEnabled, defaultFlowRulesForPages, defaultPageBlocksForPages, type StackOption, type StepProps } from '../shared/config.ts';
 import { autoNameVersion } from '../shared/projectNameDefaults.ts';
 
 export default function StepStack({ config, setConfig }: StepProps) {
@@ -37,6 +37,7 @@ export default function StepStack({ config, setConfig }: StepProps) {
                     flowEnabledExits: defaultEnabledExits(),
                     flowButtonVariants: defaultFlowButtonVariants(),
                     flowRules: defaultFlowRulesForPages(pages),
+                    pageBlocks: defaultPageBlocksForPages(pages),
                     menuItemsEnabled: opt.id === 'tanstack' ? { ...defaultMenuItemsEnabled(), home: false, howToPlay: false } : config.menuItemsEnabled,
                   });
                 }}

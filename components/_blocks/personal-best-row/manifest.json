@@ -1,0 +1,17 @@
+{
+  "name": "personal-best-row",
+  "displayName": "Personal best row",
+  "description": "Sticky row with the visitor's rank and best score.",
+  "files": [
+    { "src": "PersonalBestRow.tsx", "dest": "components/_blocks/personal-best-row/PersonalBestRow.tsx" },
+    { "src": "PersonalBestRow.module.scss", "dest": "components/_blocks/personal-best-row/PersonalBestRow.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {},
+  "capeBindings": {
+    "label": "{pageType}.youLabel | i18n-string | personal best label"
+  },
+  "usableOn": ["leaderboard"]
+}

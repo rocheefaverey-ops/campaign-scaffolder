@@ -1,9 +1,9 @@
 import {
   DEFAULT_CONFIG, defaultPageSettings, defaultEnabledExits, defaultFlowButtonVariants,
   defaultMenuItemsEnabled, defaultMenuButtonVariants, defaultRouteForType,
-  defaultPagesForStack, defaultFlowRulesForPages,
+  defaultPagesForStack, defaultFlowRulesForPages, defaultPageBlocksForPages,
   type ScaffoldConfig, type PageInstance, type Stack, type Engine, type Market, type RegMode, type PageSettings,
-  type ButtonVariant,
+  type ButtonVariant, type PageBlocksMap,
 } from './config.ts';
 
 /**
@@ -54,9 +54,14 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
     : {};
 
   // ── Wizard-only metadata block (newer .scaffolded files include this).
-  const pageSettings: PageSettings = (wizard.pageSettings && typeof wizard.pageSettings === 'object')
-    ? wizard.pageSettings as PageSettings
+  const rawPageSettings = wizard.pageSettings ?? raw.pageSettings;
+  const pageSettings: PageSettings = (rawPageSettings && typeof rawPageSettings === 'object')
+    ? rawPageSettings as PageSettings
     : defaultPageSettings();
+  const rawPageBlocks = wizard.pageBlocks ?? raw.pageBlocks;
+  const pageBlocks: PageBlocksMap = (rawPageBlocks && typeof rawPageBlocks === 'object')
+    ? { ...defaultPageBlocksForPages(pages), ...rawPageBlocks as PageBlocksMap }
+    : defaultPageBlocksForPages(pages);
   const flowEnabledExits: Record<string, boolean> = (wizard.flowEnabledExits && typeof wizard.flowEnabledExits === 'object')
     ? wizard.flowEnabledExits as Record<string, boolean>
     : defaultEnabledExits();
@@ -110,6 +115,7 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
     gtmId,
     iframe,
     pageSettings,
+    pageBlocks,
     flowExits,
     flowEntry,
     flowEnabledExits,

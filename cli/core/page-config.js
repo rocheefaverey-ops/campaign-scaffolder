@@ -1,6 +1,6 @@
 export const GAME_ENGINES = ['unity', 'r3f', 'phaser', 'memory', 'video', 'pure-react'];
 
-export const ALL_PAGES = ['landing', 'intro-video', 'tutorial', 'loading-video', 'game', 'result', 'ad-video', 'register', 'leaderboard', 'voucher'];
+export const ALL_PAGES = ['loading', 'landing', 'intro-video', 'tutorial', 'loading-video', 'game', 'result', 'ad-video', 'register', 'leaderboard', 'voucher', 'end', 'menu'];
 export const VIDEO_PAGE_IDS = new Set(['video', 'intro-video', 'loading-video', 'ad-video']);
 export const EXPLICIT_VIDEO_PAGES = ['intro-video', 'loading-video', 'ad-video'];
 
@@ -26,6 +26,7 @@ export const RESERVED_NAMES = new Set([
 
 export const PAGE_ROUTES = {
   landing: '/landing',
+  loading: '/loading',
   video: '/video',
   'intro-video': '/intro-video',
   'loading-video': '/loading-video',
@@ -36,6 +37,8 @@ export const PAGE_ROUTES = {
   result: '/result',
   leaderboard: '/leaderboard',
   voucher: '/voucher',
+  end: '/end',
+  menu: '/menu',
 };
 
 export const LOCAL_WIZARD_PAGE_SETTINGS = new Set(['onboardingFirstRunOnly']);

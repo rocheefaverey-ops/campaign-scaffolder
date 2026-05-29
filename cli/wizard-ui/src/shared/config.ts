@@ -169,6 +169,8 @@ export interface ScaffoldConfig {
   outputDir?:   string;
   /** Per-page CAPE settings (settings.pages.{pageId}.{key} = value). */
   pageSettings: PageSettings;
+  /** Per-page block editor state. Keyed by page instance id. */
+  pageBlocks?: PageBlocksMap;
   /**
    * Per-exit destination overrides, keyed by `{pageId}.{exitKey}` → target page id.
    * Empty/missing means "use default rule" (next-in-flow / first-in-flow).
@@ -222,6 +224,174 @@ export interface ScaffoldConfig {
 
 export type SettingValue = string | number | boolean;
 export type PageSettings = Record<string, Record<string, SettingValue>>;
+export type BlockSetting = string | number | boolean | BlockSetting[] | { [key: string]: BlockSetting };
+export type PageBlockConfig = {
+  enabled: boolean;
+  settings: Record<string, BlockSetting>;
+};
+export type PageBlocksConfig = {
+  blocks: Record<string, PageBlockConfig>;
+  blockOrder?: string[];
+};
+export type PageBlocksMap = Record<string, PageBlocksConfig>;
+
+function block(enabled: boolean, settings: Record<string, BlockSetting> = {}): PageBlockConfig {
+  return { enabled, settings };
+}
+
+function page(blocks: Record<string, PageBlockConfig>, blockOrder = Object.keys(blocks)): PageBlocksConfig {
+  return { blocks, blockOrder };
+}
+
+export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
+  loading: page({
+    background: block(true, { kind: 'image' }),
+    'centered-art': block(true, { size: 'md' }),
+    'brand-chip': block(true, { size: 'md' }),
+    tagline: block(true),
+    'loading-indicator': block(true, { kind: 'ring', minDisplayMs: 800 }),
+  }),
+  landing: page({
+    background: block(true, { kind: 'image' }),
+    'header-chrome': block(true, { leftSlot: 'menu', rightSlot: 'none' }),
+    'brand-chip': block(true, { size: 'md' }),
+    'title-block': block(true, { showKicker: false, showSubtitle: false }),
+    'cta-group': block(true, { count: 1, buttons: [{ variant: 'primary', exit: 'game' }] }),
+    'footer-link-list': block(false),
+    'compliance-badge': block(false, { kind: '18+' }),
+    'pre-gate-modal': block(false, { kind: 'age-18', persistAcrossSession: true }),
+  }),
+  tutorial: page({
+    background: block(true, { kind: 'image' }),
+    'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'none' }),
+    'brand-chip': block(true, { size: 'md' }),
+    'centered-art': block(true, { size: 'md' }),
+    'title-block': block(true, { showKicker: false, showSubtitle: true }),
+    'body-copy': block(true, { markdown: true }),
+    'step-indicator': block(true, { count: 3, style: 'dots' }),
+    'nav-controls': block(true, { showPrev: false, nextExit: 'game' }),
+    'compliance-badge': block(false, { kind: '18+' }),
+  }),
+  'intro-video': page({
+    background: block(true, { kind: 'solid' }),
+    'header-chrome': block(true, { leftSlot: 'none', rightSlot: 'close' }),
+    'brand-chip': block(false, { size: 'sm' }),
+    'video-player': block(true, { muted: true, loop: false, onEnd: 'auto-advance', availableAfterMs: 3000 }),
+    'skip-control': block(true, { availableAfterMs: 3000, exit: 'game' }),
+    'reveal-cta': block(false, { exit: 'game', variant: 'primary' }),
+    'fallback-indicator': block(false),
+  }),
+  'loading-video': page({
+    background: block(true, { kind: 'solid' }),
+    'header-chrome': block(true, { leftSlot: 'none', rightSlot: 'close' }),
+    'brand-chip': block(false, { size: 'sm' }),
+    'video-player': block(true, { muted: true, loop: true, onEnd: 'wait-for-engine', availableAfterMs: 0 }),
+    'fallback-indicator': block(true),
+  }),
+  'ad-video': page({
+    background: block(true, { kind: 'solid' }),
+    'header-chrome': block(true, { leftSlot: 'none', rightSlot: 'close' }),
+    'brand-chip': block(false, { size: 'sm' }),
+    'video-player': block(true, { muted: true, loop: false, onEnd: 'auto-advance', availableAfterMs: 3000 }),
+    'skip-control': block(true, { availableAfterMs: 3000, exit: 'voucher' }),
+    'reveal-cta': block(false, { exit: 'voucher', variant: 'primary' }),
+    'fallback-indicator': block(false),
+  }),
+  game: page({
+    background: block(true, { kind: 'solid' }),
+    'header-chrome': block(false, { leftSlot: 'none', rightSlot: 'none' }),
+    'audio-toggle': block(true),
+    'pause-toggle': block(true),
+    timer: block(true, { mode: 'countdown', durationSec: 60 }),
+    'score-readout': block(false, { showHighScore: false }),
+    'sponsor-footer-strip': block(false),
+    'pause-overlay': block(true, { showRestart: true, showHowToPlay: true }),
+  }),
+  result: page({
+    background: block(true, { kind: 'image' }),
+    'header-chrome': block(true, { leftSlot: 'none', rightSlot: 'close' }),
+    'brand-chip': block(true, { size: 'md' }),
+    'title-block': block(true, { showKicker: true, showSubtitle: true }),
+    'body-copy': block(true, { markdown: true }),
+    'score-readout': block(true, { showHighScore: true }),
+    'score-illustration': block(false),
+    'stats-table': block(false, { count: 3 }),
+    'status-chip': block(false, { kind: 'registered' }),
+    'cta-group': block(true, { count: 2, buttons: [{ variant: 'primary', exit: 'voucher' }, { variant: 'secondary', exit: 'game' }] }),
+    'compliance-badge': block(false, { kind: '18+' }),
+    'footer-link-list': block(false),
+  }),
+  leaderboard: page({
+    background: block(true, { kind: 'image' }),
+    'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'none' }),
+    'brand-chip': block(true, { size: 'md' }),
+    'title-block': block(true, { showKicker: true, showSubtitle: true }),
+    'leaderboard-tabs': block(true, { tabs: ['all', 'daily', 'weekly'], defaultTab: 'all' }),
+    'rank-list': block(true, { rows: 10 }),
+    'top-n-highlight': block(false, { count: 3 }),
+    'personal-best-row': block(true),
+    'cta-group': block(true, { count: 1, buttons: [{ variant: 'primary', exit: 'landing' }] }),
+  }),
+  register: page({
+    background: block(true, { kind: 'image' }),
+    'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'none' }),
+    'brand-chip': block(true, { size: 'md' }),
+    'card-wrapper': block(true, { style: 'card', cardWidth: 'with-margin' }),
+    'title-block': block(true, { showKicker: false, showSubtitle: true }),
+    'body-copy': block(false, { markdown: true }),
+    'field-set': block(true, { fields: ['firstName', 'lastName', 'email'] }),
+    'opt-in-list': block(true, { optIns: ['terms'] }),
+    'cta-group': block(true, { count: 1, buttons: [{ variant: 'primary', exit: 'result' }] }),
+    'footer-link-list': block(false),
+  }),
+  voucher: page({
+    background: block(true, { kind: 'image' }),
+    'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'close' }),
+    'brand-chip': block(true, { size: 'md' }),
+    'title-block': block(true, { showKicker: true, showSubtitle: false }),
+    'body-copy': block(true, { markdown: true }),
+    'channel-tabs': block(false, { tabs: ['webshop', 'in-store'], defaultTab: 'webshop' }),
+    'code-box': block(true),
+    'qr-display': block(true),
+    'cta-group': block(true, { count: 1, buttons: [{ variant: 'primary', exit: 'leaderboard' }] }),
+    'compliance-badge': block(false, { kind: '18+' }),
+    'footer-link-list': block(true),
+  }),
+  end: page({
+    background: block(true, { kind: 'image' }),
+    'header-chrome': block(true, { leftSlot: 'none', rightSlot: 'close' }),
+    'brand-chip': block(true, { size: 'md' }),
+    'title-block': block(true, { showKicker: true, showSubtitle: false }),
+    'body-copy': block(true, { markdown: true }),
+    'prize-illustration': block(true),
+    'cta-group': block(true, { count: 2, buttons: [{ variant: 'icon-only', exit: 'leaderboard' }, { variant: 'primary', exit: 'game' }] }),
+    'compliance-badge': block(false, { kind: '18+' }),
+    'footer-link-list': block(false),
+  }),
+  menu: page({
+    background: block(true, { kind: 'image' }),
+    'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'none' }),
+    'brand-chip': block(true, { size: 'md' }),
+    'menu-item-list': block(true, { items: ['home', 'howToPlay', 'leaderboard', 'terms', 'privacy'] }),
+  }),
+};
+
+DEFAULT_BLOCKS_BY_PAGE.onboarding = DEFAULT_BLOCKS_BY_PAGE.tutorial;
+DEFAULT_BLOCKS_BY_PAGE.video = DEFAULT_BLOCKS_BY_PAGE['intro-video'];
+
+export const DEFAULT_LANDING_BLOCKS = DEFAULT_BLOCKS_BY_PAGE.landing;
+
+export function blockLibraryPageType(type: string): string {
+  if (type === 'tutorial') return 'onboarding';
+  if (type === 'intro-video' || type === 'loading-video' || type === 'ad-video') return 'video';
+  return type;
+}
+
+export function defaultBlocksForPage(pageType: string): PageBlocksConfig {
+  const key = DEFAULT_BLOCKS_BY_PAGE[pageType] ? pageType : blockLibraryPageType(pageType);
+  const source = DEFAULT_BLOCKS_BY_PAGE[key] ?? { blocks: {}, blockOrder: [] };
+  return structuredClone(source);
+}
 
 export interface PageFlowRule {
   mode: FlowRuleMode;
@@ -243,6 +413,7 @@ export const FLOW_RULE_OPTIONS: FlowRuleOption[] = [
 ];
 
 export const FLOW_RULES_BY_PAGE: Record<string, FlowRuleMode[]> = {
+  loading:     ['always'],
   landing:     ['always'],
   tutorial:    ['always', 'once-per-browser'],
   register:    ['always', 'skip-if-registered'],
@@ -250,6 +421,8 @@ export const FLOW_RULES_BY_PAGE: Record<string, FlowRuleMode[]> = {
   result:      ['always'],
   voucher:     ['always', 'voucher-required', 'voucher-once'],
   leaderboard: ['always'],
+  end:         ['always'],
+  menu:        ['always'],
   'intro-video':   ['always', 'once-per-browser'],
   'loading-video': ['always'],
   'ad-video':      ['always', 'once-per-browser'],
@@ -474,6 +647,8 @@ export const BUTTON_VARIANTS: Array<{ value: ButtonVariant; label: string }> = [
 // after result, and `regMode` is derived from that position (see
 // deriveRegMode below). There is no separate Registration-timing UI.
 export const ALL_PAGES: PageMeta[] = [
+  { id: 'loading',     label: 'Loading',     hint: 'Pre-entry loading screen with brand and progress.', route: '/loading',
+    exits: [{ key: 'next', label: 'When ready', token: 'NEXT_AFTER_LOADING', defaultVariant: 'primary' }] },
   { id: 'landing',     label: 'Landing',     hint: 'Hero / brand splash with CTA.',             route: '/landing',
     exits: [
       { key: 'next',        label: 'Primary CTA button',   token: 'NEXT_AFTER_LANDING',          defaultVariant: 'primary' },
@@ -506,6 +681,10 @@ export const ALL_PAGES: PageMeta[] = [
     exits: [{ key: 'next', label: 'Continue button', token: 'NEXT_AFTER_VOUCHER',     defaultVariant: 'primary' }] },
   { id: 'leaderboard', label: 'Leaderboard', hint: 'Top scores + personal best.',               route: '/leaderboard',   requires: 'leaderboard',
     exits: [{ key: 'next', label: 'CTA button',      token: 'NEXT_AFTER_LEADERBOARD', defaultVariant: 'primary' }] },
+  { id: 'end',         label: 'End',         hint: 'Final thank-you screen after reward or score flow.', route: '/end',
+    exits: [{ key: 'next', label: 'Final CTA', token: 'NEXT_AFTER_END', defaultVariant: 'primary' }] },
+  { id: 'menu',        label: 'Menu',        hint: 'Full-screen campaign navigation overlay.', route: '/menu',
+    exits: [{ key: 'next', label: 'Back / close', token: 'NEXT_AFTER_MENU', defaultVariant: 'secondary' }] },
 ];
 
 export const ALL_PAGE_IDS: string[] = ALL_PAGES.map(p => p.id);
@@ -553,6 +732,12 @@ export function defaultPagesForStack(stack: Stack): PageInstance[] {
     { id: 'game',       type: 'game',       route: '/gameplay'   },
     { id: 'result',     type: 'result',     route: '/result'     },
   ];
+}
+
+export function defaultPageBlocksForPages(pages: PageInstance[]): PageBlocksMap {
+  const out: PageBlocksMap = {};
+  for (const page of pages) out[page.id] = defaultBlocksForPage(page.type);
+  return out;
 }
 
 export interface StackOption {
@@ -707,6 +892,7 @@ export const DEFAULT_CONFIG: ScaffoldConfig = {
   gtmId:              '',
   iframe:             false,
   pageSettings:       defaultPageSettings(),
+  pageBlocks:         defaultPageBlocksForPages(defaultPagesForStack('next')),
   flowExits:          {},
   flowEntry:          undefined,
   flowEnabledExits:   defaultEnabledExits(),

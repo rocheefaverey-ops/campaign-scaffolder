@@ -13,7 +13,7 @@
     "size": { "kind": "enum", "of": ["sm", "md"], "default": "md" }
   },
   "capeBindings": {
-    "image": "branding.logo"
+    "image": "branding.logo | image | brand or sponsor logo"
   },
   "usableOn": ["loading", "landing", "onboarding", "result", "leaderboard", "register", "voucher", "end", "menu", "video"]
 }

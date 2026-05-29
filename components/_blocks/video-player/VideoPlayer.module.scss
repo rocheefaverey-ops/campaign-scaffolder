@@ -1,0 +1,12 @@
+.video, .placeholder {
+  width: 100%;
+  min-height: 50vh;
+  object-fit: cover;
+  background: #000;
+  color: #fff;
+}
+.placeholder {
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}

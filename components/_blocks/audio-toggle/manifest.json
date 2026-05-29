@@ -1,0 +1,15 @@
+{
+  "name": "audio-toggle",
+  "displayName": "Audio toggle",
+  "description": "Mute/unmute control.",
+  "files": [
+    { "src": "AudioToggle.tsx", "dest": "components/_blocks/audio-toggle/AudioToggle.tsx" },
+    { "src": "AudioToggle.module.scss", "dest": "components/_blocks/audio-toggle/AudioToggle.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {},
+  "capeBindings": {},
+  "usableOn": ["game"]
+}

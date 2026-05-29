@@ -1,0 +1,19 @@
+{
+  "name": "score-readout",
+  "displayName": "Score readout",
+  "description": "Large score with optional high score.",
+  "files": [
+    { "src": "ScoreReadout.tsx", "dest": "components/_blocks/score-readout/ScoreReadout.tsx" },
+    { "src": "ScoreReadout.module.scss", "dest": "components/_blocks/score-readout/ScoreReadout.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "showHighScore": { "kind": "boolean", "default": false }
+  },
+  "capeBindings": {
+    "label": "{pageType}.scoreLabel | i18n-string | score label"
+  },
+  "usableOn": ["result", "game"]
+}

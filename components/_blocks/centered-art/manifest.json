@@ -1,0 +1,19 @@
+{
+  "name": "centered-art",
+  "displayName": "Centered art",
+  "description": "Optional centered foreground illustration.",
+  "files": [
+    { "src": "CenteredArt.tsx", "dest": "components/_blocks/centered-art/CenteredArt.tsx" },
+    { "src": "CenteredArt.module.scss", "dest": "components/_blocks/centered-art/CenteredArt.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "size": { "kind": "enum", "of": ["sm", "md", "lg"], "default": "md" }
+  },
+  "capeBindings": {
+    "image": "{pageType}.art | image | centered foreground image"
+  },
+  "usableOn": ["loading", "onboarding"]
+}

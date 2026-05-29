@@ -1,0 +1,20 @@
+{
+  "name": "loading-indicator",
+  "displayName": "Loading indicator",
+  "description": "Ring or bar loading indicator.",
+  "files": [
+    { "src": "LoadingIndicator.tsx", "dest": "components/_blocks/loading-indicator/LoadingIndicator.tsx" },
+    { "src": "LoadingIndicator.module.scss", "dest": "components/_blocks/loading-indicator/LoadingIndicator.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "kind": { "kind": "enum", "of": ["ring", "bar"], "default": "ring" },
+    "minDisplayMs": { "kind": "number", "min": 0, "max": 10000, "default": 800 }
+  },
+  "capeBindings": {
+    "label": "{pageType}.loadingLabel | i18n-string | accessible loading label"
+  },
+  "usableOn": ["loading"]
+}

@@ -17,6 +17,9 @@
 
 // ── Livewall baseline defaults ────────────────────────────────────────────────
 
+import { listBlocks } from './block-resolver.js';
+import { parseCapeBindings } from './cape-bindings-parser.js';
+
 const LW_LIME     = '#D1FF00';
 const LW_INK      = '#1A1A1A';
 const LW_SURFACE  = '#EEF1E9';
@@ -668,12 +671,85 @@ function nextVoucherTab(instanceId = 'voucher') {
 // trigger the "unknown type" warning. Keep this in sync with the switch in
 // buildNextCapeFormat below AND with ALL_PAGES in cli/wizard-ui/src/shared/config.ts.
 
+function blockListFromConfig(config) {
+  if (!config) return [];
+  if (Array.isArray(config)) return config;
+  if (Array.isArray(config.blocks)) return config.blocks;
+  if (config.blocks && typeof config.blocks === 'object') {
+    const order = Array.isArray(config.blockOrder) && config.blockOrder.length
+      ? config.blockOrder
+      : Object.keys(config.blocks);
+    return order
+      .filter((name) => config.blocks[name]?.enabled)
+      .map((name) => ({ name, settings: config.blocks[name]?.settings ?? {} }));
+  }
+  return [];
+}
+
+function fieldKeyFromPath(path) {
+  return `block-${path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase()}`;
+}
+
+function bindingToField(binding) {
+  const key = fieldKeyFromPath(binding.path);
+  let field;
+  switch (binding.type) {
+    case 'image':
+    case 'asset':
+      field = asset(binding.path, binding.description, key);
+      break;
+    case 'video':
+      field = assetVideo(binding.path, binding.description, key);
+      break;
+    case 'i18n-string':
+    case 'markdown':
+      field = textML(binding.path, binding.description, key, '');
+      break;
+    case 'number':
+      field = number(binding.path, binding.description, key, 0);
+      break;
+    case 'boolean':
+      field = bool(binding.path, binding.description, key, false);
+      break;
+    case 'url':
+    case 'array':
+    default:
+      field = text(binding.path, binding.description, key, '');
+      break;
+  }
+  return { ...field, name: binding.path };
+}
+
+export function emitBlockDrivenFields(pageType, blocks, pageId = pageType) {
+  const library = new Map(listBlocks().map(({ manifest }) => [manifest.name, manifest]));
+  const seen = new Set();
+  const fields = [];
+  for (const block of blocks ?? []) {
+    const manifest = library.get(block.name);
+    if (!manifest) throw new Error(`Unknown block: ${block.name}`);
+    for (const binding of parseCapeBindings(manifest.capeBindings, { pageType, pageId })) {
+      if (seen.has(binding.path)) continue;
+      seen.add(binding.path);
+      fields.push(bindingToField(binding));
+    }
+  }
+  return fields;
+}
+
+function nextBlockDrivenTab(instanceId, pageType, blocks) {
+  const title = instanceTitle(pageType[0].toUpperCase() + pageType.slice(1), pageType, instanceId);
+  const fields = emitBlockDrivenFields(pageType, blocks, instanceId);
+  return tab(tabKey('next-block', pageType, instanceId), title, instanceId, [
+    block(blockKey('next-block', pageType, instanceId, 'fields'), 'Block content', fields),
+  ], true);
+}
+
 const VIDEO_PAGE_IDS = new Set(['video', 'intro-video', 'loading-video', 'ad-video']);
 
 export const KNOWN_PAGE_TYPES = new Set([
   'intro-video', 'loading-video', 'ad-video',
-  'landing', 'tutorial', 'result',
-  'leaderboard', 'register', 'voucher', 'game',
+  'loading', 'landing', 'tutorial', 'result',
+  'leaderboard', 'register', 'voucher', 'game', 'end', 'menu',
 ]);
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -696,6 +772,8 @@ export function buildNextCapeFormat({
   instances             = null,
   pageTypes             = {},
   pageElementSelections = {},
+  pageBlocks            = {},
+  blocksConfig          = {},
   modules               = [],
   flowEnabledExits      = {},
   menuItemsEnabled      = {},
@@ -725,7 +803,15 @@ export function buildNextCapeFormat({
     const rawType = inst.type ?? pageTypes[inst.id] ?? inst.id;
     const type = VIDEO_PAGE_IDS.has(inst.id) || VIDEO_PAGE_IDS.has(rawType) ? 'video' : rawType;
     const els = pageElementSelections[inst.id] ?? pageElementSelections[type] ?? [];
+    const blockList = blockListFromConfig(pageBlocks[inst.id] ?? blocksConfig[inst.id] ?? pageBlocks[type] ?? blocksConfig[type]);
+    if (blockList.length > 0) {
+      pageTabs.push(nextBlockDrivenTab(inst.id, type, blockList));
+      continue;
+    }
     switch (type) {
+      case 'loading':
+        pageTabs.push(nextBlockDrivenTab(inst.id, type, []));
+        break;
       case 'video':
         pageTabs.push(nextVideoTab(inst.id));
         break;
@@ -751,6 +837,12 @@ export function buildNextCapeFormat({
         break;
       case 'game':
         // game UI is engine-driven — intentionally no CAPE tab
+        break;
+      case 'end':
+        pageTabs.push(nextBlockDrivenTab(inst.id, type, []));
+        break;
+      case 'menu':
+        // menu tab is appended once below
         break;
       default:
         // An unknown type means the wizard sent something the builder can't
@@ -796,6 +888,8 @@ export function buildTanStackCapeFormat({
   pageTypes = {},
   tsPageElementSelections = {},
   pageElementSelections = {},
+  pageBlocks = {},
+  blocksConfig = {},
   modules = [],
   flowEnabledExits = {},
   menuItemsEnabled = {},
@@ -815,6 +909,8 @@ export function buildTanStackCapeFormat({
     instances,
     pageTypes,
     pageElementSelections: selectionSource,
+    pageBlocks,
+    blocksConfig,
     modules: [...effectiveModules],
     flowEnabledExits,
     menuItemsEnabled,

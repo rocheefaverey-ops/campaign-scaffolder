@@ -1,0 +1,22 @@
+{
+  "name": "video-player",
+  "displayName": "Video player",
+  "description": "Self-hosted video player with end behavior.",
+  "files": [
+    { "src": "VideoPlayer.tsx", "dest": "components/_blocks/video-player/VideoPlayer.tsx" },
+    { "src": "VideoPlayer.module.scss", "dest": "components/_blocks/video-player/VideoPlayer.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "muted": { "kind": "boolean", "default": true },
+    "loop": { "kind": "boolean", "default": false },
+    "onEnd": { "kind": "enum", "of": ["auto-advance", "reveal-cta", "wait-for-engine"], "default": "auto-advance" },
+    "availableAfterMs": { "kind": "number", "min": 0, "max": 60000, "default": 3000 }
+  },
+  "capeBindings": {
+    "src": "{pageType}.video | video | video file"
+  },
+  "usableOn": ["video"]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "field-set",
+  "displayName": "Field set",
+  "description": "Variable registration fields.",
+  "files": [
+    { "src": "FieldSet.tsx", "dest": "components/_blocks/field-set/FieldSet.tsx" },
+    { "src": "FieldSet.module.scss", "dest": "components/_blocks/field-set/FieldSet.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "fields": { "kind": "array-of-enum", "of": ["firstName", "middleParticle", "lastName", "email", "phone", "dob", "postcode", "country"], "default": ["firstName", "lastName", "email"] }
+  },
+  "capeBindings": {
+    "labels": "{pageType}.fields | array | form field labels"
+  },
+  "usableOn": ["register"]
+}

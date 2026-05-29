@@ -1,0 +1,21 @@
+{
+  "name": "pre-gate-modal",
+  "displayName": "Pre-gate modal",
+  "description": "Landing age or confirmation gate.",
+  "files": [
+    { "src": "PreGateModal.tsx", "dest": "components/_blocks/pre-gate-modal/PreGateModal.tsx" },
+    { "src": "PreGateModal.module.scss", "dest": "components/_blocks/pre-gate-modal/PreGateModal.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "kind": { "kind": "enum", "of": ["age-18", "age-21", "confirm"], "default": "age-18" },
+    "persistAcrossSession": { "kind": "boolean", "default": true }
+  },
+  "capeBindings": {
+    "title": "{pageType}.preGateTitle | i18n-string | pre-gate title",
+    "confirm": "{pageType}.preGateConfirm | i18n-string | pre-gate confirm button"
+  },
+  "usableOn": ["landing"]
+}

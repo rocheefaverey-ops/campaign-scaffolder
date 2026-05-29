@@ -1,0 +1,14 @@
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.75rem;
+}
+.dots span {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 25%, transparent);
+}
+.dots .active { background: currentColor; }
+.count { text-align: center; opacity: 0.75; }

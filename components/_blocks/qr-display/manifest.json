@@ -1,0 +1,17 @@
+{
+  "name": "qr-display",
+  "displayName": "QR display",
+  "description": "Centered QR display for in-store redemption.",
+  "files": [
+    { "src": "QrDisplay.tsx", "dest": "components/_blocks/qr-display/QrDisplay.tsx" },
+    { "src": "QrDisplay.module.scss", "dest": "components/_blocks/qr-display/QrDisplay.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {},
+  "capeBindings": {
+    "instructions": "{pageType}.qrInstructions | i18n-string | QR instructions"
+  },
+  "usableOn": ["voucher"]
+}

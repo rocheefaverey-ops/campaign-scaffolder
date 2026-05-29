@@ -1,0 +1,25 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+}
+.panel {
+  width: min(22rem, calc(100vw - 2rem));
+  border-radius: 1rem;
+  background: #111;
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+  text-align: center;
+}
+.panel button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  font: inherit;
+  font-weight: 700;
+}

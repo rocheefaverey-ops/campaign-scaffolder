@@ -34,6 +34,8 @@ import { TS_PAGE_ELEMENTS, TS_PAGE_DEFAULTS, TS_ELEMENT_CATALOGUE, TS_ALL_PAGES,
 import { getGamesByEngine, getGamesByStack, getGame, gameEnvLines, gameLabel } from './game-registry.js';
 import { checkAuth, validateAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, seedTemplateAssets, publishCampaign } from './cape-client.js';
 import { buildTanStackCapeFormat, buildNextCapeFormat } from './cape-format-builder.js';
+import { pageBlocksToBlocksConfig } from './block-defaults.js';
+import { migrateScaffoldConfig } from './block-migration.js';
 import {
   ALL_PAGES,
   EXPLICIT_VIDEO_PAGES,
@@ -2547,11 +2549,58 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
 
     copyBlockFiles(blocksToCopy, frontendDir, blockTokens);
 
-    const tsx = buildBlockDrivenLanding(blocksConfig.landing.blocks);
+    const tsx = buildBlockDrivenLanding(blocksConfig.landing.blocks, { routeMap });
     const landingPath = join(frontendDir, 'app', '(campaign)', 'landing', 'page.tsx');
     mkdirSync(dirname(landingPath), { recursive: true });
     writeFileSync(landingPath, tsx, 'utf8');
     ok('landing page generated from block list (override)');
+  }
+
+  // 3b''. Block-driven page overrides beyond the original landing proof.
+  if (blocksConfig && Object.keys(blocksConfig).some((key) => key !== 'landing' && blocksConfig[key]?.blocks?.length)) {
+    step('3b-blocks', 'Generating additional block-driven pages...');
+    const { listBlocks, copyBlockFiles } = await import('./block-resolver.js');
+    const { buildBlockDrivenPage } = await import('./page-builder.js');
+
+    const allBlocks = listBlocks();
+    const knownNames = new Set(allBlocks.map((b) => b.manifest.name));
+    const requestedNames = new Set();
+    for (const [pageId, pageConfig] of Object.entries(blocksConfig)) {
+      if (pageId === 'landing') continue;
+      const blockList = Array.isArray(pageConfig?.blocks) ? pageConfig.blocks : [];
+      for (const block of blockList) {
+        if (!knownNames.has(block.name)) {
+          throw new Error(
+            `Unknown block "${block.name}" referenced in blocks-config for ${pageId}. ` +
+            `Available: ${[...knownNames].sort().join(', ')}`
+          );
+        }
+        requestedNames.add(block.name);
+      }
+    }
+
+    const blocksToCopy = allBlocks.filter((b) => requestedNames.has(b.manifest.name));
+    copyBlockFiles(blocksToCopy, frontendDir, {
+      PROJECT_NAME: name,
+      CAPE_ID: capeId,
+      MARKET: market,
+    });
+
+    let generatedBlockPages = 0;
+    for (const [pageId, pageConfig] of Object.entries(blocksConfig)) {
+      if (pageId === 'landing') continue;
+      const blockList = Array.isArray(pageConfig?.blocks) ? pageConfig.blocks : [];
+      if (!blockList.length) continue;
+      const pageType = pageTypes[pageId] ?? pageModuleType(pageId);
+      const tsx = buildBlockDrivenPage(pageId, pageType, blockList, { routeMap });
+      const defaultRoute = PAGE_ROUTES[pageId] ?? PAGE_ROUTES[pageType] ?? `/${pageId}`;
+      const folder = defaultRoute.replace(/^\//, '') || pageId;
+      const pagePath = join(frontendDir, 'app', '(campaign)', folder, 'page.tsx');
+      mkdirSync(dirname(pagePath), { recursive: true });
+      writeFileSync(pagePath, tsx, 'utf8');
+      generatedBlockPages++;
+    }
+    ok(`${generatedBlockPages} additional block-driven page(s) generated`);
   }
 
   // 3c. Rename (campaign) route folders to match custom routeMap slugs.
@@ -2698,6 +2747,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     flowRules:    Object.keys(flowRules).length > 0 ? flowRules : undefined,
     // Page element selections (page builder output)
     pageElementSelections: Object.keys(pageElementSelections).length > 0 ? pageElementSelections : undefined,
+    blocksConfig: blocksConfig && Object.keys(blocksConfig).length > 0 ? blocksConfig : undefined,
     // Modules (full resolved list + optional-only list)
     modules,
     optionalModules: _optionalModules.length > 0 ? _optionalModules : undefined,
@@ -2733,6 +2783,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     instances:        pages.map(id => ({ id, type: pageTypes[id] ?? id })),
     pageTypes,
     pageElementSelections,
+    blocksConfig,
     modules,
     flowEnabledExits,
     menuItemsEnabled,
@@ -3937,6 +3988,12 @@ async function main() {
     let existing;
     try { existing = JSON.parse(readFileSync(markerPath, 'utf8')); }
     catch { throw new Error(`Could not read .scaffolded config in ${targetDir}`); }
+    const existingPageBlocks = existing.pageBlocks ?? existing.wizard?.pageBlocks;
+    existing = migrateScaffoldConfig({
+      ...existing,
+      pageSettings: existing.pageSettings ?? existing.wizard?.pageSettings ?? {},
+      pageBlocks: existingPageBlocks,
+    });
 
     console.log('');
     console.log(c.bold('  ┌──────────────────────────────────────────────┐'));
@@ -3977,6 +4034,7 @@ async function main() {
       pageTypes:             existing.pageTypes ?? inferPageTypes(existing.pages ?? []),
       flowExits:             existing.flowExits ?? {},
       flowRules:             existing.flowRules ?? existing.wizard?.flowRules ?? {},
+      blocksConfig:          existing.blocksConfig ?? pageBlocksToBlocksConfig(existing.pageBlocks ?? {}),
     };
 
     await enforceConfigValidation(options, { yes: args.yes });
@@ -3997,7 +4055,15 @@ async function main() {
     let existing;
     try { existing = JSON.parse(readFileSync(markerPath, 'utf8')); }
     catch { throw new Error(`Could not read .scaffolded config in ${targetDir}`); }
+    const existingPageBlocks = existing.pageBlocks ?? existing.wizard?.pageBlocks;
+    const hadPageBlocks = Boolean(existingPageBlocks && Object.keys(existingPageBlocks).length > 0);
+    existing = migrateScaffoldConfig({
+      ...existing,
+      pageSettings: existing.pageSettings ?? existing.wizard?.pageSettings ?? {},
+      pageBlocks: existingPageBlocks,
+    });
     existing.outputDir = targetDir;
+    existing.blocksConfig = existing.blocksConfig ?? pageBlocksToBlocksConfig(existing.pageBlocks ?? {});
 
     // Pre-flight the git invariants BEFORE prompting the user, so a doomed
     // update fails fast instead of wasting them through the wizard prompts.
@@ -4026,9 +4092,24 @@ async function main() {
       );
     }
 
+    if (args.yes) {
+      const options = {
+        ...existing,
+        outputDir: targetDir,
+        isUpdate: true,
+        updateType: hadPageBlocks ? 'update' : 'block-migration',
+        blocksConfig: existing.blocksConfig ?? pageBlocksToBlocksConfig(existing.pageBlocks ?? {}),
+        forceDirty: Boolean(args.forceDirty),
+      };
+      await enforceConfigValidation(options, { yes: true });
+      await scaffold(options);
+      return;
+    }
+
     const options = await runUpdateWizard(existing, args);
     if (!options) { console.log('\n  Geen wijzigingen. Klaar.\n'); process.exit(0); }
     options.forceDirty = Boolean(args.forceDirty);
+    options.blocksConfig = options.blocksConfig ?? pageBlocksToBlocksConfig(options.pageBlocks ?? {});
     await enforceConfigValidation(options, { yes: args.yes });
     await scaffold(options);
     return;
@@ -4103,6 +4184,8 @@ async function main() {
               ...(cfg.tsPageElementSelections ?? {}),
             },
             pageElementSelections: cfg.pageElementSelections ?? {},
+            pageBlocks:            cfg.pageBlocks ?? {},
+            blocksConfig:          cfg.blocksConfig ?? pageBlocksToBlocksConfig(cfg.pageBlocks ?? {}),
             modules:               resolveModules(cfg.game ?? 'unity', pageIds.map(id => pageTypes[id] ?? id), cfg.modules ?? []),
             flowEnabledExits:      cfg.flowEnabledExits ?? {},
             menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
@@ -4112,6 +4195,8 @@ async function main() {
             instances:         pageIds.map(id => ({ id, type: pageTypes[id] ?? id })),
             pageTypes,
             pageElementSelections: cfg.pageElementSelections ?? {},
+            pageBlocks:            cfg.pageBlocks ?? {},
+            blocksConfig:          cfg.blocksConfig ?? pageBlocksToBlocksConfig(cfg.pageBlocks ?? {}),
             modules:               resolveModules(cfg.game ?? 'unity', pageIds.map(id => pageTypes[id] ?? id), cfg.modules ?? []),
             flowEnabledExits:      cfg.flowEnabledExits ?? {},
             menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
@@ -4182,6 +4267,7 @@ async function main() {
       // (e.g. {'landing': '/'}). Filled during config-file mode; empty in
       // interactive mode (which uses PAGE_ROUTES directly).
       routeMap,
+      blocksConfig:            cfg.blocksConfig ?? pageBlocksToBlocksConfig(cfg.pageBlocks ?? {}),
       // Wizard-only metadata: round-tripped through .scaffolded so the
       // "Open existing" path in the web wizard can re-fill the entire UI.
       // Each field is undefined when missing so JSON.stringify drops it.
@@ -4200,6 +4286,7 @@ async function main() {
         capeTitle:          cfg.capeTitle          || undefined,
         createCape:         cfg.createCape ?? undefined,
         gameId:             cfg.gameId || undefined,
+        pageBlocks:         cfg.pageBlocks && Object.keys(cfg.pageBlocks).length > 0 ? cfg.pageBlocks : undefined,
       },
     };
 

@@ -1,0 +1,13 @@
+.row {
+  width: min(28rem, calc(100% - 2rem));
+  margin: 0.75rem auto;
+  display: grid;
+  grid-template-columns: 2.5rem 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.7rem;
+  background: currentColor;
+  color: var(--bg, #fff);
+}
+.row em { font-style: normal; font-weight: 700; }

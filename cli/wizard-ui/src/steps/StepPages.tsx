@@ -11,8 +11,8 @@ import { CSS } from '@dnd-kit/utilities';
 
 import {
   pagesForStack, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, BUTTON_VARIANTS, defaultRouteForType, deriveRegMode,
-  FLOW_RULE_OPTIONS, FLOW_RULES_BY_PAGE, defaultFlowRuleForType,
-  type ScaffoldConfig, type PageSettings, type StepProps, type PageInstance, type ButtonVariant, type PageFlowRule, type FlowRuleMode,
+  FLOW_RULE_OPTIONS, FLOW_RULES_BY_PAGE, defaultFlowRuleForType, defaultBlocksForPage,
+  type ScaffoldConfig, type StepProps, type PageInstance, type ButtonVariant, type PageFlowRule, type FlowRuleMode,
 } from '../shared/config.ts';
 import PageSettingsCard from './PageSettingsCard.tsx';
 import PreviewPane from './PreviewPane.tsx';
@@ -75,6 +75,10 @@ export default function StepPages({ config, setConfig }: StepProps) {
     setConfig({
       ...config,
       pages: next,
+      pageBlocks: {
+        ...(config.pageBlocks ?? {}),
+        [id]: defaultBlocksForPage(type),
+      },
       flowRules: {
         ...(config.flowRules ?? {}),
         [id]: defaultFlowRuleForType(type),
@@ -83,8 +87,10 @@ export default function StepPages({ config, setConfig }: StepProps) {
   };
   const removeInstance = (id: string) => {
     const nextRules = { ...(config.flowRules ?? {}) };
+    const nextPageBlocks = { ...(config.pageBlocks ?? {}) };
     delete nextRules[id];
-    setConfig({ ...config, pages: inFlow.filter(i => i.id !== id), flowRules: nextRules });
+    delete nextPageBlocks[id];
+    setConfig({ ...config, pages: inFlow.filter(i => i.id !== id), flowRules: nextRules, pageBlocks: nextPageBlocks });
   };
 
   const onChangeRoute = (instanceId: string, raw: string) => {
@@ -137,9 +143,9 @@ export default function StepPages({ config, setConfig }: StepProps) {
                   flowExits={config.flowExits}
                   enabledExits={config.flowEnabledExits}
                   buttonVariants={config.flowButtonVariants}
-                  pageSettings={config.pageSettings}
+                  config={config}
+                  setConfig={setConfig}
                   flowRules={config.flowRules ?? {}}
-                  setPageSettings={(next) => setConfig({ ...config, pageSettings: next })}
                   onChangeRule={(pageId, rule) => {
                     setConfig({
                       ...config,
@@ -272,9 +278,9 @@ interface FlowCardProps {
   flowExits:        Record<string, string>;
   enabledExits:     Record<string, boolean>;
   buttonVariants:   Record<string, ButtonVariant>;
-  pageSettings:     PageSettings;
+  config:           ScaffoldConfig;
+  setConfig:        (next: ScaffoldConfig) => void;
   flowRules:        Record<string, PageFlowRule>;
-  setPageSettings:  (next: PageSettings) => void;
   onChangeRule:     (pageId: string, rule: PageFlowRule) => void;
   onChangeExit:     (pageId: string, exitKey: string, target: string) => void;
   onToggleExit:     (pageId: string, exitKey: string, enabled: boolean) => void;
@@ -286,7 +292,7 @@ interface FlowCardProps {
 
 function FlowCard({
   instance, index, isLast, inFlow, flowExits, enabledExits, buttonVariants,
-  pageSettings, flowRules, setPageSettings, onChangeRule,
+  config, setConfig, flowRules, onChangeRule,
   onChangeExit, onToggleExit, onChangeVariant, onRemove, onChangeRoute, onBlurRoute,
 }: FlowCardProps) {
   const meta = pageMeta(instance.type);
@@ -304,7 +310,11 @@ function FlowCard({
   if (!meta) return null;
 
   const exits = meta.exits ?? [];
-  const hasSettings = Boolean(PAGE_SETTINGS_SCHEMA[instance.type]?.length);
+  const defaultBlocks = defaultBlocksForPage(instance.type);
+  const hasSettings = Boolean(
+    PAGE_SETTINGS_SCHEMA[instance.type]?.length ||
+    Object.keys(config.pageBlocks?.[instance.id]?.blocks ?? defaultBlocks.blocks).length,
+  );
 
   const takenRoutes = new Set(inFlow.filter(p => p.id !== instance.id).map(p => p.route));
   const isDuplicate = takenRoutes.has(instance.route);
@@ -513,8 +523,8 @@ function FlowCard({
             pageId={instance.id}
             schemaType={instance.type}
             pageLabel={title}
-            settings={pageSettings}
-            setSettings={setPageSettings}
+            config={config}
+            setConfig={setConfig}
           />
         </div>
       )}

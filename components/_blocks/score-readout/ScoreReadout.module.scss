@@ -1,0 +1,8 @@
+.readout {
+  display: grid;
+  place-items: center;
+  gap: 0.2rem;
+  padding: 1rem;
+}
+.readout span, .readout small { opacity: 0.75; }
+.readout strong { font-size: clamp(2.25rem, 14vw, 5rem); line-height: 1; }

@@ -40,7 +40,7 @@ describe('buildBlockDrivenLanding', () => {
       ]}},
     ];
     const out = buildBlockDrivenLanding(blocks);
-    assert.match(out, /router\.push\(['"]\/game['"]\)/);
+    assert.match(out, /router\.push\(['"]\/gameplay['"]\)/);
     assert.match(out, /router\.push\(['"]\/leaderboard['"]\)/);
   });
 
@@ -54,10 +54,10 @@ describe('buildBlockDrivenLanding', () => {
     assert.match(out, /^'use client';/);
   });
 
-  it('omits useRouter import & binding when no cta-group block is present', () => {
+  it('keeps the router available for chrome/navigation even without cta-group', () => {
     const blocksWithoutCta = minimalBlocks.filter((b) => b.name !== 'cta-group');
     const out = buildBlockDrivenLanding(blocksWithoutCta);
-    assert.doesNotMatch(out, /useRouter/);
+    assert.match(out, /useRouter/);
   });
 
   it('emits useRouter import & binding when cta-group IS present', () => {

@@ -13,7 +13,7 @@
     "count": { "kind": "number", "min": 1, "max": 4, "default": 1 }
   },
   "capeBindings": {
-    "labels": "{pageType}.cta[i].label (i18n, per button)"
+    "labels": "{pageType}.cta | array | per-button labels"
   },
   "usableOn": ["landing", "result", "leaderboard", "voucher", "end", "menu"]
 }

@@ -1,0 +1,17 @@
+{
+  "name": "prize-illustration",
+  "displayName": "Prize illustration",
+  "description": "Centered image showing the prize or reward.",
+  "files": [
+    { "src": "PrizeIllustration.tsx", "dest": "components/_blocks/prize-illustration/PrizeIllustration.tsx" },
+    { "src": "PrizeIllustration.module.scss", "dest": "components/_blocks/prize-illustration/PrizeIllustration.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {},
+  "capeBindings": {
+    "image": "{pageType}.prizeImage | image | prize illustration"
+  },
+  "usableOn": ["end"]
+}

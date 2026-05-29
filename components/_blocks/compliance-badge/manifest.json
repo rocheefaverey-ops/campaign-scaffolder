@@ -1,0 +1,19 @@
+{
+  "name": "compliance-badge",
+  "displayName": "Compliance badge",
+  "description": "Static legal/compliance badge such as 18+.",
+  "files": [
+    { "src": "ComplianceBadge.tsx", "dest": "components/_blocks/compliance-badge/ComplianceBadge.tsx" },
+    { "src": "ComplianceBadge.module.scss", "dest": "components/_blocks/compliance-badge/ComplianceBadge.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "kind": { "kind": "enum", "of": ["18+", "nix18", "custom"], "default": "18+" }
+  },
+  "capeBindings": {
+    "label": "{pageType}.complianceLabel | i18n-string | compliance badge label"
+  },
+  "usableOn": ["landing", "onboarding", "result", "voucher", "end"]
+}

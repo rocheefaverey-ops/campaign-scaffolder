@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
@@ -75,15 +75,6 @@ describe('block-driven landing integration', () => {
       );
 
       const frontendDir = join(outDir, 'project/frontend');
-
-      // STUB: Plan 3 will add the real useCape hook from a CAPE schema generator.
-      // For Plan 1 we install a minimal stub so the generated page compiles.
-      const libDir = join(frontendDir, 'lib');
-      mkdirSync(libDir, { recursive: true });
-      writeFileSync(
-        join(libDir, 'cape.ts'),
-        `export function useCape(_page: string): any { return {}; }\n`,
-      );
 
       // Install deps + type-check
       execSync('pnpm install', { cwd: frontendDir, stdio: 'inherit' });

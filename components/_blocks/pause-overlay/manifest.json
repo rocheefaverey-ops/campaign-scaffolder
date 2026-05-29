@@ -1,0 +1,20 @@
+{
+  "name": "pause-overlay",
+  "displayName": "Pause overlay",
+  "description": "Pause modal with resume and optional actions.",
+  "files": [
+    { "src": "PauseOverlay.tsx", "dest": "components/_blocks/pause-overlay/PauseOverlay.tsx" },
+    { "src": "PauseOverlay.module.scss", "dest": "components/_blocks/pause-overlay/PauseOverlay.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "showRestart": { "kind": "boolean", "default": true },
+    "showHowToPlay": { "kind": "boolean", "default": true }
+  },
+  "capeBindings": {
+    "title": "{pageType}.pauseTitle | i18n-string | pause overlay title"
+  },
+  "usableOn": ["game"]
+}

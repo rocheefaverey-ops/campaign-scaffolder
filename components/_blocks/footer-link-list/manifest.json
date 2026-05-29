@@ -11,7 +11,7 @@
   "cspPatch": {},
   "settings": {},
   "capeBindings": {
-    "links": "{pageType}.footerLinks[] — array of { label, href }"
+    "links": "{pageType}.footerLinks | array | legal/supporting links"
   },
   "usableOn": ["landing", "result", "voucher", "end"]
 }

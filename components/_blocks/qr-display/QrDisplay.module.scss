@@ -1,0 +1,19 @@
+.wrap {
+  display: grid;
+  place-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  text-align: center;
+}
+.wrap img, .placeholder {
+  width: 13.75rem;
+  height: 13.75rem;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #111;
+}
+.placeholder {
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}

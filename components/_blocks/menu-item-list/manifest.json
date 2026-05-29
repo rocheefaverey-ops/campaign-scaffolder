@@ -1,0 +1,19 @@
+{
+  "name": "menu-item-list",
+  "displayName": "Menu item list",
+  "description": "Vertical menu item list.",
+  "files": [
+    { "src": "MenuItemList.tsx", "dest": "components/_blocks/menu-item-list/MenuItemList.tsx" },
+    { "src": "MenuItemList.module.scss", "dest": "components/_blocks/menu-item-list/MenuItemList.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "items": { "kind": "array-of-enum", "of": ["home", "howToPlay", "leaderboard", "prizes", "terms", "privacy", "language", "profile", "custom"], "default": ["home", "howToPlay", "leaderboard", "terms", "privacy"] }
+  },
+  "capeBindings": {
+    "labels": "{pageType}.items | array | menu item labels"
+  },
+  "usableOn": ["menu"]
+}
