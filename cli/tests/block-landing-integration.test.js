@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
@@ -44,6 +44,50 @@ describe('block-driven landing integration', () => {
 
       const backgroundBlock = join(outDir, 'project/frontend/components/_blocks/background/Background.tsx');
       assert.ok(existsSync(backgroundBlock), 'expected block source copied into the Next.js app dir');
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  });
+
+  it('the generated landing page type-checks against the base template', { timeout: 180_000 }, () => {
+    const outDir = mkdtempSync(join(tmpdir(), 'block-landing-tsc-'));
+    try {
+      const blocksConfigPath = join(outDir, 'blocks-config.json');
+      writeFileSync(blocksConfigPath, JSON.stringify({
+        landing: {
+          blocks: [
+            { name: 'background', settings: { kind: 'image' } },
+            { name: 'title-block', settings: { showKicker: false, showSubtitle: false } },
+            { name: 'cta-group', settings: { count: 1, buttons: [{ variant: 'primary', exit: 'game' }] } },
+          ],
+        },
+      }));
+
+      // Note: --page=tutorial --page=result are included alongside landing so
+      // the base template's pre-shipped tutorial/result pages get their flow
+      // tokens replaced (otherwise `{{FLOW_RULE_TUTORIAL}}` remains in source
+      // and breaks `tsc`). The block-driven landing override is still the unit
+      // under test; the extra pages just keep the base template's existing
+      // route files compiling.
+      execSync(
+        `node cli/scaffold.js --name=block-tsc --cape-id=99999 --market=NL --stack=next --game=none --page=landing --page=tutorial --page=result --output=${outDir}/project --blocks-config=${blocksConfigPath} --yes --skip-install --skip-git`,
+        { stdio: 'inherit' },
+      );
+
+      const frontendDir = join(outDir, 'project/frontend');
+
+      // STUB: Plan 3 will add the real useCape hook from a CAPE schema generator.
+      // For Plan 1 we install a minimal stub so the generated page compiles.
+      const libDir = join(frontendDir, 'lib');
+      mkdirSync(libDir, { recursive: true });
+      writeFileSync(
+        join(libDir, 'cape.ts'),
+        `export function useCape(_page: string): any { return {}; }\n`,
+      );
+
+      // Install deps + type-check
+      execSync('pnpm install', { cwd: frontendDir, stdio: 'inherit' });
+      execSync('pnpm run ts-compile', { cwd: frontendDir, stdio: 'inherit' });
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }
