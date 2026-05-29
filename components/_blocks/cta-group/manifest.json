@@ -1,0 +1,19 @@
+{
+  "name": "cta-group",
+  "displayName": "CTA group",
+  "description": "1–4 stacked buttons with per-button variant and flow exit. The wizard exposes count + per-button config.",
+  "files": [
+    { "src": "CtaGroup.tsx", "dest": "components/_blocks/cta-group/CtaGroup.tsx" },
+    { "src": "CtaGroup.module.scss", "dest": "components/_blocks/cta-group/CtaGroup.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "count": { "kind": "number", "min": 1, "max": 4, "default": 1 }
+  },
+  "capeBindings": {
+    "labels": "{pageType}.cta[i].label (i18n, per button)"
+  },
+  "usableOn": ["landing", "result", "leaderboard", "voucher", "end", "menu"]
+}

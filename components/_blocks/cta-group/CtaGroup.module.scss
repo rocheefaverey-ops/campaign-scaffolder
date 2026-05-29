@@ -1,0 +1,29 @@
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+}
+.btn {
+  height: 3rem;
+  border-radius: 999px;
+  border: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 1.5rem;
+}
+.btn--primary { background: var(--cta-primary-bg, #d33); color: var(--cta-primary-fg, #fff); }
+.btn--secondary { background: transparent; color: var(--cta-secondary-fg, currentColor); border: 1px solid currentColor; }
+.btn--tertiary { background: transparent; color: var(--cta-tertiary-fg, currentColor); text-decoration: underline; }
+.btn--dark { background: var(--cta-dark-bg, #111); color: var(--cta-dark-fg, #fff); }
+.btn--danger { background: var(--cta-danger-bg, #c33); color: #fff; }
+.btn--icon-only {
+  width: 3rem;
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid currentColor;
+}
