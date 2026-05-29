@@ -52,4 +52,60 @@ describe('validateManifest', () => {
     assert.equal(r.ok, false);
     assert.ok(r.errors.some(e => e.includes('dest')));
   });
+
+  it('rejects null', () => {
+    const r = validateManifest(null);
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes('plain object')));
+  });
+
+  it('rejects an array as the manifest itself', () => {
+    const r = validateManifest([]);
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes('plain object')));
+  });
+
+  it('rejects settings: null', () => {
+    const m = {
+      name: 'x',
+      displayName: 'x',
+      files: [{ src: 'X.tsx', dest: 'X.tsx' }],
+      settings: null,
+      capeBindings: {},
+      usableOn: ['landing'],
+    };
+    const r = validateManifest(m);
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes('settings')));
+  });
+
+  it('rejects capeBindings: null', () => {
+    const m = {
+      name: 'x',
+      displayName: 'x',
+      files: [{ src: 'X.tsx', dest: 'X.tsx' }],
+      settings: {},
+      capeBindings: null,
+      usableOn: ['landing'],
+    };
+    const r = validateManifest(m);
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes('capeBindings')));
+  });
+
+  it('rejects non-object file entries with a clear message', () => {
+    const m = {
+      name: 'x',
+      displayName: 'x',
+      files: ['oops'],
+      settings: {},
+      capeBindings: {},
+      usableOn: ['landing'],
+    };
+    const r = validateManifest(m);
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes('files[0] must be an object')));
+    // Should NOT also emit "missing src" / "missing dest" — one clear error per entry.
+    assert.equal(r.errors.filter((e) => e.startsWith('files[0]')).length, 1);
+  });
 });
