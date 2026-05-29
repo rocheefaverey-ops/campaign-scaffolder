@@ -33,8 +33,8 @@ describe('block-driven landing integration', () => {
         { stdio: 'inherit' },
       );
 
-      const landingTsx = join(outDir, 'project/app/landing/page.tsx');
-      assert.ok(existsSync(landingTsx), 'expected generated landing/page.tsx');
+      const landingTsx = join(outDir, 'project/frontend/app/(campaign)/landing/page.tsx');
+      assert.ok(existsSync(landingTsx), 'expected generated landing/page.tsx at the legacy override location');
       const content = readFileSync(landingTsx, 'utf8');
       assert.match(content, /import \{ Background \}/);
       assert.match(content, /import \{ HeaderChrome \}/);
@@ -42,8 +42,8 @@ describe('block-driven landing integration', () => {
       assert.match(content, /import \{ TitleBlock \}/);
       assert.match(content, /import \{ CtaGroup \}/);
 
-      const backgroundBlock = join(outDir, 'project/components/_blocks/background/Background.tsx');
-      assert.ok(existsSync(backgroundBlock), 'expected block source copied into project');
+      const backgroundBlock = join(outDir, 'project/frontend/components/_blocks/background/Background.tsx');
+      assert.ok(existsSync(backgroundBlock), 'expected block source copied into the Next.js app dir');
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }

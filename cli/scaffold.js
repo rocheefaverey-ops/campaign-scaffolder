@@ -2518,6 +2518,8 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
   // 3b'. Block-driven landing override (Plan 1; wizard will populate this in Plan 2).
   // When --blocks-config supplies a `landing.blocks` list, replace whatever the
   // legacy page builder produced for landing with a block-composed file.
+  // Writes to the SAME path as the legacy generator (frontendDir/app/(campaign)/landing/page.tsx)
+  // so the override actually replaces the legacy template rather than landing alongside it.
   if (blocksConfig?.landing?.blocks?.length) {
     step('3b′', 'Generating block-driven landing page…');
     const { listBlocks, copyBlockFiles } = await import('./block-resolver.js');
@@ -2535,13 +2537,13 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
       MARKET: market,
     };
 
-    copyBlockFiles(blocksToCopy, outputDir, blockTokens);
+    copyBlockFiles(blocksToCopy, frontendDir, blockTokens);
 
     const tsx = buildBlockDrivenLanding(blocksConfig.landing.blocks);
-    const landingPath = join(outputDir, 'app/landing/page.tsx');
+    const landingPath = join(frontendDir, 'app', '(campaign)', 'landing', 'page.tsx');
     mkdirSync(dirname(landingPath), { recursive: true });
     writeFileSync(landingPath, tsx, 'utf8');
-    ok('landing page generated from block list');
+    ok('landing page generated from block list (override)');
   }
 
   // 3c. Rename (campaign) route folders to match custom routeMap slugs.
