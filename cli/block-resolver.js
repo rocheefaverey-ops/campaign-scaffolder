@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, mkdirSync, copyFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { validateManifest } from './block-manifest.js';
@@ -32,4 +32,40 @@ export function listBlocks() {
     blocks.push({ manifest, sourceDir });
   }
   return blocks;
+}
+
+/**
+ * Copy each block's declared files into the target project, applying token
+ * replacement to text files.
+ *
+ * @param {{ manifest: object, sourceDir: string }[]} blocks
+ * @param {string} targetDir absolute path of the scaffolded project root
+ * @param {Record<string, string>} tokens token map for {{TOKEN}} replacement
+ */
+export function copyBlockFiles(blocks, targetDir, tokens = {}) {
+  const seen = new Set();
+  for (const { manifest, sourceDir } of blocks) {
+    if (seen.has(manifest.name)) continue;
+    seen.add(manifest.name);
+
+    for (const file of manifest.files) {
+      const src = join(sourceDir, file.src);
+      const dest = join(targetDir, file.dest);
+      mkdirSync(dirname(dest), { recursive: true });
+
+      if (isTextFile(file.src)) {
+        let content = readFileSync(src, 'utf8');
+        for (const [key, value] of Object.entries(tokens)) {
+          content = content.replaceAll(`{{${key}}}`, value);
+        }
+        writeFileSync(dest, content);
+      } else {
+        copyFileSync(src, dest);
+      }
+    }
+  }
+}
+
+function isTextFile(filename) {
+  return /\.(tsx?|jsx?|scss|css|json|md|env)$/.test(filename);
 }
