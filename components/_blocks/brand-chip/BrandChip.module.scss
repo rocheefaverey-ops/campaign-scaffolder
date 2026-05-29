@@ -1,0 +1,8 @@
+.chip {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 0;
+  img { display: block; height: 100%; width: auto; }
+}
+.chip--sm img { height: 1.5rem; }
+.chip--md img { height: 2.5rem; }
