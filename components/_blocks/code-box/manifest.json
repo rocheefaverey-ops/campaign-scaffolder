@@ -1,0 +1,18 @@
+{
+  "name": "code-box",
+  "displayName": "Code box",
+  "description": "Tap-to-copy voucher or coupon code.",
+  "files": [
+    { "src": "CodeBox.tsx", "dest": "components/_blocks/code-box/CodeBox.tsx" },
+    { "src": "CodeBox.module.scss", "dest": "components/_blocks/code-box/CodeBox.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {},
+  "capeBindings": {
+    "label": "{pageType}.codeLabel | i18n-string | code label",
+    "copied": "{pageType}.codeCopiedConfirmation | i18n-string | copied confirmation"
+  },
+  "usableOn": ["voucher"]
+}

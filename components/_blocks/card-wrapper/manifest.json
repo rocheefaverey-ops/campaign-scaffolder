@@ -1,0 +1,18 @@
+{
+  "name": "card-wrapper",
+  "displayName": "Card wrapper",
+  "description": "Registration card or full-bleed content wrapper.",
+  "files": [
+    { "src": "CardWrapper.tsx", "dest": "components/_blocks/card-wrapper/CardWrapper.tsx" },
+    { "src": "CardWrapper.module.scss", "dest": "components/_blocks/card-wrapper/CardWrapper.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "style": { "kind": "enum", "of": ["card", "full-bleed"], "default": "card" },
+    "cardWidth": { "kind": "enum", "of": ["with-margin", "edge-to-edge"], "default": "with-margin" }
+  },
+  "capeBindings": {},
+  "usableOn": ["register"]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "sponsor-footer-strip",
+  "displayName": "Sponsor footer strip",
+  "description": "Bottom sponsor attribution strip.",
+  "files": [
+    { "src": "SponsorFooterStrip.tsx", "dest": "components/_blocks/sponsor-footer-strip/SponsorFooterStrip.tsx" },
+    { "src": "SponsorFooterStrip.module.scss", "dest": "components/_blocks/sponsor-footer-strip/SponsorFooterStrip.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {},
+  "capeBindings": {
+    "text": "{pageType}.sponsorText | i18n-string | sponsor text",
+    "logo": "{pageType}.sponsorLogo | image | sponsor logo"
+  },
+  "usableOn": ["game"]
+}

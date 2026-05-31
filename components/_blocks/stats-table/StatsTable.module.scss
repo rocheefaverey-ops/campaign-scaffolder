@@ -1,0 +1,15 @@
+.table {
+  width: min(24rem, calc(100% - 2rem));
+  margin: 0.75rem auto;
+  display: grid;
+  gap: 0.35rem;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+.row dd { margin: 0; font-weight: 700; }
+.row dt { opacity: 0.76; }

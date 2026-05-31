@@ -1,0 +1,19 @@
+{
+  "name": "rank-list",
+  "displayName": "Rank list",
+  "description": "Scrollable leaderboard rows.",
+  "files": [
+    { "src": "RankList.tsx", "dest": "components/_blocks/rank-list/RankList.tsx" },
+    { "src": "RankList.module.scss", "dest": "components/_blocks/rank-list/RankList.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "rows": { "kind": "number", "min": 3, "max": 50, "default": 10 }
+  },
+  "capeBindings": {
+    "empty": "{pageType}.emptyState | i18n-string | empty leaderboard state"
+  },
+  "usableOn": ["leaderboard"]
+}

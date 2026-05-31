@@ -1,0 +1,19 @@
+{
+  "name": "status-chip",
+  "displayName": "Status chip",
+  "description": "Small runtime status pill.",
+  "files": [
+    { "src": "StatusChip.tsx", "dest": "components/_blocks/status-chip/StatusChip.tsx" },
+    { "src": "StatusChip.module.scss", "dest": "components/_blocks/status-chip/StatusChip.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "kind": { "kind": "enum", "of": ["registered", "winner", "offline"], "default": "registered" }
+  },
+  "capeBindings": {
+    "label": "{pageType}.statusLabel | i18n-string | status chip label"
+  },
+  "usableOn": ["result"]
+}

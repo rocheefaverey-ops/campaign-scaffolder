@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, type DragEndEvent,
@@ -11,35 +11,15 @@ import { CSS } from '@dnd-kit/utilities';
 
 import {
   pagesForStack, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, BUTTON_VARIANTS, defaultRouteForType, deriveRegMode,
-  FLOW_RULE_OPTIONS, FLOW_RULES_BY_PAGE, defaultFlowRuleForType,
-  PHASE_LABELS, phaseForType, pageIcon,
-  type ScaffoldConfig, type PageSettings, type StepProps, type PageInstance, type ButtonVariant, type PageFlowRule, type FlowRuleMode,
-  type Phase,
+  FLOW_RULE_OPTIONS, FLOW_RULES_BY_PAGE, defaultFlowRuleForType, defaultBlocksForPage,
+  type ScaffoldConfig, type StepProps, type PageInstance, type ButtonVariant, type PageFlowRule, type FlowRuleMode,
 } from '../shared/config.ts';
 import PageSettingsCard from './PageSettingsCard.tsx';
 import PreviewPane from './PreviewPane.tsx';
 
-/** Position-aware phase resolver — pages around `game` get bucketed by index, not by canonical type. */
-function phaseForInstance(pages: PageInstance[], idx: number): Phase {
-  const gameIdx = pages.findIndex(p => p.type === 'game');
-  const page = pages[idx];
-  if (gameIdx >= 0) {
-    if (page.type === 'game') return 'game';
-    if (idx < gameIdx) return 'before';
-    return 'after';
-  }
-  return phaseForType(page.type);
-}
-
-function resolveEntryId(pages: PageInstance[], flowEntry?: string): string | undefined {
-  if (flowEntry && pages.some(p => p.id === flowEntry)) return flowEntry;
-  return pages[0]?.id;
-}
-
 export default function StepPages({ config, setConfig }: StepProps) {
   const inFlow      = config.pages;
   const availablePages = pagesForStack(config.stack);
-  const entryId = resolveEntryId(inFlow, config.flowEntry);
 
   // `regMode` is now derived from where Register sits relative to Result in
   // the flow — no separate UI control. Sync the config field whenever the
@@ -95,6 +75,10 @@ export default function StepPages({ config, setConfig }: StepProps) {
     setConfig({
       ...config,
       pages: next,
+      pageBlocks: {
+        ...(config.pageBlocks ?? {}),
+        [id]: defaultBlocksForPage(type),
+      },
       flowRules: {
         ...(config.flowRules ?? {}),
         [id]: defaultFlowRuleForType(type),
@@ -103,8 +87,10 @@ export default function StepPages({ config, setConfig }: StepProps) {
   };
   const removeInstance = (id: string) => {
     const nextRules = { ...(config.flowRules ?? {}) };
+    const nextPageBlocks = { ...(config.pageBlocks ?? {}) };
     delete nextRules[id];
-    setConfig({ ...config, pages: inFlow.filter(i => i.id !== id), flowRules: nextRules });
+    delete nextPageBlocks[id];
+    setConfig({ ...config, pages: inFlow.filter(i => i.id !== id), flowRules: nextRules, pageBlocks: nextPageBlocks });
   };
 
   const onChangeRoute = (instanceId: string, raw: string) => {
@@ -126,133 +112,71 @@ export default function StepPages({ config, setConfig }: StepProps) {
     });
   };
 
-  const moveInstance = (id: string, dir: -1 | 1) => {
-    const idx = inFlow.findIndex(p => p.id === id);
-    if (idx < 0) return;
-    const next = idx + dir;
-    if (next < 0 || next >= inFlow.length) return;
-    setConfig({ ...config, pages: arrayMove(inFlow, idx, next) });
-    // Restore focus to the same direction button on the moved card so
-    // keyboard users can keep nudging it without re-hunting for the button.
-    requestAnimationFrame(() => {
-      const sel = `[data-flow-id="${window.CSS.escape(id)}"] [data-nudge="${dir === -1 ? 'up' : 'down'}"]`;
-      const el = document.querySelector<HTMLButtonElement>(sel);
-      el?.focus();
-    });
-  };
-
-  const setEntry = (id: string) => {
-    setConfig({ ...config, flowEntry: id === inFlow[0]?.id ? undefined : id });
-  };
-
-  const seedRecommendedFlow = () => {
-    const starter: PageInstance[] = [
-      { id: 'landing',  type: 'landing',  route: '/landing'  },
-      { id: 'tutorial', type: 'tutorial', route: '/tutorial' },
-      { id: 'game',     type: 'game',     route: '/gameplay' },
-      { id: 'result',   type: 'result',   route: '/result'   },
-    ];
-    setConfig({
-      ...config,
-      pages: starter,
-      flowRules: Object.fromEntries(starter.map(p => [p.id, defaultFlowRuleForType(p.type)])),
-    });
-  };
-
-  const regModeDerived = deriveRegMode(inFlow);
-  const dupRoutes = (() => {
-    const seen = new Map<string, number>();
-    for (const p of inFlow) seen.set(p.route, (seen.get(p.route) ?? 0) + 1);
-    return new Set(Array.from(seen.entries()).filter(([, n]) => n > 1).map(([r]) => r));
-  })();
-
   return (
     <>
       <div>
         <h2 className="step__title">Pages &amp; flow</h2>
         <p className="step__hint">
-          Drag to reorder, or use the ↑/↓ buttons. Click a page's <em>Settings</em> for inline options.
+          Drag the cards to reorder. Click <em>Settings</em> on a card to tweak its options inline.
         </p>
       </div>
 
       <div className="pages-layout">
       <section className="pages-col">
-        <FlowToolbar
-          pages={inFlow}
-          entryId={entryId}
-          regMode={regModeDerived}
-          dupRoutes={dupRoutes}
-        />
-
-        {inFlow.length === 0 ? (
-          <EmptyFlow onSeed={seedRecommendedFlow} />
-        ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={onDragEnd}
-          >
-            <SortableContext items={inFlow.map(i => i.id)} strategy={verticalListSortingStrategy}>
-              <ol className="flow-list">
-                {inFlow.map((instance, i) => {
-                  const phase = phaseForInstance(inFlow, i);
-                  const prevPhase = i > 0 ? phaseForInstance(inFlow, i - 1) : null;
-                  const showDivider = phase !== prevPhase;
-                  return (
-                    <Fragment key={instance.id}>
-                      {showDivider && <PhaseDivider phase={phase} />}
-                      <FlowCard
-                        instance={instance}
-                        index={i}
-                        isLast={i === inFlow.length - 1}
-                        isEntry={instance.id === entryId}
-                        inFlow={inFlow}
-                        flowExits={config.flowExits}
-                        enabledExits={config.flowEnabledExits}
-                        buttonVariants={config.flowButtonVariants}
-                        pageSettings={config.pageSettings}
-                        flowRules={config.flowRules ?? {}}
-                        dupRoute={dupRoutes.has(instance.route)}
-                        canMoveUp={i > 0}
-                        canMoveDown={i < inFlow.length - 1}
-                        setPageSettings={(next) => setConfig({ ...config, pageSettings: next })}
-                        onChangeRule={(pageId, rule) => {
-                          setConfig({
-                            ...config,
-                            flowRules: {
-                              ...(config.flowRules ?? {}),
-                              [pageId]: rule,
-                            },
-                          });
-                        }}
-                        onChangeExit={(pageId, exitKey, target) => {
-                          const k = `${pageId}.${exitKey}`;
-                          const next = { ...config.flowExits };
-                          if (target === '') delete next[k]; else next[k] = target;
-                          setConfig({ ...config, flowExits: next });
-                        }}
-                        onToggleExit={(pageId, exitKey, enabled) => {
-                          const k = `${pageId}.${exitKey}`;
-                          setConfig({ ...config, flowEnabledExits: { ...config.flowEnabledExits, [k]: enabled } });
-                        }}
-                        onChangeVariant={(pageId, exitKey, variant) => {
-                          const k = `${pageId}.${exitKey}`;
-                          setConfig({ ...config, flowButtonVariants: { ...config.flowButtonVariants, [k]: variant } });
-                        }}
-                        onRemove={() => removeInstance(instance.id)}
-                        onMoveUp={() => moveInstance(instance.id, -1)}
-                        onMoveDown={() => moveInstance(instance.id, 1)}
-                        onMakeEntry={() => setEntry(instance.id)}
-                        onChangeRoute={onChangeRoute}
-                        onBlurRoute={onBlurRoute}
-                      />
-                    </Fragment>
-                  );
-                })}
-              </ol>
-            </SortableContext>
-          </DndContext>
+        {inFlow.length === 0 && (
+          <p className="step__hint">No pages yet — start by adding one below.</p>
         )}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={onDragEnd}
+        >
+          <SortableContext items={inFlow.map(i => i.id)} strategy={verticalListSortingStrategy}>
+            <ol className="flow-list">
+              {inFlow.map((instance, i) => (
+                <FlowCard
+                  key={instance.id}
+                  instance={instance}
+                  index={i}
+                  isLast={i === inFlow.length - 1}
+                  inFlow={inFlow}
+                  flowExits={config.flowExits}
+                  enabledExits={config.flowEnabledExits}
+                  buttonVariants={config.flowButtonVariants}
+                  config={config}
+                  setConfig={setConfig}
+                  flowRules={config.flowRules ?? {}}
+                  onChangeRule={(pageId, rule) => {
+                    setConfig({
+                      ...config,
+                      flowRules: {
+                        ...(config.flowRules ?? {}),
+                        [pageId]: rule,
+                      },
+                    });
+                  }}
+                  onChangeExit={(pageId, exitKey, target) => {
+                    const k = `${pageId}.${exitKey}`;
+                    const next = { ...config.flowExits };
+                    if (target === '') delete next[k]; else next[k] = target;
+                    setConfig({ ...config, flowExits: next });
+                  }}
+                  onToggleExit={(pageId, exitKey, enabled) => {
+                    const k = `${pageId}.${exitKey}`;
+                    setConfig({ ...config, flowEnabledExits: { ...config.flowEnabledExits, [k]: enabled } });
+                  }}
+                  onChangeVariant={(pageId, exitKey, variant) => {
+                    const k = `${pageId}.${exitKey}`;
+                    setConfig({ ...config, flowButtonVariants: { ...config.flowButtonVariants, [k]: variant } });
+                  }}
+                  onRemove={() => removeInstance(instance.id)}
+                  onChangeRoute={onChangeRoute}
+                  onBlurRoute={onBlurRoute}
+                />
+              ))}
+            </ol>
+          </SortableContext>
+        </DndContext>
 
         <AddPageMenu
           availablePages={availablePages}
@@ -270,74 +194,6 @@ export default function StepPages({ config, setConfig }: StepProps) {
           gates items whose target route wasn't generated, so we don't ship a
           duplicate UI here. */}
     </>
-  );
-}
-
-// ─── Flow toolbar ───────────────────────────────────────────────────────────
-
-function FlowToolbar({ pages, entryId, regMode, dupRoutes }: {
-  pages: PageInstance[];
-  entryId: string | undefined;
-  regMode: 'none' | 'gate' | 'after';
-  dupRoutes: Set<string>;
-}) {
-  const entry = pages.find(p => p.id === entryId);
-  const skippable = pages.filter(p => p.id !== entryId).length;
-  const issues: string[] = [];
-  if (dupRoutes.size) issues.push(`${dupRoutes.size} duplicate route${dupRoutes.size === 1 ? '' : 's'}`);
-  if (!pages.some(p => p.type === 'landing')) issues.push('no landing page');
-  if (!pages.some(p => p.type === 'game')) issues.push('no gameplay page');
-
-  return (
-    <div className="flow-toolbar" role="region" aria-label="Flow summary">
-      <span className="flow-toolbar__stat">
-        <strong>{pages.length}</strong>
-        <span>page{pages.length === 1 ? '' : 's'}</span>
-      </span>
-      {entry && (
-        <span className="flow-toolbar__stat">
-          <span className="flow-toolbar__icon" aria-hidden>★</span>
-          <span>Entry</span>
-          <code>{entry.route}</code>
-        </span>
-      )}
-      {regMode !== 'none' && (
-        <span className={`flow-toolbar__chip flow-toolbar__chip--${regMode}`}>
-          Registration · {regMode === 'gate' ? 'before game' : 'after result'}
-        </span>
-      )}
-      {skippable > 0 && (
-        <span className="flow-toolbar__stat flow-toolbar__stat--muted">
-          <span>{skippable} downstream</span>
-        </span>
-      )}
-      {issues.length > 0 && (
-        <span className="flow-toolbar__chip flow-toolbar__chip--warn" role="status">
-          ⚠ {issues.join(' · ')}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function PhaseDivider({ phase }: { phase: Phase }) {
-  return (
-    <li className={`flow-phase flow-phase--${phase}`} aria-hidden>
-      <span className="flow-phase__label">{PHASE_LABELS[phase]}</span>
-      <span className="flow-phase__rule" />
-    </li>
-  );
-}
-
-function EmptyFlow({ onSeed }: { onSeed: () => void }) {
-  return (
-    <div className="flow-empty">
-      <div className="flow-empty__icon" aria-hidden>◌</div>
-      <strong>No pages in the flow yet</strong>
-      <p>Start with the recommended four-page flow (landing → tutorial → game → result) or build your own from scratch.</p>
-      <button type="button" className="btn btn--primary" onClick={onSeed}>Start with recommended flow</button>
-      <span className="flow-empty__or">or use <em>Add page</em> below</span>
-    </div>
   );
 }
 
@@ -394,30 +250,18 @@ function AddPageMenu({ availablePages, typeCounts, onAdd }: AddPageMenuProps) {
 
       {open && !allAdded && (
         <div className="add-page__menu" role="menu">
-          {(['before', 'game', 'after'] as Phase[]).map(phase => {
-            const items = addable.filter(p => phaseForType(p.id) === phase);
-            if (items.length === 0) return null;
-            return (
-              <div key={phase} className="add-page__group">
-                <div className="add-page__group-label">{PHASE_LABELS[phase]}</div>
-                {items.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    role="menuitem"
-                    className="add-page__item"
-                    onClick={() => { onAdd(p.id); setOpen(false); }}
-                  >
-                    <span className="add-page__item-icon" aria-hidden>{pageIcon(p.id)}</span>
-                    <span className="add-page__item-copy">
-                      <strong>{p.label}</strong>
-                      <span className="add-page__hint">{p.hint}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            );
-          })}
+          {addable.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              role="menuitem"
+              className="add-page__item"
+              onClick={() => { onAdd(p.id); setOpen(false); }}
+            >
+              <strong>{p.label}</strong>
+              <span className="add-page__hint">{p.hint}</span>
+            </button>
+          ))}
         </div>
       )}
     </div>
@@ -430,43 +274,32 @@ interface FlowCardProps {
   instance:         PageInstance;
   index:            number;
   isLast:           boolean;
-  isEntry:          boolean;
   inFlow:           PageInstance[];
   flowExits:        Record<string, string>;
   enabledExits:     Record<string, boolean>;
   buttonVariants:   Record<string, ButtonVariant>;
-  pageSettings:     PageSettings;
+  config:           ScaffoldConfig;
+  setConfig:        (next: ScaffoldConfig) => void;
   flowRules:        Record<string, PageFlowRule>;
-  dupRoute:         boolean;
-  canMoveUp:        boolean;
-  canMoveDown:      boolean;
-  setPageSettings:  (next: PageSettings) => void;
   onChangeRule:     (pageId: string, rule: PageFlowRule) => void;
   onChangeExit:     (pageId: string, exitKey: string, target: string) => void;
   onToggleExit:     (pageId: string, exitKey: string, enabled: boolean) => void;
   onChangeVariant:  (pageId: string, exitKey: string, variant: ButtonVariant) => void;
   onRemove:         () => void;
-  onMoveUp:         () => void;
-  onMoveDown:       () => void;
-  onMakeEntry:      () => void;
   onChangeRoute:    (instanceId: string, raw: string) => void;
   onBlurRoute:      (instanceId: string, raw: string) => void;
 }
 
 function FlowCard({
-  instance, index, isLast, isEntry, inFlow, flowExits, enabledExits, buttonVariants,
-  pageSettings, flowRules, dupRoute, canMoveUp, canMoveDown,
-  setPageSettings, onChangeRule, onChangeExit, onToggleExit, onChangeVariant,
-  onRemove, onMoveUp, onMoveDown, onMakeEntry, onChangeRoute, onBlurRoute,
+  instance, index, isLast, inFlow, flowExits, enabledExits, buttonVariants,
+  config, setConfig, flowRules, onChangeRule,
+  onChangeExit, onToggleExit, onChangeVariant, onRemove, onChangeRoute, onBlurRoute,
 }: FlowCardProps) {
   const meta = pageMeta(instance.type);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: instance.id });
   // Settings disclosure is per-card local state. Survives reorder because
   // dnd-kit keeps the React element identity (key=instance.id).
   const [expanded, setExpanded] = useState(false);
-  // Behavior controls are collapsed by default; clicking the rule chip opens.
-  // Initialized below from `ruleIsCustom` (we don't know it at this point yet).
-  const [behaviorOpen, setBehaviorOpen] = useState(false);
 
   const style = {
     transform:  CSS.Transform.toString(transform),
@@ -477,7 +310,11 @@ function FlowCard({
   if (!meta) return null;
 
   const exits = meta.exits ?? [];
-  const hasSettings = Boolean(PAGE_SETTINGS_SCHEMA[instance.type]?.length);
+  const defaultBlocks = defaultBlocksForPage(instance.type);
+  const hasSettings = Boolean(
+    PAGE_SETTINGS_SCHEMA[instance.type]?.length ||
+    Object.keys(config.pageBlocks?.[instance.id]?.blocks ?? defaultBlocks.blocks).length,
+  );
 
   const takenRoutes = new Set(inFlow.filter(p => p.id !== instance.id).map(p => p.route));
   const isDuplicate = takenRoutes.has(instance.route);
@@ -507,96 +344,18 @@ function FlowCard({
   const selectedRule = FLOW_RULE_OPTIONS.find((option) => option.value === currentRule.mode);
   const defaultSkipId = inFlow[index + 1]?.id ?? inFlow[0]?.id ?? '';
   const skipChoice = currentRule.skipTo ?? '';
-  const ruleIsCustom = currentRule.mode !== defaultFlowRuleForType(instance.type).mode || Boolean(currentRule.skipTo);
-  // Auto-open behavior when rule becomes custom so the controls are visible
-  // alongside the state. User can still close via the trigger.
-  useEffect(() => {
-    if (ruleIsCustom) setBehaviorOpen(true);
-  }, [ruleIsCustom]);
-
-  /**
-   * Build the read-only summary chips for exits.
-   *
-   * `dead` is reserved for truly unresolvable exits: an optional CTA pointing
-   * to a removed page, etc. The required `next` exit on the *last* page
-   * legitimately has no successor — surface it as "end of flow" with the
-   * informational `tone: 'end'` instead of a warning.
-   *
-   * Disabled optional exits still appear (dimmed) so users see what the page
-   * could expose without having to scroll to the dropdowns below.
-   */
-  type ChipTone = 'live' | 'disabled' | 'end' | 'dead';
-  const exitTargets = exits.map((exit) => {
-    const k = `${instance.id}.${exit.key}`;
-    const isOptional = Boolean(exit.optional);
-    const enabled    = isOptional ? (enabledExits[k] ?? exit.defaultEnabled ?? false) : true;
-    const chosen = flowExits[k];
-    const targetId = chosen || resolveDefault(exit.defaultRule);
-    let tone: ChipTone;
-    let target: string;
-    if (!enabled) {
-      tone = 'disabled';
-      target = 'off';
-    } else if (targetId) {
-      tone = 'live';
-      target = otherInstances.find(o => o.id === targetId)?.label ?? targetId;
-    } else if (isLast && !isOptional) {
-      tone = 'end';
-      target = 'end of flow';
-    } else {
-      tone = 'dead';
-      target = '—';
-    }
-    return { key: exit.key, label: exit.label, target, tone };
-  });
-
-  const hasDeadExit = exitTargets.some(t => t.tone === 'dead');
 
   return (
     <li
       ref={setNodeRef}
       style={style}
-      data-flow-id={instance.id}
-      className={`flow-card${isDragging ? ' is-dragging' : ''}${expanded ? ' is-expanded' : ''}${isEntry ? ' is-entry' : ''}`}
+      className={`flow-card${isDragging ? ' is-dragging' : ''}${expanded ? ' is-expanded' : ''}`}
     >
-      <div className="flow-card__rail">
-        <button
-          type="button"
-          className="flow-card__handle"
-          {...attributes}
-          {...listeners}
-          aria-label={`Drag ${title}`}
-          title="Drag to reorder"
-        >⋮⋮</button>
-        <div className="flow-card__index" aria-hidden>{isEntry ? '★' : index + 1}</div>
-        <div className="flow-card__nudge">
-          <button
-            type="button"
-            className="flow-card__nudge-btn"
-            data-nudge="up"
-            onClick={onMoveUp}
-            disabled={!canMoveUp}
-            aria-label={`Move ${title} up`}
-            title="Move up"
-          >▲</button>
-          <button
-            type="button"
-            className="flow-card__nudge-btn"
-            data-nudge="down"
-            onClick={onMoveDown}
-            disabled={!canMoveDown}
-            aria-label={`Move ${title} down`}
-            title="Move down"
-          >▼</button>
-        </div>
-      </div>
+      <div className="flow-card__handle" {...attributes} {...listeners} aria-label="Drag handle">⋮⋮</div>
+      <div className="flow-card__index">{index + 1}</div>
       <div className="flow-card__body">
         <div className="flow-card__row">
-          <span className="flow-card__type-icon" aria-hidden>{pageIcon(instance.type)}</span>
           <strong>{title}</strong>
-          {isEntry && <span className="flow-card__pill flow-card__pill--entry" title="This is the entry route">Entry</span>}
-          {dupRoute && <span className="flow-card__pill flow-card__pill--warn" title="Another page in the flow uses the same route">⚠ Duplicate route</span>}
-          {hasDeadExit && <span className="flow-card__pill flow-card__pill--warn" title="One or more exits have no destination">⚠ Dead-end exit</span>}
         </div>
         <div className="page-card__hint">{meta.hint}</div>
         <div className="flow-card__route">
@@ -616,32 +375,9 @@ function FlowCard({
             title={isDuplicate ? `Route "${instance.route}" is already used by another page` : undefined}
           />
         </div>
-
-        {exitTargets.length > 0 && (
-          <ul className="flow-card__exit-summary" aria-label="Where this page navigates next">
-            {exitTargets.map(t => (
-              <li key={t.key} className={`flow-card__exit-chip flow-card__exit-chip--${t.tone}`}>
-                <span className="flow-card__exit-chip-key">{t.label}</span>
-                <span className="flow-card__exit-chip-arrow" aria-hidden>→</span>
-                <span className="flow-card__exit-chip-target">{t.target}</span>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
 
       <div className="flow-card__actions">
-        {!isEntry && (
-          <button
-            type="button"
-            className="flow-card__action-btn"
-            onClick={onMakeEntry}
-            title="Make this the entry page"
-          >
-            <span aria-hidden>★</span>
-            <span className="flow-card__action-label">Set as entry</span>
-          </button>
-        )}
         {hasSettings && (
           <button
             type="button"
@@ -661,7 +397,6 @@ function FlowCard({
           className="flow-card__remove"
           onClick={onRemove}
           aria-label={`Remove ${title}`}
-          title="Remove from flow"
         >
           ×
         </button>
@@ -728,68 +463,52 @@ function FlowCard({
       )}
 
       {ruleOptions.length > 1 && otherInstances.length > 0 && (
-        <div className={`flow-card__behavior-wrap${behaviorOpen || ruleIsCustom ? ' is-open' : ''}`}>
-          <button
-            type="button"
-            className={`flow-card__behavior-trigger${ruleIsCustom ? ' is-custom' : ''}`}
-            onClick={() => setBehaviorOpen(v => !v)}
-            aria-expanded={behaviorOpen || ruleIsCustom}
-            aria-controls={`behavior-${instance.id}`}
-          >
-            <span aria-hidden>⏵</span>
-            <span className="flow-card__behavior-trigger-label">Behavior</span>
-            <span className="flow-card__behavior-trigger-value">{selectedRule?.label ?? 'Always show'}</span>
-            <span className={`flow-card__chev${behaviorOpen || ruleIsCustom ? ' is-open' : ''}`} aria-hidden>▾</span>
-          </button>
-
-          {(behaviorOpen || ruleIsCustom) && (
-            <div className="flow-card__behavior" id={`behavior-${instance.id}`}>
-              <div className="flow-card__behavior-copy">
-                <span>{selectedRule?.hint ?? 'Choose when this page should appear.'}</span>
-              </div>
-              <div className="flow-card__behavior-controls">
-                <label className="flow-card__behavior-field">
-                  <span>When to show</span>
-                  <select
-                    value={currentRule.mode}
-                    onChange={(e) => {
-                      const mode = e.target.value as FlowRuleMode;
-                      onChangeRule(instance.id, {
-                        ...currentRule,
-                        mode,
-                        skipTo: mode === 'always' ? undefined : currentRule.skipTo,
-                      });
-                    }}
-                    aria-label={`Behavior for ${title}`}
-                  >
-                    {ruleOptions.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </label>
-                {currentRule.mode !== 'always' && (
-                  <label className="flow-card__behavior-field">
-                    <span>If skipped, go to</span>
-                    <select
-                      value={skipChoice}
-                      onChange={(e) => {
-                        onChangeRule(instance.id, {
-                          ...currentRule,
-                          skipTo: e.target.value || undefined,
-                        });
-                      }}
-                      aria-label={`Skip destination for ${title}`}
-                    >
-                      <option value="">{`Default · ${otherInstances.find(o => o.id === defaultSkipId)?.label ?? 'next page'}`}</option>
-                      {otherInstances.map((o) => (
-                        <option key={o.id} value={o.id}>{o.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </div>
-            </div>
-          )}
+        <div className="flow-card__behavior">
+          <div className="flow-card__behavior-copy">
+            <strong>Behavior</strong>
+            <span>{selectedRule?.hint ?? 'Choose when this page should appear.'}</span>
+          </div>
+          <div className="flow-card__behavior-controls">
+            <label className="flow-card__behavior-field">
+              <span>When to show</span>
+              <select
+                value={currentRule.mode}
+                onChange={(e) => {
+                  const mode = e.target.value as FlowRuleMode;
+                  onChangeRule(instance.id, {
+                    ...currentRule,
+                    mode,
+                    skipTo: mode === 'always' ? undefined : currentRule.skipTo,
+                  });
+                }}
+                aria-label={`Behavior for ${title}`}
+              >
+                {ruleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            {currentRule.mode !== 'always' && (
+              <label className="flow-card__behavior-field">
+                <span>If skipped, go to</span>
+                <select
+                  value={skipChoice}
+                  onChange={(e) => {
+                    onChangeRule(instance.id, {
+                      ...currentRule,
+                      skipTo: e.target.value || undefined,
+                    });
+                  }}
+                  aria-label={`Skip destination for ${title}`}
+                >
+                  <option value="">{`Default · ${otherInstances.find(o => o.id === defaultSkipId)?.label ?? 'next page'}`}</option>
+                  {otherInstances.map((o) => (
+                    <option key={o.id} value={o.id}>{o.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
         </div>
       )}
 
@@ -804,8 +523,8 @@ function FlowCard({
             pageId={instance.id}
             schemaType={instance.type}
             pageLabel={title}
-            settings={pageSettings}
-            setSettings={setPageSettings}
+            config={config}
+            setConfig={setConfig}
           />
         </div>
       )}

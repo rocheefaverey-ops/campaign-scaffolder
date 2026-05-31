@@ -1,0 +1,20 @@
+{
+  "name": "skip-control",
+  "displayName": "Skip control",
+  "description": "Corner skip button for videos.",
+  "files": [
+    { "src": "SkipControl.tsx", "dest": "components/_blocks/skip-control/SkipControl.tsx" },
+    { "src": "SkipControl.module.scss", "dest": "components/_blocks/skip-control/SkipControl.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "availableAfterMs": { "kind": "number", "min": 0, "max": 60000, "default": 3000 },
+    "exit": { "kind": "string", "default": "game" }
+  },
+  "capeBindings": {
+    "label": "{pageType}.skipLabel | i18n-string | skip button label"
+  },
+  "usableOn": ["video"]
+}

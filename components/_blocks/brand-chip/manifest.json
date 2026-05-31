@@ -1,0 +1,19 @@
+{
+  "name": "brand-chip",
+  "displayName": "Brand chip",
+  "description": "Small or medium top-center brand/sponsor logo. Separate from the larger centered game logo.",
+  "files": [
+    { "src": "BrandChip.tsx", "dest": "components/_blocks/brand-chip/BrandChip.tsx" },
+    { "src": "BrandChip.module.scss", "dest": "components/_blocks/brand-chip/BrandChip.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "size": { "kind": "enum", "of": ["sm", "md"], "default": "md" }
+  },
+  "capeBindings": {
+    "image": "branding.logo | image | brand or sponsor logo"
+  },
+  "usableOn": ["loading", "landing", "onboarding", "result", "leaderboard", "register", "voucher", "end", "menu", "video"]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "fallback-indicator",
+  "displayName": "Fallback indicator",
+  "description": "Small wait indicator for engine loading.",
+  "files": [
+    { "src": "FallbackIndicator.tsx", "dest": "components/_blocks/fallback-indicator/FallbackIndicator.tsx" },
+    { "src": "FallbackIndicator.module.scss", "dest": "components/_blocks/fallback-indicator/FallbackIndicator.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {},
+  "capeBindings": {
+    "label": "{pageType}.fallbackLabel | i18n-string | fallback loading label"
+  },
+  "usableOn": ["video"]
+}

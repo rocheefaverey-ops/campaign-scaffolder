@@ -1,0 +1,17 @@
+{
+  "name": "tagline",
+  "displayName": "Tagline",
+  "description": "Short centered copy line.",
+  "files": [
+    { "src": "Tagline.tsx", "dest": "components/_blocks/tagline/Tagline.tsx" },
+    { "src": "Tagline.module.scss", "dest": "components/_blocks/tagline/Tagline.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {},
+  "capeBindings": {
+    "text": "{pageType}.tagline | i18n-string | short loading or campaign tagline"
+  },
+  "usableOn": ["loading"]
+}

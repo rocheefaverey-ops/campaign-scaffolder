@@ -1,0 +1,20 @@
+{
+  "name": "opt-in-list",
+  "displayName": "Opt-in list",
+  "description": "Variable registration consent checkboxes.",
+  "files": [
+    { "src": "OptInList.tsx", "dest": "components/_blocks/opt-in-list/OptInList.tsx" },
+    { "src": "OptInList.module.scss", "dest": "components/_blocks/opt-in-list/OptInList.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "optIns": { "kind": "array-of-enum", "of": ["terms", "age18", "age21", "marketing", "custom"], "default": ["terms"] },
+    "required": { "kind": "boolean", "default": true }
+  },
+  "capeBindings": {
+    "labels": "{pageType}.optIns | array | opt-in labels"
+  },
+  "usableOn": ["register"]
+}

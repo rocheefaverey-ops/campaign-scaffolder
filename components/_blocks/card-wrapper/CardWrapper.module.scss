@@ -1,0 +1,17 @@
+.wrap {
+  width: min(32rem, calc(100% - 2rem));
+  margin: 1rem auto;
+  display: flex;
+  flex-direction: column;
+}
+.wrap--card {
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  padding: 1rem 0;
+}
+.wrap--full-bleed {
+  width: 100%;
+  padding: 1rem 0;
+}
+.wrap--edge-to-edge { width: 100%; border-radius: 0; }

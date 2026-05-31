@@ -1,0 +1,21 @@
+{
+  "name": "nav-controls",
+  "displayName": "Navigation controls",
+  "description": "Onboarding navigation controls.",
+  "files": [
+    { "src": "NavControls.tsx", "dest": "components/_blocks/nav-controls/NavControls.tsx" },
+    { "src": "NavControls.module.scss", "dest": "components/_blocks/nav-controls/NavControls.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "showPrev": { "kind": "boolean", "default": false },
+    "nextExit": { "kind": "string", "default": "game" }
+  },
+  "capeBindings": {
+    "nextLabel": "{pageType}.nextLabel | i18n-string | next button label",
+    "prevLabel": "{pageType}.prevLabel | i18n-string | previous button label"
+  },
+  "usableOn": ["onboarding"]
+}

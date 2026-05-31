@@ -1,0 +1,13 @@
+.art {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+}
+.art img {
+  display: block;
+  max-width: 100%;
+  object-fit: contain;
+}
+.art--sm img { max-height: 8rem; }
+.art--md img { max-height: 14rem; }
+.art--lg img { max-height: 22rem; }

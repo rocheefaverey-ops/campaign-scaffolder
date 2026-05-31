@@ -1,0 +1,12 @@
+.list {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+}
+.list label {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+}
+.list input { margin-top: 0.2rem; }

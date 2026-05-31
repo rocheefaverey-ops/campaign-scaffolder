@@ -1,0 +1,20 @@
+{
+  "name": "reveal-cta",
+  "displayName": "Reveal CTA",
+  "description": "CTA revealed after video completion.",
+  "files": [
+    { "src": "RevealCta.tsx", "dest": "components/_blocks/reveal-cta/RevealCta.tsx" },
+    { "src": "RevealCta.module.scss", "dest": "components/_blocks/reveal-cta/RevealCta.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "exit": { "kind": "string", "default": "game" },
+    "variant": { "kind": "enum", "of": ["primary", "secondary", "tertiary", "dark", "danger"], "default": "primary" }
+  },
+  "capeBindings": {
+    "label": "{pageType}.ctaLabel | i18n-string | revealed CTA label"
+  },
+  "usableOn": ["video"]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "body-copy",
+  "displayName": "Body copy",
+  "description": "Markdown-capable supporting copy.",
+  "files": [
+    { "src": "BodyCopy.tsx", "dest": "components/_blocks/body-copy/BodyCopy.tsx" },
+    { "src": "BodyCopy.module.scss", "dest": "components/_blocks/body-copy/BodyCopy.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "markdown": { "kind": "boolean", "default": true }
+  },
+  "capeBindings": {
+    "text": "{pageType}.body | markdown | supporting body copy"
+  },
+  "usableOn": ["onboarding", "result", "register", "voucher", "end"]
+}

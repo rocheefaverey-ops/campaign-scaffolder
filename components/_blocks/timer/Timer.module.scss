@@ -1,0 +1,14 @@
+.timer {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  min-width: 3rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  padding: 0.5rem 0.8rem;
+  text-align: center;
+  font-weight: 800;
+}

@@ -1,0 +1,19 @@
+{
+  "name": "background",
+  "displayName": "Background",
+  "description": "Full-bleed background — image, solid color, or gradient. Always present on every page.",
+  "files": [
+    { "src": "Background.tsx", "dest": "components/_blocks/background/Background.tsx" },
+    { "src": "Background.module.scss", "dest": "components/_blocks/background/Background.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "kind": { "kind": "enum", "of": ["image", "solid", "gradient"], "default": "image" }
+  },
+  "capeBindings": {
+    "source": "{pageType}.background | image | image url, color, or gradient spec"
+  },
+  "usableOn": ["loading", "landing", "onboarding", "video", "result", "leaderboard", "register", "voucher", "end", "menu"]
+}

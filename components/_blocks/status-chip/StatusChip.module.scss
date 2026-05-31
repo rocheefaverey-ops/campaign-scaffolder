@@ -1,0 +1,11 @@
+.chip {
+  align-self: center;
+  margin: 0.5rem auto;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.chip--winner { background: #d1ff00; color: #111; }
+.chip--offline { background: #333; color: #fff; }

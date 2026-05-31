@@ -1,0 +1,18 @@
+{
+  "name": "step-indicator",
+  "displayName": "Step indicator",
+  "description": "Dots or count indicator for onboarding steps.",
+  "files": [
+    { "src": "StepIndicator.tsx", "dest": "components/_blocks/step-indicator/StepIndicator.tsx" },
+    { "src": "StepIndicator.module.scss", "dest": "components/_blocks/step-indicator/StepIndicator.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "count": { "kind": "number", "min": 1, "max": 6, "default": 3 },
+    "style": { "kind": "enum", "of": ["dots", "count"], "default": "dots" }
+  },
+  "capeBindings": {},
+  "usableOn": ["onboarding"]
+}

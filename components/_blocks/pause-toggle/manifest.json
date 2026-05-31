@@ -1,0 +1,15 @@
+{
+  "name": "pause-toggle",
+  "displayName": "Pause toggle",
+  "description": "Pause button for gameplay.",
+  "files": [
+    { "src": "PauseToggle.tsx", "dest": "components/_blocks/pause-toggle/PauseToggle.tsx" },
+    { "src": "PauseToggle.module.scss", "dest": "components/_blocks/pause-toggle/PauseToggle.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {},
+  "capeBindings": {},
+  "usableOn": ["game"]
+}

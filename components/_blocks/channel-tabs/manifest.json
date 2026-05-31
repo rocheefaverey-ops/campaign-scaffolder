@@ -1,0 +1,20 @@
+{
+  "name": "channel-tabs",
+  "displayName": "Channel tabs",
+  "description": "Runtime switcher between redemption channels.",
+  "files": [
+    { "src": "ChannelTabs.tsx", "dest": "components/_blocks/channel-tabs/ChannelTabs.tsx" },
+    { "src": "ChannelTabs.module.scss", "dest": "components/_blocks/channel-tabs/ChannelTabs.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "tabs": { "kind": "array-of-enum", "of": ["webshop", "in-store"], "default": ["webshop", "in-store"] },
+    "defaultTab": { "kind": "enum", "of": ["webshop", "in-store"], "default": "webshop" }
+  },
+  "capeBindings": {
+    "labels": "{pageType}.channelTabs | array | tab labels"
+  },
+  "usableOn": ["voucher"]
+}

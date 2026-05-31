@@ -1,0 +1,20 @@
+{
+  "name": "leaderboard-tabs",
+  "displayName": "Leaderboard tabs",
+  "description": "Time-window tabs for leaderboard views.",
+  "files": [
+    { "src": "LeaderboardTabs.tsx", "dest": "components/_blocks/leaderboard-tabs/LeaderboardTabs.tsx" },
+    { "src": "LeaderboardTabs.module.scss", "dest": "components/_blocks/leaderboard-tabs/LeaderboardTabs.module.scss" }
+  ],
+  "packages": [],
+  "envVars": [],
+  "cspPatch": {},
+  "settings": {
+    "tabs": { "kind": "array-of-enum", "of": ["all", "daily", "weekly", "monthly"], "default": ["all", "daily", "weekly"] },
+    "defaultTab": { "kind": "enum", "of": ["all", "daily", "weekly", "monthly"], "default": "all" }
+  },
+  "capeBindings": {
+    "labels": "{pageType}.tabs | array | leaderboard tab labels"
+  },
+  "usableOn": ["leaderboard"]
+}
