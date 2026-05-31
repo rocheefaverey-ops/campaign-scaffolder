@@ -1,6 +1,33 @@
 import { useEffect, useState } from 'react';
-import { pageMeta, MENU_ITEMS, type ScaffoldConfig, type PageInstance } from '../shared/config.ts';
+import {
+  pageMeta,
+  MENU_ITEMS,
+  FLOW_RULE_OPTIONS,
+  deriveRegMode,
+  type ScaffoldConfig,
+  type PageInstance,
+  type PageFlowRule,
+} from '../shared/config.ts';
 import { startFrontendPreview } from '../bridge.ts';
+
+function flowRuleLabel(rule: PageFlowRule | undefined): string | null {
+  if (!rule || rule.mode === 'always') return null;
+  return FLOW_RULE_OPTIONS.find(o => o.value === rule.mode)?.label ?? null;
+}
+
+function resolveEntryId(config: ScaffoldConfig): string | undefined {
+  if (config.flowEntry && config.pages.some(p => p.id === config.flowEntry)) return config.flowEntry;
+  return config.pages[0]?.id;
+}
+
+function hasModule(config: ScaffoldConfig, name: string): boolean {
+  return Array.isArray(config.modules) && config.modules.includes(name);
+}
+
+function deriveHost(config: ScaffoldConfig): string {
+  const slug = (config.name || 'campaign').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'campaign';
+  return `${slug}.livewall.io`;
+}
 
 // The "Start real preview" button is hidden for now — spinning up a full
 // scaffold + pnpm install + vite dev from the wizard turned out to be too
@@ -50,6 +77,16 @@ export default function PreviewPane({ config }: Props) {
   const idx = Math.min(activeIdx, config.pages.length - 1);
   const inst = config.pages[idx];
   const visualPages = config.pages.filter(p => !['game', 'video', 'intro-video', 'loading-video', 'ad-video'].includes(p.type));
+  const entryId = resolveEntryId(config);
+  const activeRule = config.flowRules?.[inst.id];
+  const activeRuleLabel = flowRuleLabel(activeRule);
+  const supported = config.supportedLanguages?.length ? config.supportedLanguages : [config.defaultLanguage].filter(Boolean);
+  const showLangs = supported.length > 1;
+  const regMode = deriveRegMode(config.pages);
+  const isEntry = entryId === inst.id;
+  const showCookieBanner = isEntry && hasModule(config, 'cookie-consent') && !menuOpen && !realUrl;
+  const showAudio = hasModule(config, 'audio');
+  const hasGtm = hasModule(config, 'gtm') || Boolean(config.gtmId?.trim());
   const realRoute = visualPages.some(p => p.id === inst.id)
     ? inst.route
     : visualPages[0]?.route ?? inst.route;
@@ -114,24 +151,46 @@ export default function PreviewPane({ config }: Props) {
           const meta = pageMeta(p.type);
           if (!meta) return null;
           const label = p.id === p.type ? meta.label : p.id;
+          const isEntryTab = p.id === entryId;
+          const rule = config.flowRules?.[p.id];
+          const isGated = rule && rule.mode !== 'always';
+          const regTag = p.type === 'register' && regMode !== 'none' ? regMode : null;
           return (
             <button
               key={p.id}
               role="tab"
               aria-selected={i === idx}
-              className={`preview-pane__tab${i === idx ? ' is-active' : ''}`}
+              className={`preview-pane__tab${i === idx ? ' is-active' : ''}${isEntryTab ? ' is-entry' : ''}${isGated ? ' is-gated' : ''}`}
               onClick={() => setActiveIdx(i)}
-              title={p.route}
+              title={`${p.route}${isEntryTab ? ' · entry' : ''}${isGated ? ` · ${flowRuleLabel(rule)}` : ''}${regTag ? ` · register ${regTag}` : ''}`}
             >
-              <span className="preview-pane__tab-num">{i + 1}</span>
+              <span className="preview-pane__tab-num">{isEntryTab ? '★' : i + 1}</span>
               <span className="preview-pane__tab-label">{label}</span>
+              {regTag && <span className="preview-pane__tab-reg" aria-hidden>{regTag}</span>}
+              {isGated && <span className="preview-pane__tab-gate" aria-hidden>•</span>}
             </button>
           );
         })}
       </div>
 
-      <div className="preview-pane__frame-wrap">
-        <PhoneFrame route={realUrl ? realRoute : menuOpen ? '/menu' : inst.route}>
+      <div className={`preview-pane__frame-wrap${config.iframe ? ' is-embedded' : ''}`}>
+        {config.iframe && (
+          <div className="preview-pane__embed-chrome" aria-hidden>
+            <span className="preview-pane__embed-dots">
+              <span /><span /><span />
+            </span>
+            <span className="preview-pane__embed-addr">https://partner.example.com → {deriveHost(config)}</span>
+            <span className="preview-pane__embed-tag">iframe</span>
+          </div>
+        )}
+        <PhoneFrame
+          route={realUrl ? realRoute : menuOpen ? '/menu' : inst.route}
+          ruleLabel={realUrl || menuOpen ? null : activeRuleLabel}
+          langs={showLangs ? supported : null}
+          defaultLang={config.defaultLanguage}
+          gtmId={hasGtm && !realUrl ? (config.gtmId?.trim() || 'GTM-XXXX') : null}
+          cookieBanner={showCookieBanner}
+        >
           {realUrl ? (
             <iframe
               key={`${realUrl}${realRoute}`}
@@ -152,7 +211,7 @@ export default function PreviewPane({ config }: Props) {
                 // Keyed wrapper so React swaps the subtree on page change,
                 // re-triggering the CSS fade-in. Cheap polish — no JS animation.
                 <div key={inst.id} className="preview-pane__page">
-                  <PageRenderer config={config} instance={inst} navigate={navigate} onMenu={() => setMenuOpen(true)} />
+                  <PageRenderer config={config} instance={inst} navigate={navigate} onMenu={() => setMenuOpen(true)} showAudio={showAudio} />
                 </div>
               )
           )}
@@ -164,12 +223,51 @@ export default function PreviewPane({ config }: Props) {
 
 // ─── Phone frame ─────────────────────────────────────────────────────────────
 
-function PhoneFrame({ children, route }: { children: React.ReactNode; route: string }) {
+function PhoneFrame({ children, route, ruleLabel, langs, defaultLang, gtmId, cookieBanner }: {
+  children: React.ReactNode;
+  route: string;
+  ruleLabel?: string | null;
+  langs?: string[] | null;
+  defaultLang?: string;
+  gtmId?: string | null;
+  cookieBanner?: boolean;
+}) {
   return (
     <div className="phone-frame">
       <div className="phone-frame__notch" />
-      <div className="phone-frame__inner">{children}</div>
-      <div className="phone-frame__route" aria-hidden>{route}</div>
+      {langs && langs.length > 0 && (
+        <div className="phone-frame__langs" aria-hidden>
+          {langs.map(code => (
+            <span key={code} className={`phone-frame__lang${code === defaultLang ? ' is-default' : ''}`}>{code}</span>
+          ))}
+        </div>
+      )}
+      <div className="phone-frame__inner">
+        {children}
+        {cookieBanner && <CookieBanner />}
+      </div>
+      <div className="phone-frame__route" aria-hidden>
+        <span>{route}</span>
+        {ruleLabel && <span className="phone-frame__rule">{ruleLabel}</span>}
+        {gtmId && <span className="phone-frame__gtm">GTM · {gtmId}</span>}
+      </div>
+    </div>
+  );
+}
+
+function CookieBanner() {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+  return (
+    <div className="pp-cookie" role="dialog" aria-label="Cookie consent">
+      <div className="pp-cookie__copy">
+        <strong>We use cookies</strong>
+        <span>Analytics and personalisation help us improve the campaign.</span>
+      </div>
+      <div className="pp-cookie__actions">
+        <button type="button" className="pp-cookie__btn pp-cookie__btn--ghost" onClick={() => setDismissed(true)}>Reject</button>
+        <button type="button" className="pp-cookie__btn pp-cookie__btn--accept" onClick={() => setDismissed(true)}>Accept</button>
+      </div>
     </div>
   );
 }
@@ -178,19 +276,19 @@ function PhoneFrame({ children, route }: { children: React.ReactNode; route: str
 
 type NavFn = (instId: string, exitKey: string, defaultRule?: 'next' | 'first') => void;
 
-function PageRenderer({ config, instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
+function PageRenderer({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
   switch (instance.type) {
-    case 'landing':       return <LandingPreview      config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
+    case 'landing':       return <LandingPreview      config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />;
     case 'tutorial':      return <TutorialPreview     config={config} instance={instance} navigate={navigate} />;
     case 'video':
     case 'intro-video':
     case 'ad-video':      return <VideoPreview        config={config} instance={instance} navigate={navigate} />;
     case 'loading-video': return <LoadingVideoPreview config={config} instance={instance} navigate={navigate} />;
     case 'register':      return <RegisterPreview     config={config} instance={instance} navigate={navigate} />;
-    case 'game':          return <GamePreview         config={config} instance={instance} navigate={navigate} />;
-    case 'result':        return <ResultPreview       config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
-    case 'leaderboard':   return <LeaderboardPreview  config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
-    case 'voucher':       return <VoucherPreview      config={config} instance={instance} navigate={navigate} onMenu={onMenu} />;
+    case 'game':          return <GamePreview         config={config} instance={instance} navigate={navigate} showAudio={showAudio} />;
+    case 'result':        return <ResultPreview       config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />;
+    case 'leaderboard':   return <LeaderboardPreview  config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />;
+    case 'voucher':       return <VoucherPreview      config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />;
     default:              return <PlaceholderPreview  instance={instance} />;
   }
 }
@@ -219,13 +317,21 @@ function HeroBleed() {
   );
 }
 
-function HeaderLogo({ onMenu }: { onMenu?: () => void }) {
+function HeaderLogo({ onMenu, showAudio }: { onMenu?: () => void; showAudio?: boolean }) {
+  const [muted, setMuted] = useState(false);
   return (
     <div className="pp-header pp-header--with-close">
       <img src="/logo-livewall-wordmark.svg" alt="logo" className="pp-wordmark" />
-      <button type="button" className="pp-menu" aria-label="Menu" onClick={onMenu}>
-        <HamburgerSvg />
-      </button>
+      <div className="pp-header__actions">
+        {showAudio && (
+          <button type="button" className="pp-menu pp-audio" aria-label={muted ? 'Unmute' : 'Mute'} aria-pressed={muted} onClick={(e) => { e.stopPropagation(); setMuted(m => !m); }}>
+            {muted ? '🔇' : '🔊'}
+          </button>
+        )}
+        <button type="button" className="pp-menu" aria-label="Menu" onClick={onMenu}>
+          <HamburgerSvg />
+        </button>
+      </div>
     </div>
   );
 }
@@ -262,18 +368,21 @@ function HeroStack({ kicker, title, body }: { kicker?: string; title: string; bo
 
 // ─────────────── Landing ───────────────
 
-function LandingPreview({ config, instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
+function LandingPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
   const showTutorial    = isExitOn(config, instance.id, 'tutorial',    false);
   const showLeaderboard = isExitOn(config, instance.id, 'leaderboard', false);
+  const s = instSettings(config, instance.id);
+  const skipForReturning = (s.onboardingFirstRunOnly ?? true) as boolean;
   const brand = config.brand?.trim() || config.name?.trim();
   const title = brand ? `Welcome to ${brand}` : 'Welcome';
   return (
     <div className="pp pp--hero">
       <HeroBleed />
       <div className="pp-shell">
-        <HeaderLogo onMenu={onMenu} />
+        <HeaderLogo onMenu={onMenu} showAudio={showAudio} />
         <div className="pp-bottom">
           <HeroStack kicker="LIVE EXPERIENCE" title={title} body="Are you ready to play?" />
+          {skipForReturning && <span className="pp-flag">Returning players skip the tutorial</span>}
           <div className="pp-actions">
             <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Play now" onClick={() => navigate(instance.id, 'next')} />
             {showTutorial    && <CtaButton kind={exitVariant(config, instance.id, 'tutorial',    'secondary')} label="Tutorial"    onClick={() => navigate(instance.id, 'tutorial')} />}
@@ -299,7 +408,7 @@ function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfi
   const isLast = step === STEPS.length - 1;
   const content = (
     <>
-      <HeroStack kicker="HOW TO PLAY" title={STEPS[step].title} body={STEPS[step].body} />
+      <HeroStack kicker={`HOW TO PLAY · ${step + 1} / ${STEPS.length}`} title={STEPS[step].title} body={STEPS[step].body} />
       <div className="pp-dots">
         {STEPS.map((_, i) => (
           <button key={i} type="button" aria-label={`step ${i + 1}`} className={`pp-dot${i === step ? ' is-active' : ''}`} onClick={() => setStep(i)} />
@@ -343,13 +452,20 @@ function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfi
 
 function VideoPreview({ config, instance, navigate }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn }) {
   const s = instSettings(config, instance.id);
-  const mode       = (s.mode as string) ?? 'intro';
+  // intro-video and ad-video default to 'intro' playback even though the shared
+  // schema default is 'loadingScreen' (only loading-video uses the loader path).
+  const typeDefault = instance.type === 'loading-video' ? 'loadingScreen' : 'intro';
+  const mode       = (s.mode as string) ?? typeDefault;
   const alwaysSkip = Boolean(s.alwaysSkip);
   const minSec     = (s.minPlaybackSec ?? 3) as number;
   const isLoader   = mode === 'loadingScreen';
   const skippable  = alwaysSkip || !isLoader;
+  const modeLabel = instance.type === 'intro-video' ? 'INTRO'
+    : instance.type === 'ad-video' ? 'AD'
+    : isLoader ? 'LOADER' : 'INTRO';
   return (
     <div className="pp pp--video">
+      <span className="pp-video-badge" aria-hidden>{modeLabel}</span>
       <div className="pp-video-stage" onClick={() => navigate(instance.id, 'next')}>
         <span className="pp-video-icon">▶</span>
       </div>
@@ -384,53 +500,69 @@ function LoadingVideoPreview({ config, instance, navigate }: { config: ScaffoldC
 
 function RegisterPreview({ config, instance, navigate }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn }) {
   const s = instSettings(config, instance.id);
-  const showInfix = (s.showInfix ?? true) as boolean;
+  const showInfix      = (s.showInfix ?? true) as boolean;
+  const requireOptIns  = (s.requireOptIns ?? true) as boolean;
+  const [consents, setConsents] = useState<[boolean, boolean, boolean]>([false, false, false]);
+  const allTicked = consents.every(Boolean);
+  const canSubmit = !requireOptIns || allTicked;
+  const toggle = (i: 0 | 1 | 2) => setConsents(prev => {
+    const next = [...prev] as [boolean, boolean, boolean];
+    next[i] = !next[i];
+    return next;
+  });
   return (
     <div className="pp pp--form">
       <div className="pp-shell pp-shell--scroll">
         <HeroStack kicker="REGISTER" title="Join the game" body="Fill in your details to play." />
         <div className="pp-form">
           <div className="pp-row">
-            <Field label="First name" />
+            <Field label="First name" required />
             {showInfix && <Field label="Infix" narrow />}
           </div>
-          <Field label="Last name" />
-          <Field label="Email" />
-          <Checkbox label="I'm 18 or older" />
-          <Checkbox label="I accept the terms" />
-          <Checkbox label="I accept the privacy policy" />
-          <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Register" onClick={() => navigate(instance.id, 'next')} />
+          <Field label="Last name" required />
+          <Field label="Email" required />
+          <Checkbox label="I'm 18 or older"            checked={consents[0]} required={requireOptIns} onChange={() => toggle(0)} />
+          <Checkbox label="I accept the terms"          checked={consents[1]} required={requireOptIns} onChange={() => toggle(1)} />
+          <Checkbox label="I accept the privacy policy" checked={consents[2]} required={requireOptIns} onChange={() => toggle(2)} />
+          <CtaButton
+            kind={exitVariant(config, instance.id, 'next', 'primary')}
+            label={canSubmit ? 'Register' : 'Accept all to continue'}
+            onClick={canSubmit ? () => navigate(instance.id, 'next') : undefined}
+          />
         </div>
       </div>
     </div>
   );
 }
-function Field({ label, narrow = false }: { label: string; narrow?: boolean }) {
+function Field({ label, narrow = false, required = false }: { label: string; narrow?: boolean; required?: boolean }) {
   return (
     <div className={`pp-field${narrow ? ' is-narrow' : ''}`}>
-      <span className="pp-field__label">{label}</span>
+      <span className="pp-field__label">{label}{required && <span className="pp-req">*</span>}</span>
       <span className="pp-field__input" />
     </div>
   );
 }
-function Checkbox({ label }: { label: string }) {
+function Checkbox({ label, checked = false, required = false, onChange }: { label: string; checked?: boolean; required?: boolean; onChange?: () => void }) {
   return (
     <label className="pp-check">
-      <span className="pp-check__box" />
-      <span>{label}</span>
+      <span className={`pp-check__box${checked ? ' is-checked' : ''}`} onClick={onChange} role="checkbox" aria-checked={checked} />
+      <span>{label}{required && <span className="pp-req">*</span>}</span>
     </label>
   );
 }
 
 // ─────────────── Game ───────────────
 
-function GamePreview({ config, instance, navigate }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn }) {
+function GamePreview({ config, instance, navigate, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; showAudio?: boolean }) {
   const s = instSettings(config, instance.id);
-  const timerOn  = (s.timerEnabled ?? true) as boolean;
-  const timerSec = (s.timerSec ?? 60) as number;
+  const timerOn   = (s.timerEnabled ?? true) as boolean;
+  const timerSec  = (s.timerSec ?? 60) as number;
+  const bootMode  = (s.unityBootMode as string) ?? 'entry';
+  const isUnity   = config.game === 'unity';
   const m = Math.floor(timerSec / 60);
   const r = timerSec % 60;
   const clock = `${m}:${r.toString().padStart(2, '0')}`;
+  const [muted, setMuted] = useState(false);
   return (
     <div className="pp pp--game">
       {timerOn && timerSec > 0 && (
@@ -439,28 +571,45 @@ function GamePreview({ config, instance, navigate }: { config: ScaffoldConfig; i
           <span className="pp-timer__value">{clock}</span>
         </div>
       )}
+      {showAudio && (
+        <button type="button" className="pp-game-audio" aria-pressed={muted} aria-label={muted ? 'Unmute' : 'Mute'} onClick={() => setMuted(m => !m)}>
+          {muted ? '🔇' : '🔊'}
+        </button>
+      )}
       <div className="pp-game-canvas">
         <div className="pp-game-grid" aria-hidden>
           {Array.from({ length: 16 }).map((_, i) => <div key={i} className="pp-game-tile" />)}
         </div>
         <CtaButton kind={exitVariant(config, instance.id, 'next', 'tertiary')} label="Simulate game end" onClick={() => navigate(instance.id, 'next')} />
       </div>
-      <div className="pp-game-engine">{config.gameId || config.game}</div>
+      <div className="pp-game-engine">
+        {config.gameId || config.game}
+        {isUnity && <span className="pp-game-boot">{bootMode === 'entry' ? 'preload from entry' : 'load on /game'}</span>}
+      </div>
     </div>
   );
 }
 
 // ─────────────── Result ───────────────
 
-function ResultPreview({ config, instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
+function ResultPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
   const showPlayAgain   = isExitOn(config, instance.id, 'playAgain',   true);
   const showLeaderboard = isExitOn(config, instance.id, 'leaderboard', false);
+  const s = instSettings(config, instance.id);
+  const autoNavSec = Number(s.autoNavSec ?? 0);
   const brand = config.brand?.trim() || config.name?.trim();
+  const [remaining, setRemaining] = useState(autoNavSec);
+  useEffect(() => {
+    setRemaining(autoNavSec);
+    if (!autoNavSec) return;
+    const id = setInterval(() => setRemaining(r => (r > 0 ? r - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, [autoNavSec, instance.id]);
   return (
     <div className="pp pp--hero">
       <HeroBleed />
       <div className="pp-shell">
-        <HeaderLogo onMenu={onMenu} />
+        <HeaderLogo onMenu={onMenu} showAudio={showAudio} />
         <div className="pp-bottom">
           <HeroStack kicker="RESULT" title="Well done!" body={brand ? `Thanks for playing ${brand}.` : undefined} />
           <div className="pp-score-plate">
@@ -468,6 +617,12 @@ function ResultPreview({ config, instance, navigate, onMenu }: { config: Scaffol
             <span className="pp-score-plate__value">2,480</span>
             <span className="pp-score-plate__rank">Rank #4</span>
           </div>
+          {autoNavSec > 0 && (
+            <span className="pp-flag pp-flag--ticking">
+              <span className="pp-flag__dot" aria-hidden />
+              Auto-continue in {remaining}s
+            </span>
+          )}
           <div className="pp-actions">
             <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />
             {showPlayAgain   && <CtaButton kind={exitVariant(config, instance.id, 'playAgain', 'secondary')} label="Play again"  onClick={() => navigate(instance.id, 'playAgain', 'first')} />}
@@ -481,7 +636,7 @@ function ResultPreview({ config, instance, navigate, onMenu }: { config: Scaffol
 
 // ─────────────── Leaderboard ───────────────
 
-function LeaderboardPreview({ config, instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
+function LeaderboardPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
   const mock = [
     { rank: 1, name: 'Alex P.',   score: 4830 },
     { rank: 2, name: 'Sam V.',    score: 4622 },
@@ -493,7 +648,7 @@ function LeaderboardPreview({ config, instance, navigate, onMenu }: { config: Sc
     <div className="pp pp--hero">
       <HeroBleed />
       <div className="pp-shell">
-        <HeaderLogo onMenu={onMenu} />
+        <HeaderLogo onMenu={onMenu} showAudio={showAudio} />
         <div className="pp-bottom">
           <HeroStack kicker="LEADERBOARD" title="Top players" />
           <ol className="pp-lb">
@@ -514,7 +669,7 @@ function LeaderboardPreview({ config, instance, navigate, onMenu }: { config: Sc
 
 // ─────────────── Voucher ───────────────
 
-function VoucherPreview({ config, instance, navigate, onMenu }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void }) {
+function VoucherPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
   const s = instSettings(config, instance.id);
   const showQr     = (s.showQr ?? true) as boolean;
   const codeLength = ((s.codeLength as number) || 8);
@@ -524,7 +679,7 @@ function VoucherPreview({ config, instance, navigate, onMenu }: { config: Scaffo
     <div className="pp pp--hero">
       <HeroBleed />
       <div className="pp-shell">
-        <HeaderLogo onMenu={onMenu} />
+        <HeaderLogo onMenu={onMenu} showAudio={showAudio} />
         <div className="pp-bottom pp-bottom--center">
           <HeroStack kicker="REWARD" title="Your voucher" body="Show this code at checkout." />
           <div className="pp-voucher">

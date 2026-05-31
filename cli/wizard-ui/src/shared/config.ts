@@ -327,6 +327,8 @@ export const PAGE_SETTINGS_SCHEMA: Record<string, SettingDef[]> = {
         { value: 'card',          label: 'Card screen' },
       ],
       hint: 'Choose whether the tutorial sits directly on the campaign hero image or inside a centered card.' },
+    { key: 'stepCount', label: 'Step count', kind: 'number', default: 3, min: 1, max: 6,
+      hint: '✓ Number of how-to-play slides. Drives both the wizard preview and the CAPE schema.' },
     { key: 'allowSkip', label: 'Allow skip', kind: 'boolean', default: false,
       hint: '✓ Show a "Skip" link on each tutorial slide.' },
   ],
@@ -536,6 +538,80 @@ export function pageMeta(id: string): PageMeta | undefined {
 
 export function pagesForStack(_stack: Stack): PageMeta[] {
   return ALL_PAGES;
+}
+
+// ─── Phase grouping ─────────────────────────────────────────────────────────
+//
+// Used by the wizard to divide a flow into "Before gameplay / Gameplay /
+// After gameplay" sections. Helps the user reason about pacing and is the
+// grouping shown in both the flow list and the Add-page picker.
+
+export type Phase = 'before' | 'game' | 'after';
+
+export const PHASE_LABELS: Record<Phase, string> = {
+  before: 'Before gameplay',
+  game:   'Gameplay',
+  after:  'After gameplay',
+};
+
+export const PHASE_ORDER: Phase[] = ['before', 'game', 'after'];
+
+const PAGE_PHASE: Record<string, Phase> = {
+  landing:         'before',
+  'intro-video':   'before',
+  tutorial:        'before',
+  'loading-video': 'before',
+  register:        'before',
+  game:            'game',
+  result:          'after',
+  'ad-video':      'after',
+  voucher:         'after',
+  leaderboard:     'after',
+};
+
+export function phaseForType(type: string): Phase {
+  return PAGE_PHASE[type] ?? 'after';
+}
+
+/**
+ * Group an instance flow into phase buckets. Position-aware: if a `register`
+ * page sits after `result`, it lands in the "after" bucket instead of its
+ * canonical "before" home so the UI matches what scaffolding will actually do.
+ */
+export function groupPagesByPhase(pages: PageInstance[]): Array<{ phase: Phase; pages: PageInstance[] }> {
+  const gameIdx = pages.findIndex(p => p.type === 'game');
+  const buckets: Record<Phase, PageInstance[]> = { before: [], game: [], after: [] };
+  pages.forEach((page, idx) => {
+    let phase = phaseForType(page.type);
+    if (gameIdx >= 0) {
+      if (idx < gameIdx) phase = page.type === 'game' ? 'game' : 'before';
+      else if (idx === gameIdx) phase = 'game';
+      else phase = page.type === 'game' ? 'game' : 'after';
+    }
+    buckets[phase].push(page);
+  });
+  return PHASE_ORDER
+    .map(phase => ({ phase, pages: buckets[phase] }))
+    .filter(group => group.pages.length > 0);
+}
+
+// Small inline glyphs per page type — used by FlowCard and AddPageMenu as a
+// fast visual hint. Kept as text/emoji so we don't pull an icon dep.
+export const PAGE_ICONS: Record<string, string> = {
+  landing:         '⌂',
+  'intro-video':   '▶',
+  tutorial:        '☷',
+  'loading-video': '◐',
+  register:        '✎',
+  game:            '◆',
+  result:          '★',
+  'ad-video':      '▶',
+  voucher:         '⌑',
+  leaderboard:     '☰',
+};
+
+export function pageIcon(type: string): string {
+  return PAGE_ICONS[type] ?? '◌';
 }
 
 export function defaultPagesForStack(stack: Stack): PageInstance[] {
