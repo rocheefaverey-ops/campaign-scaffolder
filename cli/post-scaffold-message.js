@@ -172,13 +172,13 @@ function buildModuleTodos(modules, capeId, capeAutoPublished = false) {
 
   if (modules.includes('audio')) {
     todos.push(
-      `[audio] Install: ${c.cyan('pnpm add howler @types/howler')} and uncomment in ${c.cyan('components/_modules/AudioPlayer/AudioPlayer.tsx')}`,
+      `[audio] Verify ${c.cyan('<AudioPlayer />')} is mounted in app/layout.tsx and test browser autoplay behavior`,
     );
   }
 
   if (modules.includes('cookie-consent')) {
     todos.push(
-      `[cookie-consent] Set ${c.cyan('NEXT_PUBLIC_COOKIEBOT_CBID')} in .env and mount ${c.cyan('<CookieConsent />')} in app/layout.tsx`,
+      `[cookie-consent] Set ${c.cyan('NEXT_PUBLIC_COOKIEBOT_CBID')} in .env and verify ${c.cyan('<CookieConsent />')} loads`,
     );
   }
 

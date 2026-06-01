@@ -799,6 +799,7 @@ export function buildNextCapeFormat({
   // function with the INSTANCE id. Singletons (id === type) keep the legacy
   // shape so existing campaigns migrate cleanly; duplicates get their own
   // CAPE tab labelled "Type · id" with copy keys at copy.{instanceId}.*
+  let hasMenuTab = false;
   for (const inst of flow) {
     const rawType = inst.type ?? pageTypes[inst.id] ?? inst.id;
     const type = VIDEO_PAGE_IDS.has(inst.id) || VIDEO_PAGE_IDS.has(rawType) ? 'video' : rawType;
@@ -806,6 +807,7 @@ export function buildNextCapeFormat({
     const blockList = blockListFromConfig(pageBlocks[inst.id] ?? blocksConfig[inst.id] ?? pageBlocks[type] ?? blocksConfig[type]);
     if (blockList.length > 0) {
       pageTabs.push(nextBlockDrivenTab(inst.id, type, blockList));
+      if (type === 'menu') hasMenuTab = true;
       continue;
     }
     switch (type) {
@@ -856,7 +858,7 @@ export function buildNextCapeFormat({
     }
   }
 
-  pageTabs.push(nextMenuTab(menuItemsEnabled));
+  if (!hasMenuTab) pageTabs.push(nextMenuTab(menuItemsEnabled));
 
   const capePages = [settingsPage()];
   capePages.push(capePage('pages', 'Pages', 'next-pages-page', pageTabs, { showLanguageSelector: true }));

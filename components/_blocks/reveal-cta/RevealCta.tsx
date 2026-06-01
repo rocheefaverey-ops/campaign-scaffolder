@@ -1,8 +1,10 @@
 import styles from './RevealCta.module.scss';
 
-type Props = { label?: string; visible?: boolean; onClick?: () => void };
+type Variant = 'primary' | 'secondary' | 'tertiary' | 'dark' | 'danger';
 
-export function RevealCta({ label = 'Continue', visible = true, onClick }: Props) {
+type Props = { label?: string; visible?: boolean; variant?: Variant; onClick?: () => void };
+
+export function RevealCta({ label = 'Continue', visible = true, variant = 'primary', onClick }: Props) {
   if (!visible) return null;
-  return <button type="button" className={styles.cta} onClick={onClick}>{label}</button>;
+  return <button type="button" className={`${styles.cta} ${styles[`cta--${variant}`]}`} onClick={onClick}>{label}</button>;
 }

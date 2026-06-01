@@ -1458,6 +1458,7 @@ function resolveModules(game, pages, extraModules) {
 }
 
 async function enforceConfigValidation(options, { yes = false } = {}) {
+  validateArgs(options);
   const { errors, warnings } = validateConfig(options);
   if (errors.length) {
     throw new Error(errors.join('\n'));
@@ -2170,9 +2171,14 @@ export function useGameNavigation() {
     unityCdnUrl: unityBaseUrl || undefined,
     // Pages & element selections
     pages,
+    pageTypes: Object.keys(pageTypes).length > 0 ? pageTypes : undefined,
+    routeMap: Object.keys(routeMap).length > 0 ? routeMap : undefined,
     tsPageElementSelections,
     pageSettings: Object.keys(pageSettings ?? {}).length > 0 ? pageSettings : undefined,
+    flowEntry: flowEntry || undefined,
+    flowEnabledExits: Object.keys(flowEnabledExits ?? {}).length > 0 ? flowEnabledExits : undefined,
     flowRules: Object.keys(flowRules ?? {}).length > 0 ? flowRules : undefined,
+    menuItemsEnabled: Object.keys(menuItemsEnabled ?? {}).length > 0 ? menuItemsEnabled : undefined,
     wizard: _wizardMeta ?? undefined,
     // Tooling
     gtmId: gtmId || undefined,
@@ -2343,6 +2349,27 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
         );
         writeFileSync(layoutPath, layoutSrc, 'utf8');
         ok('CookieConsent injected into app/layout.tsx');
+      }
+    }
+  }
+
+  // 2b-iv. Audio layout patch — mount <AudioPlayer> inside Providers so it can
+  // read GameContext.isMuted.
+  if (modules.includes('audio')) {
+    const layoutPath = join(frontendDir, 'app', 'layout.tsx');
+    if (existsSync(layoutPath)) {
+      let layoutSrc = readFileSync(layoutPath, 'utf8');
+      if (!layoutSrc.includes('AudioPlayer')) {
+        layoutSrc = layoutSrc.replace(
+          `import DesktopWrapper from '@components/_core/DesktopWrapper/DesktopWrapper';`,
+          `import DesktopWrapper from '@components/_core/DesktopWrapper/DesktopWrapper';\nimport AudioPlayer from '@components/_modules/AudioPlayer/AudioPlayer';`,
+        );
+        layoutSrc = layoutSrc.replace(
+          `        <Providers capeData={capeData} platform={platform} nonce={nonce}>`,
+          `        <Providers capeData={capeData} platform={platform} nonce={nonce}>\n          <AudioPlayer />`,
+        );
+        writeFileSync(layoutPath, layoutSrc, 'utf8');
+        ok('AudioPlayer injected into app/layout.tsx');
       }
     }
   }
@@ -2741,10 +2768,16 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     regMode:      regMode !== 'none' ? regMode : undefined,
     pages,
     pageTypes:    Object.keys(pageTypes).length > 0 ? pageTypes : undefined,
+    routeMap:     Object.keys(routeMap).length > 0 ? routeMap : undefined,
     flow:         _flowTokens,
     flowExits:    Object.keys(flowExits).length > 0 ? flowExits : undefined,
     flowEntry:    flowEntry || undefined,
+    flowEnabledExits: Object.keys(flowEnabledExits).length > 0 ? flowEnabledExits : undefined,
+    flowButtonVariants: Object.keys(flowButtonVariants).length > 0 ? flowButtonVariants : undefined,
     flowRules:    Object.keys(flowRules).length > 0 ? flowRules : undefined,
+    pageSettings: _wizardMeta?.pageSettings ?? undefined,
+    menuItemsEnabled: Object.keys(menuItemsEnabled).length > 0 ? menuItemsEnabled : undefined,
+    menuButtonVariants: Object.keys(menuButtonVariants).length > 0 ? menuButtonVariants : undefined,
     // Page element selections (page builder output)
     pageElementSelections: Object.keys(pageElementSelections).length > 0 ? pageElementSelections : undefined,
     blocksConfig: blocksConfig && Object.keys(blocksConfig).length > 0 ? blocksConfig : undefined,
@@ -3140,7 +3173,7 @@ function patchTanstackSecurityMiddleware(frontendDir, patches) {
             `  Fix the manifest at modules/${moduleId}/manifest.json before retrying.`,
           );
         }
-        if (!src.includes(val)) { src = appendToCspDirective(src, dir, val); changed = true; }
+        if (!cspDirectiveIncludes(src, dir, val)) { src = appendToCspDirective(src, dir, val); changed = true; }
       }
     }
   }
@@ -3164,7 +3197,7 @@ function patchMiddlewareCsp(outputDir, patches) {
             `  Fix the manifest at modules/${moduleId}/manifest.json before retrying.`,
           );
         }
-        if (!src.includes(val)) { src = appendToCspDirective(src, dir, val); changed = true; }
+        if (!cspDirectiveIncludes(src, dir, val)) { src = appendToCspDirective(src, dir, val); changed = true; }
       }
     }
   }
@@ -3192,6 +3225,17 @@ function appendToCspDirective(src, directive, value) {
   const anchorIdx = lines.findIndex(l => l.includes('// lw-scaffold:csp'));
   if (anchorIdx !== -1) { lines.splice(anchorIdx, 0, `    ${directive} ${value};`); return lines.join('\n'); }
   return src;
+}
+
+function cspDirectiveIncludes(src, directive, value) {
+  for (const line of src.split('\n')) {
+    const trimmed = line.trimStart();
+    if (!trimmed.startsWith(directive + ' ') && !trimmed.startsWith(directive + ';')) continue;
+    const semiIdx = trimmed.indexOf(';');
+    const body = semiIdx >= 0 ? trimmed.slice(0, semiIdx) : trimmed;
+    return body.split(/\s+/).slice(1).includes(value);
+  }
+  return false;
 }
 
 // ─── Iframe mode ──────────────────────────────────────────────────────────────
@@ -3623,9 +3667,12 @@ function writeChecklistFile(outputDir, cfg) {
 // ─── Git init ────────────────────────────────────────────────────────────────
 function gitInit(outputDir, projectName) {
   try {
-    execSync('git init', { cwd: outputDir, stdio: 'pipe' });
-    execSync('git add .', { cwd: outputDir, stdio: 'pipe' });
-    execSync(`git commit -m "chore: scaffold ${projectName}"`, { cwd: outputDir, stdio: 'pipe' });
+    const init = spawnSync('git', ['init'], { cwd: outputDir, stdio: 'pipe', shell: false });
+    if (init.status !== 0) return false;
+    const add = spawnSync('git', ['add', '.'], { cwd: outputDir, stdio: 'pipe', shell: false });
+    if (add.status !== 0) return false;
+    const commit = spawnSync('git', ['commit', '-m', `chore: scaffold ${projectName}`], { cwd: outputDir, stdio: 'pipe', shell: false });
+    if (commit.status !== 0) return false;
     return true;
   } catch {
     return false;
@@ -3634,8 +3681,10 @@ function gitInit(outputDir, projectName) {
 
 function gitCommitUpdate(outputDir, projectName) {
   try {
-    execSync('git add .', { cwd: outputDir, stdio: 'pipe' });
-    execSync(`git commit -m "chore: scaffold update ${projectName}"`, { cwd: outputDir, stdio: 'pipe' });
+    const add = spawnSync('git', ['add', '.'], { cwd: outputDir, stdio: 'pipe', shell: false });
+    if (add.status !== 0) return false;
+    const commit = spawnSync('git', ['commit', '-m', `chore: scaffold update ${projectName}`], { cwd: outputDir, stdio: 'pipe', shell: false });
+    if (commit.status !== 0) return false;
     return true;
   } catch {
     return false;
@@ -4030,10 +4079,19 @@ async function main() {
       outputDir:             targetDir,
       pageElementSelections: existing.pageElementSelections ?? {},
       tsPageElementSelections: existing.tsPageElementSelections ?? {},
+      selectedGame:           existing.selectedGame ?? null,
       unityCdnUrl:           existing.unityCdnUrl || '',
       pageTypes:             existing.pageTypes ?? inferPageTypes(existing.pages ?? []),
       flowExits:             existing.flowExits ?? {},
+      flowEntry:             existing.flowEntry ?? '',
+      flowEnabledExits:      existing.flowEnabledExits ?? existing.wizard?.flowEnabledExits ?? {},
+      flowButtonVariants:    existing.flowButtonVariants ?? existing.wizard?.flowButtonVariants ?? {},
       flowRules:             existing.flowRules ?? existing.wizard?.flowRules ?? {},
+      pageSettings:          existing.pageSettings ?? existing.wizard?.pageSettings ?? {},
+      menuItemsEnabled:      existing.menuItemsEnabled ?? existing.wizard?.menuItemsEnabled ?? {},
+      menuButtonVariants:    existing.menuButtonVariants ?? existing.wizard?.menuButtonVariants ?? {},
+      routeMap:              existing.routeMap ?? {},
+      _wizardMeta:           existing.wizard ?? null,
       blocksConfig:          existing.blocksConfig ?? pageBlocksToBlocksConfig(existing.pageBlocks ?? {}),
     };
 

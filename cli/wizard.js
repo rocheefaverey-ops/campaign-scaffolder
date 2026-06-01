@@ -71,6 +71,15 @@ const ui = PROD ? null : spawn(npmCmd, ['run', 'dev', '--', '--port', String(UI_
   shell: isWindows,
 });
 
+server.on('error', (err) => {
+  console.error(`[wizard] server failed to start: ${err.message}`);
+  shutdown(1);
+});
+if (ui) ui.on('error', (err) => {
+  console.error(`[wizard] UI failed to start: ${err.message}`);
+  shutdown(1);
+});
+
 // ── Open browser once both are warm. We don't have a strict ready signal
 //    here yet — a 1.5s delay is enough for Vite + Fastify cold start on dev
 //    machines. Good enough for v1; a /ready endpoint poll is a follow-up.

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildBlockDrivenLanding } from '../page-builder.js';
+import { buildBlockDrivenLanding, buildBlockDrivenLoading, buildBlockDrivenVideo } from '../page-builder.js';
 
 describe('buildBlockDrivenLanding', () => {
   const minimalBlocks = [
@@ -64,5 +64,27 @@ describe('buildBlockDrivenLanding', () => {
     const out = buildBlockDrivenLanding(minimalBlocks);
     assert.match(out, /import \{ useRouter \} from 'next\/navigation';/);
     assert.match(out, /const router = useRouter\(\);/);
+  });
+
+  it('omits useRouter when no enabled block navigates', () => {
+    const out = buildBlockDrivenLoading([
+      { name: 'background', settings: { kind: 'image' } },
+      { name: 'centered-art', settings: { size: 'md' } },
+      { name: 'brand-chip', settings: { size: 'md' } },
+      { name: 'tagline', settings: {} },
+      { name: 'loading-indicator', settings: { kind: 'ring' } },
+    ]);
+    assert.doesNotMatch(out, /useRouter/);
+  });
+
+  it('does not auto-advance wait-for-engine video blocks', () => {
+    const out = buildBlockDrivenVideo([
+      { name: 'background', settings: { kind: 'solid' } },
+      { name: 'header-chrome', settings: { leftSlot: 'none', rightSlot: 'none' } },
+      { name: 'video-player', settings: { muted: true, loop: true, onEnd: 'wait-for-engine' } },
+      { name: 'fallback-indicator', settings: {} },
+    ]);
+    assert.doesNotMatch(out, /onEnded=\{\(\) => router\.push/);
+    assert.doesNotMatch(out, /useRouter/);
   });
 });

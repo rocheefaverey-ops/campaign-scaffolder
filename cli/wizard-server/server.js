@@ -27,6 +27,8 @@ import { randomBytes } from 'crypto';
 import { validateAuth, login as capeLogin, clearTokenCache } from '../cape-client.js';
 import { loadGameRegistry } from '../game-registry.js';
 import { KNOWN_PAGE_TYPES } from '../cape-format-builder.js';
+import { GAME_ENGINES } from '../core/page-config.js';
+import { OPTIONAL_MODULE_IDS, PAGE_REQUIRES_MODULE } from '../core/module-registry.js';
 import { runDoctor } from '../core/health.js';
 import { listBlocks } from '../block-resolver.js';
 
@@ -86,6 +88,26 @@ function validateWizardConfig(cfg) {
   }
 
   const engine = cfg.game || 'none';
+  if (!['none', ...GAME_ENGINES].includes(engine)) {
+    errors.push(`Unknown game engine "${engine}". Known engines: none, ${GAME_ENGINES.join(', ')}.`);
+  }
+
+  if (cfg.gameId) {
+    const game = loadGameRegistry().find((entry) => entry.id === cfg.gameId);
+    if (!game) {
+      errors.push(`Unknown gameId "${cfg.gameId}". Expected one of: ${loadGameRegistry().map((entry) => entry.id).join(', ')}.`);
+    } else if (engine !== 'none' && game.engine !== engine) {
+      errors.push(`gameId "${cfg.gameId}" uses engine "${game.engine}", but config selected "${engine}".`);
+    }
+  }
+
+  const validModules = new Set([...OPTIONAL_MODULE_IDS, ...Object.values(PAGE_REQUIRES_MODULE), ...GAME_ENGINES]);
+  for (const moduleId of cfg.modules ?? []) {
+    if (!validModules.has(moduleId)) {
+      errors.push(`Unknown module "${moduleId}". Known modules: ${[...validModules].sort().join(', ')}.`);
+    }
+  }
+
   const hasGamePage = types.includes('game');
   if (engine === 'none' && hasGamePage) {
     errors.push('`game` page requires an engine. Add --engine=unity|r3f|phaser or remove the `game` page.');

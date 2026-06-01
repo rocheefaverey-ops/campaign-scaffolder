@@ -7,7 +7,7 @@ interface Props {
 /**
  * CookieConsent — Server Component.
  * Injects the Cookiebot consent banner script.
- * Mount inside <head> in app/layout.tsx:
+ * Mount as the first child of <body> in app/layout.tsx:
  *
  *   <CookieConsent cbid={process.env.NEXT_PUBLIC_COOKIEBOT_CBID} />
  */

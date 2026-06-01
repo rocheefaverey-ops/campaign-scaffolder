@@ -112,6 +112,23 @@ if (warnings.length > 0) {
 
 // ── Test 3b: TanStack uses the same rich CAPE vocabulary as Next ───────────
 warnings.length = 0;
+const blockDrivenMenuFlow = buildNextCapeFormat({
+  instances: [{ id: 'menu', type: 'menu' }],
+  blocksConfig: {
+    menu: {
+      blocks: [
+        { name: 'background', settings: {} },
+        { name: 'menu-item-list', settings: {} },
+      ],
+    },
+  },
+});
+const blockDrivenMenuTabs = blockDrivenMenuFlow.interfaceSetup.pages.find((p) => p.path === 'pages').tabs;
+const menuTabCount = blockDrivenMenuTabs.filter((t) => t.path === 'menu').length;
+if (menuTabCount !== 1) {
+  failures.push(`Block-driven menu test: expected exactly one menu tab, got ${menuTabCount}.`);
+}
+
 const tanStackFlow = buildTanStackCapeFormat({
   pages: ['landing', 'tutorial', 'register', 'game', 'result', 'leaderboard', 'voucher'],
   tsPageElementSelections: { tutorial__stepCount: 3 },

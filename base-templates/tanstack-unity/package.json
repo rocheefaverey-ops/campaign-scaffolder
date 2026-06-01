@@ -11,8 +11,11 @@
     "dev": "vite dev --host --port 3000",
     "build": "vite build",
     "start": "node --env-file=.env .output/server/index.mjs",
-    "eslint": "eslint \"./src/**/*.{js,ts,jsx,tsx}\" --max-warnings=10",
-    "eslint:fix": "eslint \"./src/**/*.{js,ts,jsx,tsx}\" --fix"
+    "ts-compile": "tsc --noEmit",
+    "lint": "eslint \"./src/**/*.{js,ts,jsx,tsx}\" --max-warnings=10",
+    "lint:fix": "eslint \"./src/**/*.{js,ts,jsx,tsx}\" --fix",
+    "eslint": "pnpm run lint",
+    "eslint:fix": "pnpm run lint:fix"
   },
   "dependencies": {
     "@google-cloud/error-reporting": "^3.0.5",

@@ -16,6 +16,6 @@
   },
   "injectInto": {
     "file": "app/layout.tsx",
-    "instruction": "Mount <CookieConsent cbid={process.env.NEXT_PUBLIC_COOKIEBOT_CBID} /> in <head>."
+    "instruction": "Mount <CookieConsent cbid={process.env.NEXT_PUBLIC_COOKIEBOT_CBID} /> as the first child of <body>."
   }
 }

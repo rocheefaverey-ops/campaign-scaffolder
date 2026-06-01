@@ -315,7 +315,7 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
     'body-copy': block(true, { markdown: true }),
     'score-readout': block(true, { showHighScore: true }),
     'score-illustration': block(false),
-    'stats-table': block(false, { count: 3 }),
+    'stats-table': block(false, { count: 3, rows: [{ label: 'Score', value: 'score' }, { label: 'Rank', value: 'rank' }, { label: 'Best', value: 'highScore' }] }),
     'status-chip': block(false, { kind: 'registered' }),
     'cta-group': block(true, { count: 2, buttons: [{ variant: 'primary', exit: 'voucher' }, { variant: 'secondary', exit: 'game' }] }),
     'compliance-badge': block(false, { kind: '18+' }),

@@ -20,10 +20,10 @@
   },
   "injectInto": {
     "file": "app/layout.tsx",
-    "instruction": "Mount <GTMScript gtmId={process.env.NEXT_PUBLIC_GTM_ID} nonce={nonce} /> inside <head>."
+    "instruction": "Mount <GTMScript gtmId={process.env.NEXT_PUBLIC_GTM_ID} nonce={nonce} /> as the first child of <body>."
   },
   "notes": [
     "Call gtmPush({ event: 'game_start' }) anywhere on the client to push dataLayer events.",
-    "GTM_ID is set via {{GTM_ID}} token replacement during scaffolding."
+    "NEXT_PUBLIC_GTM_ID is written to .env during scaffolding when provided."
   ]
 }

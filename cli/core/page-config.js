@@ -77,7 +77,10 @@ export function pageModuleType(pageId) {
 }
 
 export function routeFor(pageId, routeMap = {}) {
-  return routeMap[pageId] ?? PAGE_ROUTES[pageId] ?? `/${pageId}`;
+  const key = String(pageId);
+  const hyphenKey = key.replace(/_/g, '-');
+  const underscoreKey = key.replace(/-/g, '_');
+  return routeMap[key] ?? routeMap[hyphenKey] ?? routeMap[underscoreKey] ?? PAGE_ROUTES[key] ?? PAGE_ROUTES[hyphenKey] ?? `/${hyphenKey}`;
 }
 
 export function inferPageTypes(_pages) {

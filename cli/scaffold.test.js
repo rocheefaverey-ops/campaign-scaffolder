@@ -48,6 +48,11 @@ t('defaults to PAGE_ROUTES when routeMap is empty', () => {
   assert.equal(routeFor('game', {}), '/gameplay');
   assert.equal(routeFor('video-2', {}), '/video-2');
 });
+t('normalizes underscore route keys to hyphenated page ids', () => {
+  const routeMap = { 'loading-video': '/loader' };
+  assert.equal(routeFor('loading_video', routeMap), '/loader');
+  assert.equal(routeFor('ad_video', {}), '/ad-video');
+});
 
 console.log('normalizeUnityBootMode()');
 t('defaults to start-page Unity preload', () => {

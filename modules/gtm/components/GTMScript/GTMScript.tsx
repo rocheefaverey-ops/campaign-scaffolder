@@ -7,7 +7,7 @@ interface Props {
 
 /**
  * GTMScript — Server Component.
- * Mount inside <head> in app/layout.tsx:
+ * Mount as the first child of <body> in app/layout.tsx:
  *
  *   <GTMScript gtmId={process.env.NEXT_PUBLIC_GTM_ID} nonce={nonce} />
  *

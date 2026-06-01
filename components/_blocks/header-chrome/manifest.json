@@ -17,5 +17,5 @@
     "leftIcon": "branding.icons.left | image | optional left slot override icon",
     "rightIcon": "branding.icons.right | image | optional right slot override icon"
   },
-  "usableOn": ["landing", "onboarding", "result", "leaderboard", "register", "voucher", "end", "menu", "video"]
+  "usableOn": ["landing", "onboarding", "game", "result", "leaderboard", "register", "voucher", "end", "menu", "video"]
 }
