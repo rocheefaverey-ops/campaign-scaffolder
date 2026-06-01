@@ -21,6 +21,12 @@ export default function StepPages({ config, setConfig }: StepProps) {
   const inFlow      = config.pages;
   const availablePages = pagesForStack(config.stack);
 
+  // Which page (if any) is open in the full-width focus editor. Lifted to the
+  // step so the editor can replace the flow list and offer Prev/Next nav.
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const focusIdx = focusId ? inFlow.findIndex((p) => p.id === focusId) : -1;
+  const focusInstance = focusIdx >= 0 ? inFlow[focusIdx] : null;
+
   // `regMode` is now derived from where Register sits relative to Result in
   // the flow — no separate UI control. Sync the config field whenever the
   // derived value drifts (page added / removed / reordered) so downstream
@@ -88,9 +94,36 @@ export default function StepPages({ config, setConfig }: StepProps) {
   const removeInstance = (id: string) => {
     const nextRules = { ...(config.flowRules ?? {}) };
     const nextPageBlocks = { ...(config.pageBlocks ?? {}) };
+    const nextPageSettings = { ...(config.pageSettings ?? {}) };
     delete nextRules[id];
     delete nextPageBlocks[id];
-    setConfig({ ...config, pages: inFlow.filter(i => i.id !== id), flowRules: nextRules, pageBlocks: nextPageBlocks });
+    delete nextPageSettings[id];
+
+    // Prune flow wiring keyed `${id}.${exitKey}`, and any other page's exit
+    // whose *target* was the removed page — otherwise the wiring goes stale and
+    // (worse) re-adding a page with the same id silently resurrects old exits,
+    // variants, and settings.
+    const isOwnKey = (key: string) => key.split('.')[0] === id;
+    const nextExits = Object.fromEntries(
+      Object.entries(config.flowExits ?? {}).filter(([k, target]) => !isOwnKey(k) && target !== id),
+    );
+    const nextEnabled = Object.fromEntries(
+      Object.entries(config.flowEnabledExits ?? {}).filter(([k]) => !isOwnKey(k)),
+    );
+    const nextVariants = Object.fromEntries(
+      Object.entries(config.flowButtonVariants ?? {}).filter(([k]) => !isOwnKey(k)),
+    );
+
+    setConfig({
+      ...config,
+      pages: inFlow.filter(i => i.id !== id),
+      flowRules: nextRules,
+      pageBlocks: nextPageBlocks,
+      pageSettings: nextPageSettings,
+      flowExits: nextExits,
+      flowEnabledExits: nextEnabled,
+      flowButtonVariants: nextVariants,
+    });
   };
 
   const onChangeRoute = (instanceId: string, raw: string) => {
@@ -117,12 +150,29 @@ export default function StepPages({ config, setConfig }: StepProps) {
       <div>
         <h2 className="step__title">Pages &amp; flow</h2>
         <p className="step__hint">
-          Drag the cards to reorder. Click <em>Settings</em> on a card to tweak its options inline.
+          {focusInstance
+            ? 'Editing one page — adjust its options and blocks, then step to the next.'
+            : <>Drag the cards to reorder and wire up buttons. Click <em>Edit content</em> on a card to compose its blocks.</>}
         </p>
       </div>
 
       <div className="pages-layout">
       <section className="pages-col">
+        {focusInstance ? (
+          <PageFocusEditor
+            instance={focusInstance}
+            index={focusIdx}
+            total={inFlow.length}
+            config={config}
+            setConfig={setConfig}
+            onClose={() => setFocusId(null)}
+            onNavigate={(dir) => {
+              const next = inFlow[focusIdx + dir];
+              if (next) setFocusId(next.id);
+            }}
+          />
+        ) : (
+        <>
         {inFlow.length === 0 && (
           <p className="step__hint">No pages yet — start by adding one below.</p>
         )}
@@ -145,6 +195,7 @@ export default function StepPages({ config, setConfig }: StepProps) {
                   buttonVariants={config.flowButtonVariants}
                   config={config}
                   setConfig={setConfig}
+                  onFocus={() => setFocusId(instance.id)}
                   flowRules={config.flowRules ?? {}}
                   onChangeRule={(pageId, rule) => {
                     setConfig({
@@ -183,10 +234,16 @@ export default function StepPages({ config, setConfig }: StepProps) {
           typeCounts={typeCounts}
           onAdd={addInstance}
         />
+        </>
+        )}
       </section>
 
       <div className="pages-layout__preview">
-        <PreviewPane config={config} />
+        <PreviewPane
+          config={config}
+          activeId={focusId ?? undefined}
+          onSelectPage={(id) => setFocusId(id)}
+        />
       </div>
       </div>
 
@@ -268,6 +325,60 @@ function AddPageMenu({ availablePages, typeCounts, onAdd }: AddPageMenuProps) {
   );
 }
 
+// ─── Page focus editor ───────────────────────────────────────────────────────
+
+interface PageFocusEditorProps {
+  instance:  PageInstance;
+  index:     number;
+  total:     number;
+  config:    ScaffoldConfig;
+  setConfig: (next: ScaffoldConfig) => void;
+  onClose:   () => void;
+  onNavigate: (dir: -1 | 1) => void;
+}
+
+/**
+ * Full-width, single-page editor. Replaces the flow list while open so one
+ * page's options + blocks get the whole column, with Prev/Next to walk the
+ * flow page by page instead of scrolling one giant stack.
+ */
+function PageFocusEditor({ instance, index, total, config, setConfig, onClose, onNavigate }: PageFocusEditorProps) {
+  const meta = pageMeta(instance.type);
+  const title = meta ? (instance.id === instance.type ? meta.label : `${meta.label} · ${instance.id}`) : instance.id;
+
+  return (
+    <div className="page-focus">
+      <header className="page-focus__bar">
+        <button type="button" className="page-focus__back" onClick={onClose}>
+          ‹ Back to flow
+        </button>
+        <span className="page-focus__count">Page {index + 1} of {total}</span>
+        <div className="page-focus__nav">
+          <button type="button" onClick={() => onNavigate(-1)} disabled={index <= 0} aria-label="Previous page">
+            ‹ Prev
+          </button>
+          <button type="button" onClick={() => onNavigate(1)} disabled={index >= total - 1} aria-label="Next page">
+            Next ›
+          </button>
+        </div>
+      </header>
+
+      <div className="page-focus__heading">
+        <strong>{title}</strong>
+        {meta?.hint && <span>{meta.hint}</span>}
+      </div>
+
+      <PageSettingsCard
+        pageId={instance.id}
+        schemaType={instance.type}
+        pageLabel={title}
+        config={config}
+        setConfig={setConfig}
+      />
+    </div>
+  );
+}
+
 // ─── Flow card ──────────────────────────────────────────────────────────────
 
 interface FlowCardProps {
@@ -280,6 +391,7 @@ interface FlowCardProps {
   buttonVariants:   Record<string, ButtonVariant>;
   config:           ScaffoldConfig;
   setConfig:        (next: ScaffoldConfig) => void;
+  onFocus:          () => void;
   flowRules:        Record<string, PageFlowRule>;
   onChangeRule:     (pageId: string, rule: PageFlowRule) => void;
   onChangeExit:     (pageId: string, exitKey: string, target: string) => void;
@@ -292,14 +404,11 @@ interface FlowCardProps {
 
 function FlowCard({
   instance, index, isLast, inFlow, flowExits, enabledExits, buttonVariants,
-  config, setConfig, flowRules, onChangeRule,
+  onFocus, flowRules, onChangeRule,
   onChangeExit, onToggleExit, onChangeVariant, onRemove, onChangeRoute, onBlurRoute,
 }: FlowCardProps) {
   const meta = pageMeta(instance.type);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: instance.id });
-  // Settings disclosure is per-card local state. Survives reorder because
-  // dnd-kit keeps the React element identity (key=instance.id).
-  const [expanded, setExpanded] = useState(false);
 
   const style = {
     transform:  CSS.Transform.toString(transform),
@@ -311,9 +420,12 @@ function FlowCard({
 
   const exits = meta.exits ?? [];
   const defaultBlocks = defaultBlocksForPage(instance.type);
+  // Reflect whether the page TYPE can have settings/blocks — not the current
+  // block count. Otherwise removing every block hides the "Edit content" button
+  // and there's no way to reopen the editor to add blocks back.
   const hasSettings = Boolean(
     PAGE_SETTINGS_SCHEMA[instance.type]?.length ||
-    Object.keys(config.pageBlocks?.[instance.id]?.blocks ?? defaultBlocks.blocks).length,
+    Object.keys(defaultBlocks.blocks).length,
   );
 
   const takenRoutes = new Set(inFlow.filter(p => p.id !== instance.id).map(p => p.route));
@@ -349,10 +461,12 @@ function FlowCard({
     <li
       ref={setNodeRef}
       style={style}
-      className={`flow-card${isDragging ? ' is-dragging' : ''}${expanded ? ' is-expanded' : ''}`}
+      className={`flow-card${isDragging ? ' is-dragging' : ''}`}
     >
-      <div className="flow-card__handle" {...attributes} {...listeners} aria-label="Drag handle">⋮⋮</div>
-      <div className="flow-card__index">{index + 1}</div>
+      <div className="flow-card__rail">
+        <div className="flow-card__handle" {...attributes} {...listeners} aria-label="Drag handle">⋮⋮</div>
+        <div className="flow-card__index">{index + 1}</div>
+      </div>
       <div className="flow-card__body">
         <div className="flow-card__row">
           <strong>{title}</strong>
@@ -381,15 +495,13 @@ function FlowCard({
         {hasSettings && (
           <button
             type="button"
-            className={`flow-card__settings-btn${expanded ? ' is-active' : ''}`}
-            onClick={() => setExpanded((v) => !v)}
-            aria-expanded={expanded}
-            aria-controls={`settings-${instance.id}`}
-            title={expanded ? 'Hide settings' : 'Show settings'}
+            className="flow-card__settings-btn"
+            onClick={onFocus}
+            title="Edit this page's options and blocks"
           >
             <span aria-hidden>⚙</span>
-            <span className="flow-card__settings-btn-label">Settings</span>
-            <span className={`flow-card__chev${expanded ? ' is-open' : ''}`} aria-hidden>▾</span>
+            <span className="flow-card__settings-btn-label">Edit content</span>
+            <span className="flow-card__chev" aria-hidden>→</span>
           </button>
         )}
         <button
@@ -509,23 +621,6 @@ function FlowCard({
               </label>
             )}
           </div>
-        </div>
-      )}
-
-      {hasSettings && expanded && (
-        <div
-          className="flow-card__settings"
-          id={`settings-${instance.id}`}
-          role="region"
-          aria-label={`${title} settings`}
-        >
-          <PageSettingsCard
-            pageId={instance.id}
-            schemaType={instance.type}
-            pageLabel={title}
-            config={config}
-            setConfig={setConfig}
-          />
         </div>
       )}
 

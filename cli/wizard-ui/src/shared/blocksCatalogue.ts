@@ -6,7 +6,26 @@ export interface BlockSettingDef {
   min?: number;
   max?: number;
   unit?: string;
+  /** Allowed values for `enum` / `array-of-enum` settings (manifest shape). */
+  of?: string[];
   options?: Array<{ value: string; label?: string }>;
+}
+
+/** Resolve a setting def's choices from either `options` or the manifest `of`. */
+export function settingOptions(def?: BlockSettingDef): Array<{ value: string; label: string }> {
+  if (def?.options?.length) return def.options.map((o) => ({ value: o.value, label: o.label ?? prettyOption(o.value) }));
+  if (def?.of?.length) return def.of.map((v) => ({ value: v, label: prettyOption(v) }));
+  return [];
+}
+
+/** Human-friendly label for a raw enum value ("decorative-icon" → "Decorative icon"). */
+export function prettyOption(value: string): string {
+  // Keep short codes/symbols as-is: "sm", "md", "all", "18+", "nix18".
+  if (value.length <= 3 || /\d/.test(value)) return value;
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[-_]/g, ' ')
+    .replace(/^\w/, (c) => c.toUpperCase());
 }
 
 export interface BlockCatalogItem {

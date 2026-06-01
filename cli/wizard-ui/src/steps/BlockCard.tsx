@@ -3,6 +3,7 @@ import {
   blockLabel,
   settingDefault,
   settingLabel,
+  settingOptions,
   type BlockCatalogItem,
   type BlockSettingDef,
 } from '../shared/blocksCatalogue.ts';
@@ -26,7 +27,7 @@ export default function BlockCard({
   name,
   block,
   config,
-  index,
+  index: _index,
   canMoveUp,
   canMoveDown,
   onToggle,
@@ -39,6 +40,8 @@ export default function BlockCard({
     () => [...new Set([...Object.keys(block?.settings ?? {}), ...Object.keys(config.settings ?? {})])],
     [block?.settings, config.settings],
   );
+  const hasSettings = settingKeys.length > 0;
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <article className={`block-card${config.enabled ? '' : ' is-disabled'}`}>
@@ -55,9 +58,24 @@ export default function BlockCard({
         <div className="block-card__title">
           <strong>{blockLabel(block ?? { name, displayName: '' })}</strong>
           <code>{name}</code>
+          {block?.description && (
+            <span className="block-card__desc">{block.description}</span>
+          )}
         </div>
 
         <div className="block-card__actions">
+          {hasSettings && (
+            <button
+              type="button"
+              className={`block-card__expand${settingsOpen ? ' is-open' : ''}`}
+              onClick={() => setSettingsOpen((v) => !v)}
+              aria-expanded={settingsOpen}
+              title={settingsOpen ? 'Hide settings' : 'Show settings'}
+              aria-label={`${settingsOpen ? 'Hide' : 'Show'} settings for ${name}`}
+            >
+              ▾
+            </button>
+          )}
           <button type="button" onClick={() => onMove(-1)} disabled={!canMoveUp} title="Move up" aria-label={`Move ${name} up`}>
             ↑
           </button>
@@ -70,13 +88,10 @@ export default function BlockCard({
         </div>
       </header>
 
-      {block?.description && <p className="block-card__description">{block.description}</p>}
-
-      {settingKeys.length > 0 ? (
+      {hasSettings && settingsOpen && (
         <div className="block-card__settings">
           <div className="block-card__settings-head">
-            <span>{index + 1}</span>
-            <button type="button" onClick={onResetSettings}>Reset settings</button>
+            <button type="button" onClick={onResetSettings}>Reset to defaults</button>
           </div>
           {settingKeys.map((key) => {
             const def = block?.settings?.[key];
@@ -92,8 +107,6 @@ export default function BlockCard({
             );
           })}
         </div>
-      ) : (
-        <div className="block-card__empty">No block-level settings.</div>
       )}
     </article>
   );
@@ -115,13 +128,15 @@ function BlockSettingControl({
 
   if (kind === 'boolean') {
     return (
-      <label className="block-setting block-setting--inline">
-        <span>{label}</span>
+      <label className="block-setting block-setting--bool">
         <input
           type="checkbox"
+          className="block-setting__switch-input"
           checked={Boolean(value)}
           onChange={(event) => onChange(event.target.checked)}
         />
+        <span className="block-setting__switch" aria-hidden />
+        <span className="block-setting__bool-label">{label}</span>
       </label>
     );
   }
@@ -139,21 +154,55 @@ function BlockSettingControl({
             onChange={(event) => onChange(Number(event.target.value))}
           />
           {def?.unit && <small>{def.unit}</small>}
+          {(def?.min !== undefined || def?.max !== undefined) && (
+            <small className="block-setting__range">{def?.min ?? 0}–{def?.max ?? '∞'}</small>
+          )}
         </div>
       </label>
     );
   }
 
-  if (kind === 'select' && def?.options?.length) {
+  if (kind === 'select') {
+    const options = settingOptions(def);
     return (
       <label className="block-setting">
         <span>{label}</span>
         <select value={String(value)} onChange={(event) => onChange(event.target.value)}>
-          {def.options.map((option) => (
-            <option key={option.value} value={option.value}>{option.label ?? option.value}</option>
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
       </label>
+    );
+  }
+
+  if (kind === 'multiselect') {
+    const options = settingOptions(def);
+    const selected = Array.isArray(value) ? (value as string[]) : [];
+    const toggle = (v: string) => {
+      const next = selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v];
+      onChange(next);
+    };
+    return (
+      <div className="block-setting">
+        <span>{label}</span>
+        <div className="block-setting__chips" role="group" aria-label={label}>
+          {options.map((option) => {
+            const on = selected.includes(option.value);
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`block-chip${on ? ' is-on' : ''}`}
+                aria-pressed={on}
+                onClick={() => toggle(option.value)}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     );
   }
 
@@ -212,12 +261,15 @@ function JsonSetting({ value, onChange }: { value: BlockSetting; onChange: (valu
   );
 }
 
-function controlKind(def: BlockSettingDef | undefined, value: BlockSetting): 'boolean' | 'number' | 'select' | 'json' | 'text' {
-  if (def?.options?.length) return 'select';
+function controlKind(def: BlockSettingDef | undefined, value: BlockSetting): 'boolean' | 'number' | 'select' | 'multiselect' | 'json' | 'text' {
+  // Manifest vocabulary first: enum → dropdown, array-of-enum → chip multiselect.
+  if (def?.kind === 'array-of-enum') return 'multiselect';
+  if (def?.kind === 'enum' || def?.kind === 'select' || def?.options?.length || def?.of?.length) return 'select';
   if (def?.kind === 'boolean') return 'boolean';
   if (def?.kind === 'number') return 'number';
-  if (def?.kind === 'select') return 'select';
+  if (def?.kind === 'string') return 'text';
   if (def?.kind === 'json') return 'json';
+  // No def (or unknown kind): infer from the current value.
   if (typeof value === 'boolean') return 'boolean';
   if (typeof value === 'number') return 'number';
   if (Array.isArray(value) || (value && typeof value === 'object')) return 'json';

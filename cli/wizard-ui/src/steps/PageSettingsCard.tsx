@@ -29,8 +29,11 @@ export default function PageSettingsCard({ pageId, schemaType, pageLabel, config
   const schema = PAGE_SETTINGS_SCHEMA[schemaType] ?? [];
   const blocks = config.pageBlocks?.[pageId] ?? defaultBlocksForPage(schemaType);
   const hasPageSettings = schema.length > 0;
-  const hasBlocks = Object.keys(blocks.blocks ?? {}).length > 0;
-  if (!hasPageSettings && !hasBlocks) return null;
+  // Gate on whether the page TYPE supports blocks, not the current count —
+  // otherwise removing the last block hides the whole editor (incl. the "Add
+  // block" picker) and there's no way to add blocks back.
+  const supportsBlocks = Object.keys(defaultBlocksForPage(schemaType).blocks).length > 0;
+  if (!hasPageSettings && !supportsBlocks) return null;
 
   const pageValues = config.pageSettings[pageId] ?? {};
   const resolvedValues = Object.fromEntries(
@@ -70,7 +73,7 @@ export default function PageSettingsCard({ pageId, schemaType, pageLabel, config
         </div>
       )}
 
-      {hasBlocks && (
+      {supportsBlocks && (
         <BlockListEditor
           pageId={pageId}
           pageType={schemaType}

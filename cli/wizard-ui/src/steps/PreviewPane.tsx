@@ -4,6 +4,7 @@ import {
   MENU_ITEMS,
   FLOW_RULE_OPTIONS,
   deriveRegMode,
+  defaultBlocksForPage,
   type ScaffoldConfig,
   type PageInstance,
   type PageFlowRule,
@@ -38,6 +39,10 @@ const ENABLE_REAL_PREVIEW = false;
 
 interface Props {
   config: ScaffoldConfig;
+  /** When set, the preview follows this page id (used by the focus editor). */
+  activeId?: string;
+  /** Clicking a page tab opens that page's focus editor. */
+  onSelectPage?: (id: string) => void;
 }
 
 /**
@@ -51,7 +56,7 @@ interface Props {
  * page layouts so the user gets visual feedback as they tweak. Real
  * scaffolded pages use the full base-template + module components.
  */
-export default function PreviewPane({ config }: Props) {
+export default function PreviewPane({ config, activeId, onSelectPage }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [menuOpen, setMenuOpen]   = useState(false);
   const [realUrl, setRealUrl]     = useState<string | null>(null);
@@ -62,6 +67,13 @@ export default function PreviewPane({ config }: Props) {
   useEffect(() => {
     if (activeIdx >= config.pages.length) setActiveIdx(Math.max(0, config.pages.length - 1));
   }, [activeIdx, config.pages.length]);
+
+  // When the focus editor drives the active page, follow it.
+  useEffect(() => {
+    if (!activeId) return;
+    const i = config.pages.findIndex(p => p.id === activeId);
+    if (i >= 0) setActiveIdx(i);
+  }, [activeId, config.pages]);
 
   if (config.pages.length === 0) {
     return (
@@ -121,6 +133,12 @@ export default function PreviewPane({ config }: Props) {
 
   /** Click handler for any preview button. exitKey + defaultRule decide where it goes. */
   const navigate = (instId: string, exitKey: string, defaultRule: 'next' | 'first' = 'next') => {
+    // 'back' is a special control (header back/close arrows) — step to the
+    // previous page in the flow rather than resolving a forward exit.
+    if (exitKey === 'back') {
+      setActiveIdx((i) => Math.max(0, i - 1));
+      return;
+    }
     const next = resolveExit(instId, exitKey, defaultRule);
     if (next !== null) setActiveIdx(next);
   };
@@ -161,8 +179,11 @@ export default function PreviewPane({ config }: Props) {
               role="tab"
               aria-selected={i === idx}
               className={`preview-pane__tab${i === idx ? ' is-active' : ''}${isEntryTab ? ' is-entry' : ''}${isGated ? ' is-gated' : ''}`}
-              onClick={() => setActiveIdx(i)}
-              title={`${p.route}${isEntryTab ? ' · entry' : ''}${isGated ? ` · ${flowRuleLabel(rule)}` : ''}${regTag ? ` · register ${regTag}` : ''}`}
+              onClick={() => {
+                setActiveIdx(i);
+                onSelectPage?.(p.id);
+              }}
+              title={`${p.route}${isEntryTab ? ' · entry' : ''}${isGated ? ` · ${flowRuleLabel(rule)}` : ''}${regTag ? ` · register ${regTag}` : ''}${onSelectPage ? ' · click to edit' : ''}`}
             >
               <span className="preview-pane__tab-num">{isEntryTab ? '★' : i + 1}</span>
               <span className="preview-pane__tab-label">{label}</span>
@@ -284,6 +305,8 @@ function PageRenderer({ config, instance, navigate, onMenu, showAudio }: { confi
     case 'intro-video':
     case 'ad-video':      return <VideoPreview        config={config} instance={instance} navigate={navigate} />;
     case 'loading-video': return <LoadingVideoPreview config={config} instance={instance} navigate={navigate} />;
+    case 'loading':       return <LoadingPreview      config={config} instance={instance} />;
+    case 'end':           return <EndPreview          config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />;
     case 'register':      return <RegisterPreview     config={config} instance={instance} navigate={navigate} />;
     case 'game':          return <GamePreview         config={config} instance={instance} navigate={navigate} showAudio={showAudio} />;
     case 'result':        return <ResultPreview       config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />;
@@ -298,6 +321,34 @@ function PageRenderer({ config, instance, navigate, onMenu, showAudio }: { confi
 function instSettings(config: ScaffoldConfig, id: string): Record<string, unknown> {
   return (config.pageSettings[id] ?? {}) as Record<string, unknown>;
 }
+
+/**
+ * Is a given block enabled on this page instance? Reads the live wizard config
+ * (config.pageBlocks[id]) so toggling a block in the editor reflects in the
+ * preview. Falls back to the page-type defaults for instances that predate the
+ * block config. A block that was removed entirely is absent → treated as off.
+ */
+function blockOn(config: ScaffoldConfig, instance: PageInstance, name: string): boolean {
+  const blocks = config.pageBlocks?.[instance.id]?.blocks ?? defaultBlocksForPage(instance.type).blocks;
+  return blocks[name]?.enabled ?? false;
+}
+
+/** Read a single setting off a block (for the few settings the mock reflects). */
+function blockSetting(config: ScaffoldConfig, instance: PageInstance, name: string, key: string): unknown {
+  const blocks = config.pageBlocks?.[instance.id]?.blocks ?? defaultBlocksForPage(instance.type).blocks;
+  return blocks[name]?.settings?.[key];
+}
+
+/**
+ * Returns an `on(name)` gate. If the page type defines no blocks at all (e.g. a
+ * generic `video` instance), every element renders — so unconfigured pages
+ * never blank out. Otherwise it defers to the block's enabled flag.
+ */
+function blockGate(config: ScaffoldConfig, instance: PageInstance): (name: string) => boolean {
+  const blocks = config.pageBlocks?.[instance.id]?.blocks ?? defaultBlocksForPage(instance.type).blocks;
+  const hasBlocks = Object.keys(blocks).length > 0;
+  return (name: string) => (hasBlocks ? (blocks[name]?.enabled ?? false) : true);
+}
 function isExitOn(config: ScaffoldConfig, id: string, exitKey: string, defaultEnabled: boolean): boolean {
   return config.flowEnabledExits[`${id}.${exitKey}`] ?? defaultEnabled;
 }
@@ -308,7 +359,9 @@ function exitVariant(config: ScaffoldConfig, id: string, exitKey: string, fallba
 
 // ─── Per-page renderers ──────────────────────────────────────────────────────
 
-function HeroBleed() {
+function HeroBleed({ kind = 'image' }: { kind?: string }) {
+  if (kind === 'solid') return <div className="pp-hero-bg pp-hero-bg--solid" aria-hidden />;
+  if (kind === 'gradient') return <div className="pp-hero-bg pp-hero-bg--gradient" aria-hidden />;
   return (
     <>
       <img src="/hero-mobile.png" alt="" className="pp-hero-img" aria-hidden />
@@ -317,20 +370,45 @@ function HeroBleed() {
   );
 }
 
-function HeaderLogo({ onMenu, showAudio }: { onMenu?: () => void; showAudio?: boolean }) {
-  const [muted, setMuted] = useState(false);
+/** One header corner control, driven by the header-chrome left/right slot. */
+function HeaderSlot({ slot, onMenu, onBack }: { slot: string; onMenu?: () => void; onBack?: () => void }) {
+  if (!slot || slot === 'none') return <span className="pp-slot-spacer" aria-hidden />;
+  if (slot === 'menu') {
+    return <button type="button" className="pp-menu" aria-label="Menu" onClick={onMenu}><HamburgerSvg /></button>;
+  }
+  // back/close return to the previous page; help/decorative are non-navigating.
+  const glyph = slot === 'back' ? '‹' : slot === 'close' ? '×' : slot === 'help' ? '?' : '◆';
+  const goesBack = slot === 'back' || slot === 'close';
   return (
-    <div className="pp-header pp-header--with-close">
-      <img src="/logo-livewall-wordmark.svg" alt="logo" className="pp-wordmark" />
+    <button type="button" className="pp-menu" aria-label={slot} onClick={goesBack ? onBack : undefined}>
+      {glyph}
+    </button>
+  );
+}
+
+/**
+ * Header-chrome block. Renders left + right corner slots from the block's
+ * leftSlot/rightSlot settings, so changing those in the editor moves the
+ * controls here. back/close slots step to the previous page via navigate;
+ * audio (a separate module) rides in the right cluster.
+ */
+function HeaderChrome({ config, instance, navigate, onMenu, showAudio }:
+  { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu?: () => void; showAudio?: boolean }
+) {
+  const [muted, setMuted] = useState(false);
+  const left  = (blockSetting(config, instance, 'header-chrome', 'leftSlot')  as string) ?? 'none';
+  const right = (blockSetting(config, instance, 'header-chrome', 'rightSlot') as string) ?? 'none';
+  const onBack = () => navigate(instance.id, 'back');
+  return (
+    <div className="pp-header pp-header--slots">
+      <HeaderSlot slot={left} onMenu={onMenu} onBack={onBack} />
       <div className="pp-header__actions">
         {showAudio && (
           <button type="button" className="pp-menu pp-audio" aria-label={muted ? 'Unmute' : 'Mute'} aria-pressed={muted} onClick={(e) => { e.stopPropagation(); setMuted(m => !m); }}>
             {muted ? '🔇' : '🔊'}
           </button>
         )}
-        <button type="button" className="pp-menu" aria-label="Menu" onClick={onMenu}>
-          <HamburgerSvg />
-        </button>
+        <HeaderSlot slot={right} onMenu={onMenu} onBack={onBack} />
       </div>
     </div>
   );
@@ -366,6 +444,86 @@ function HeroStack({ kicker, title, body }: { kicker?: string; title: string; bo
   );
 }
 
+// ── Optional add-on blocks (off by default; toggling them on shows these) ─────
+
+function BrandChip({ size = 'md' }: { size?: string }) {
+  return <div className={`pp-brand-chip pp-brand-chip--${size}`} aria-hidden>◆ brand</div>;
+}
+
+/**
+ * Title block — headline plus optional kicker/subtitle. showKicker/showSubtitle
+ * come from the block settings, so toggling them reflects in the preview.
+ */
+function TitleBlock({ config, instance, kicker, title, subtitle }:
+  { config: ScaffoldConfig; instance: PageInstance; kicker: string; title: string; subtitle: string }
+) {
+  const showKicker   = Boolean(blockSetting(config, instance, 'title-block', 'showKicker'));
+  const showSubtitle = Boolean(blockSetting(config, instance, 'title-block', 'showSubtitle'));
+  return <HeroStack kicker={showKicker ? kicker : undefined} title={title} body={showSubtitle ? subtitle : undefined} />;
+}
+function BodyCopy({ children }: { children: React.ReactNode }) {
+  return <p className="pp-body pp-body--block">{children}</p>;
+}
+function ScoreIllustration() {
+  return <div className="pp-score-illus" aria-hidden>🏆</div>;
+}
+function StatsTable({ count = 3 }: { count?: number }) {
+  const rows = [
+    { k: 'Accuracy', v: '92%' },
+    { k: 'Best combo', v: '×14' },
+    { k: 'Time left', v: '0:08' },
+    { k: 'Coins', v: '320' },
+  ].slice(0, Math.max(1, Math.min(4, count)));
+  return (
+    <div className="pp-stats">
+      {rows.map(r => (
+        <div key={r.k} className="pp-stats__row"><span>{r.k}</span><strong>{r.v}</strong></div>
+      ))}
+    </div>
+  );
+}
+function StatusChip({ kind = 'registered' }: { kind?: string }) {
+  return <span className="pp-status-chip" aria-hidden>● {kind}</span>;
+}
+function ComplianceBadge({ kind = '18+' }: { kind?: string }) {
+  return <span className="pp-compliance" aria-hidden>{kind}</span>;
+}
+function FooterLinks() {
+  return (
+    <div className="pp-footer-links" aria-hidden>
+      <span>Terms</span><span>·</span><span>Privacy</span><span>·</span><span>Rules</span>
+    </div>
+  );
+}
+function SponsorStrip() {
+  return <div className="pp-sponsor-strip" aria-hidden>sponsored by ◆</div>;
+}
+/** Segmented tab strip driven by a tabs[] setting + defaultTab. */
+function SegTabs({ tabs, active }: { tabs: string[]; active?: string }) {
+  const LABELS: Record<string, string> = {
+    all: 'All', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly',
+    webshop: 'Webshop', 'in-store': 'In-store',
+  };
+  const list = tabs.length ? tabs : ['all'];
+  const act = active && list.includes(active) ? active : list[0];
+  return (
+    <div className="pp-lb-tabs" aria-hidden>
+      {list.map((t) => <span key={t} className={t === act ? 'is-active' : ''}>{LABELS[t] ?? t}</span>)}
+    </div>
+  );
+}
+function PageFooter({ compliance, links, complianceKind }:
+  { compliance: boolean; links: boolean; complianceKind?: string }
+) {
+  if (!compliance && !links) return null;
+  return (
+    <div className="pp-footer">
+      {compliance && <ComplianceBadge kind={complianceKind} />}
+      {links && <FooterLinks />}
+    </div>
+  );
+}
+
 // ─────────────── Landing ───────────────
 
 function LandingPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
@@ -375,19 +533,28 @@ function LandingPreview({ config, instance, navigate, onMenu, showAudio }: { con
   const skipForReturning = (s.onboardingFirstRunOnly ?? true) as boolean;
   const brand = config.brand?.trim() || config.name?.trim();
   const title = brand ? `Welcome to ${brand}` : 'Welcome';
+  const on = (name: string) => blockOn(config, instance, name);
   return (
     <div className="pp pp--hero">
-      <HeroBleed />
+      {on('background') && <HeroBleed kind={blockSetting(config, instance, 'background', 'kind') as string} />}
       <div className="pp-shell">
-        <HeaderLogo onMenu={onMenu} showAudio={showAudio} />
+        {on('header-chrome') && <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />}
         <div className="pp-bottom">
-          <HeroStack kicker="LIVE EXPERIENCE" title={title} body="Are you ready to play?" />
+          {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+          {on('title-block') && <TitleBlock config={config} instance={instance} kicker="LIVE EXPERIENCE" title={title} subtitle="Are you ready to play?" />}
           {skipForReturning && <span className="pp-flag">Returning players skip the tutorial</span>}
-          <div className="pp-actions">
-            <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Play now" onClick={() => navigate(instance.id, 'next')} />
-            {showTutorial    && <CtaButton kind={exitVariant(config, instance.id, 'tutorial',    'secondary')} label="Tutorial"    onClick={() => navigate(instance.id, 'tutorial')} />}
-            {showLeaderboard && <CtaButton kind={exitVariant(config, instance.id, 'leaderboard', 'secondary')} label="Leaderboard" onClick={() => navigate(instance.id, 'leaderboard')} />}
-          </div>
+          {on('cta-group') && (
+            <div className="pp-actions">
+              <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Play now" onClick={() => navigate(instance.id, 'next')} />
+              {showTutorial    && <CtaButton kind={exitVariant(config, instance.id, 'tutorial',    'secondary')} label="Tutorial"    onClick={() => navigate(instance.id, 'tutorial')} />}
+              {showLeaderboard && <CtaButton kind={exitVariant(config, instance.id, 'leaderboard', 'secondary')} label="Leaderboard" onClick={() => navigate(instance.id, 'leaderboard')} />}
+            </div>
+          )}
+          <PageFooter
+            compliance={on('compliance-badge')}
+            links={on('footer-link-list')}
+            complianceKind={blockSetting(config, instance, 'compliance-badge', 'kind') as string | undefined}
+          />
         </div>
       </div>
     </div>
@@ -397,31 +564,46 @@ function LandingPreview({ config, instance, navigate, onMenu, showAudio }: { con
 function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn }) {
   const s = instSettings(config, instance.id);
   const layout = (s.screenLayout as string) ?? 'fullBleedHero';
-  // stepCount mirrors the wizard's tutorial setting — clamp so we always show
-  // at least one step and don't render a pagination row past what fits.
-  const stepCount = Math.max(1, Math.min(6, Number(s.stepCount ?? 3)));
+  // Step count comes from the step-indicator block (falling back to the legacy
+  // page setting). Clamp so we always show at least one step.
+  const stepCount = Math.max(1, Math.min(6, Number(blockSetting(config, instance, 'step-indicator', 'count') ?? s.stepCount ?? 3)));
   const [step, setStep] = useState(0);
   const STEPS = Array.from({ length: stepCount }, (_, i) => ({
     title: `Step ${i + 1}`,
     body: `Instructions for step ${i + 1}.`,
   }));
   const isLast = step === STEPS.length - 1;
+  const on = (name: string) => blockOn(config, instance, name);
   const content = (
     <>
-      <HeroStack kicker={`HOW TO PLAY · ${step + 1} / ${STEPS.length}`} title={STEPS[step].title} body={STEPS[step].body} />
-      <div className="pp-dots">
-        {STEPS.map((_, i) => (
-          <button key={i} type="button" aria-label={`step ${i + 1}`} className={`pp-dot${i === step ? ' is-active' : ''}`} onClick={() => setStep(i)} />
-        ))}
-      </div>
-      <div className="pp-actions">
-        <CtaButton
-          kind={exitVariant(config, instance.id, 'next', 'primary')}
-          label={isLast ? 'Start' : 'Continue'}
-          onClick={() => isLast ? navigate(instance.id, 'next') : setStep(step + 1)}
-        />
-        {Boolean(s.allowSkip) && <CtaButton kind="secondary" label="Skip" onClick={() => navigate(instance.id, 'next')} />}
-      </div>
+      {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+      {on('title-block') && <TitleBlock config={config} instance={instance} kicker={`HOW TO PLAY · ${step + 1} / ${STEPS.length}`} title={STEPS[step].title} subtitle="Follow along to learn the game." />}
+      {on('body-copy') && <BodyCopy>{STEPS[step].body}</BodyCopy>}
+      {on('step-indicator') && (
+        blockSetting(config, instance, 'step-indicator', 'style') === 'count'
+          ? <div className="pp-step-count" aria-hidden>{step + 1} / {STEPS.length}</div>
+          : (
+            <div className="pp-dots">
+              {STEPS.map((_, i) => (
+                <button key={i} type="button" aria-label={`step ${i + 1}`} className={`pp-dot${i === step ? ' is-active' : ''}`} onClick={() => setStep(i)} />
+              ))}
+            </div>
+          )
+      )}
+      {on('nav-controls') && (
+        <div className="pp-actions">
+          {Boolean(blockSetting(config, instance, 'nav-controls', 'showPrev')) && (
+            <CtaButton kind="tertiary" label="Prev" onClick={() => setStep(Math.max(0, step - 1))} />
+          )}
+          <CtaButton
+            kind={exitVariant(config, instance.id, 'next', 'primary')}
+            label={isLast ? 'Start' : 'Continue'}
+            onClick={() => isLast ? navigate(instance.id, 'next') : setStep(step + 1)}
+          />
+          {Boolean(s.allowSkip) && <CtaButton kind="secondary" label="Skip" onClick={() => navigate(instance.id, 'next')} />}
+        </div>
+      )}
+      <PageFooter compliance={on('compliance-badge')} links={false} complianceKind={blockSetting(config, instance, 'compliance-badge', 'kind') as string | undefined} />
     </>
   );
 
@@ -430,7 +612,7 @@ function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfi
       <div className="pp pp--form pp--tutorial-card">
         <div className="pp-tutorial-panel">
           <button type="button" className="pp-card-close" aria-label="Close" onClick={() => navigate(instance.id, 'next')}>×</button>
-          <div className="pp-card-visual" aria-hidden />
+          {on('centered-art') && <div className="pp-card-visual" aria-hidden />}
           {content}
         </div>
       </div>
@@ -439,9 +621,9 @@ function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfi
 
   return (
     <div className="pp pp--hero">
-      <HeroBleed />
+      {on('background') && <HeroBleed kind={blockSetting(config, instance, 'background', 'kind') as string} />}
       <div className="pp-shell">
-        <HeaderLogo onMenu={() => navigate(instance.id, 'next')} />
+        {on('header-chrome') && <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={() => navigate(instance.id, 'next')} />}
         <div className="pp-bottom">{content}</div>
       </div>
     </div>
@@ -463,17 +645,23 @@ function VideoPreview({ config, instance, navigate }: { config: ScaffoldConfig; 
   const modeLabel = instance.type === 'intro-video' ? 'INTRO'
     : instance.type === 'ad-video' ? 'AD'
     : isLoader ? 'LOADER' : 'INTRO';
+  const on = blockGate(config, instance);
   return (
     <div className="pp pp--video">
       <span className="pp-video-badge" aria-hidden>{modeLabel}</span>
-      <div className="pp-video-stage" onClick={() => navigate(instance.id, 'next')}>
-        <span className="pp-video-icon">▶</span>
-      </div>
-      {isLoader && <span className="pp-video-loading">Loading game…</span>}
-      {skippable && (
+      {on('video-player') && (
+        <div className="pp-video-stage" onClick={() => navigate(instance.id, 'next')}>
+          <span className="pp-video-icon">▶</span>
+        </div>
+      )}
+      {isLoader && on('fallback-indicator') && <span className="pp-video-loading">Loading game…</span>}
+      {skippable && on('skip-control') && (
         <button type="button" className="pp-video-skip" onClick={() => navigate(instance.id, 'next')}>
           {alwaysSkip ? 'Skip →' : `Skip (${minSec}s)`}
         </button>
+      )}
+      {on('reveal-cta') && (
+        <CtaButton kind="primary" label="Continue" onClick={() => navigate(instance.id, 'next')} />
       )}
     </div>
   );
@@ -483,53 +671,75 @@ function LoadingVideoPreview({ config, instance, navigate }: { config: ScaffoldC
   const s = instSettings(config, instance.id);
   const alwaysSkip  = Boolean(s.alwaysSkip);
   const fallbackSec = (s.readyFallbackSec ?? 8) as number;
+  const on = blockGate(config, instance);
   return (
     <div className="pp pp--video">
-      <div className="pp-video-stage">
-        <span className="pp-video-icon" style={{ animation: 'spin 1.2s linear infinite' }}>⟳</span>
-        <span className="pp-video-loading">Loading game…</span>
-      </div>
-      <button type="button" className="pp-video-skip" onClick={() => navigate(instance.id, 'next')}>
-        {alwaysSkip ? 'Skip →' : `Skip (${fallbackSec}s fallback)`}
-      </button>
+      {on('video-player') && (
+        <div className="pp-video-stage">
+          <span className="pp-video-icon" style={{ animation: 'spin 1.2s linear infinite' }}>⟳</span>
+          <span className="pp-video-loading">Loading game…</span>
+        </div>
+      )}
+      {on('fallback-indicator') && (
+        <button type="button" className="pp-video-skip" onClick={() => navigate(instance.id, 'next')}>
+          {alwaysSkip ? 'Skip →' : `Skip (${fallbackSec}s fallback)`}
+        </button>
+      )}
     </div>
   );
 }
 
 // ─────────────── Register ───────────────
 
+const FIELD_META: Record<string, { label: string; required?: boolean }> = {
+  firstName:      { label: 'First name', required: true },
+  middleParticle: { label: 'Infix' },
+  lastName:       { label: 'Last name', required: true },
+  email:          { label: 'Email', required: true },
+  phone:          { label: 'Phone' },
+  dob:            { label: 'Date of birth' },
+  postcode:       { label: 'Postcode' },
+  country:        { label: 'Country' },
+};
+const OPTIN_LABEL: Record<string, string> = {
+  terms: 'I accept the terms',
+  age18: "I'm 18 or older",
+  age21: "I'm 21 or older",
+  marketing: 'Send me marketing updates',
+  custom: 'Custom opt-in',
+};
+
 function RegisterPreview({ config, instance, navigate }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn }) {
-  const s = instSettings(config, instance.id);
-  const showInfix      = (s.showInfix ?? true) as boolean;
-  const requireOptIns  = (s.requireOptIns ?? true) as boolean;
-  const [consents, setConsents] = useState<[boolean, boolean, boolean]>([false, false, false]);
-  const allTicked = consents.every(Boolean);
-  const canSubmit = !requireOptIns || allTicked;
-  const toggle = (i: 0 | 1 | 2) => setConsents(prev => {
-    const next = [...prev] as [boolean, boolean, boolean];
-    next[i] = !next[i];
-    return next;
-  });
+  const on = (name: string) => blockOn(config, instance, name);
+  const fields = (blockSetting(config, instance, 'field-set', 'fields') as string[]) ?? ['firstName', 'lastName', 'email'];
+  const optIns = (blockSetting(config, instance, 'opt-in-list', 'optIns') as string[]) ?? ['terms'];
+  const required = (blockSetting(config, instance, 'opt-in-list', 'required') as boolean) ?? true;
+  const [consents, setConsents] = useState<Record<string, boolean>>({});
+  const allTicked = optIns.every((o) => consents[o]);
+  const canSubmit = !required || optIns.length === 0 || allTicked;
+  const toggle = (o: string) => setConsents((prev) => ({ ...prev, [o]: !prev[o] }));
   return (
     <div className="pp pp--form">
       <div className="pp-shell pp-shell--scroll">
-        <HeroStack kicker="REGISTER" title="Join the game" body="Fill in your details to play." />
+        {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+        {on('title-block') && <TitleBlock config={config} instance={instance} kicker="REGISTER" title="Join the game" subtitle="It only takes a minute." />}
+        {on('body-copy') && <BodyCopy>Fill in your details to play.</BodyCopy>}
         <div className="pp-form">
-          <div className="pp-row">
-            <Field label="First name" required />
-            {showInfix && <Field label="Infix" narrow />}
-          </div>
-          <Field label="Last name" required />
-          <Field label="Email" required />
-          <Checkbox label="I'm 18 or older"            checked={consents[0]} required={requireOptIns} onChange={() => toggle(0)} />
-          <Checkbox label="I accept the terms"          checked={consents[1]} required={requireOptIns} onChange={() => toggle(1)} />
-          <Checkbox label="I accept the privacy policy" checked={consents[2]} required={requireOptIns} onChange={() => toggle(2)} />
-          <CtaButton
-            kind={exitVariant(config, instance.id, 'next', 'primary')}
-            label={canSubmit ? 'Register' : 'Accept all to continue'}
-            onClick={canSubmit ? () => navigate(instance.id, 'next') : undefined}
-          />
+          {on('field-set') && fields.map((f) => (
+            <Field key={f} label={FIELD_META[f]?.label ?? f} required={FIELD_META[f]?.required} />
+          ))}
+          {on('opt-in-list') && optIns.map((o) => (
+            <Checkbox key={o} label={OPTIN_LABEL[o] ?? o} checked={Boolean(consents[o])} required={required} onChange={() => toggle(o)} />
+          ))}
+          {on('cta-group') && (
+            <CtaButton
+              kind={exitVariant(config, instance.id, 'next', 'primary')}
+              label={canSubmit ? 'Register' : 'Accept all to continue'}
+              onClick={canSubmit ? () => navigate(instance.id, 'next') : undefined}
+            />
+          )}
         </div>
+        <PageFooter compliance={false} links={on('footer-link-list')} />
       </div>
     </div>
   );
@@ -555,26 +765,31 @@ function Checkbox({ label, checked = false, required = false, onChange }: { labe
 
 function GamePreview({ config, instance, navigate, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; showAudio?: boolean }) {
   const s = instSettings(config, instance.id);
-  const timerOn   = (s.timerEnabled ?? true) as boolean;
-  const timerSec  = (s.timerSec ?? 60) as number;
   const bootMode  = (s.unityBootMode as string) ?? 'entry';
   const isUnity   = config.game === 'unity';
+  const on = (name: string) => blockOn(config, instance, name);
+  // Timer block drives the clock + mode; fall back to the legacy page settings.
+  const timerMode = (blockSetting(config, instance, 'timer', 'mode') as string) ?? 'countdown';
+  const timerSec  = Number(blockSetting(config, instance, 'timer', 'durationSec') ?? s.timerSec ?? 60);
   const m = Math.floor(timerSec / 60);
   const r = timerSec % 60;
-  const clock = `${m}:${r.toString().padStart(2, '0')}`;
+  const clock = timerMode === 'countup' ? '0:00' : `${m}:${r.toString().padStart(2, '0')}`;
   const [muted, setMuted] = useState(false);
   return (
     <div className="pp pp--game">
-      {timerOn && timerSec > 0 && (
+      {on('timer') && timerSec > 0 && (
         <div className="pp-timer">
-          <span className="pp-timer__label">Time</span>
+          <span className="pp-timer__label">{timerMode === 'countup' ? 'Elapsed' : 'Time'}</span>
           <span className="pp-timer__value">{clock}</span>
         </div>
       )}
-      {showAudio && (
+      {showAudio && on('audio-toggle') && (
         <button type="button" className="pp-game-audio" aria-pressed={muted} aria-label={muted ? 'Unmute' : 'Mute'} onClick={() => setMuted(m => !m)}>
           {muted ? '🔇' : '🔊'}
         </button>
+      )}
+      {on('score-readout') && (
+        <div className="pp-game-score" aria-hidden>Score 1,240</div>
       )}
       <div className="pp-game-canvas">
         <div className="pp-game-grid" aria-hidden>
@@ -582,6 +797,7 @@ function GamePreview({ config, instance, navigate, showAudio }: { config: Scaffo
         </div>
         <CtaButton kind={exitVariant(config, instance.id, 'next', 'tertiary')} label="Simulate game end" onClick={() => navigate(instance.id, 'next')} />
       </div>
+      {on('sponsor-footer-strip') && <SponsorStrip />}
       <div className="pp-game-engine">
         {config.gameId || config.game}
         {isUnity && <span className="pp-game-boot">{bootMode === 'entry' ? 'preload from entry' : 'load on /game'}</span>}
@@ -605,29 +821,46 @@ function ResultPreview({ config, instance, navigate, onMenu, showAudio }: { conf
     const id = setInterval(() => setRemaining(r => (r > 0 ? r - 1 : 0)), 1000);
     return () => clearInterval(id);
   }, [autoNavSec, instance.id]);
+  const on = (name: string) => blockOn(config, instance, name);
   return (
     <div className="pp pp--hero">
-      <HeroBleed />
+      {on('background') && <HeroBleed kind={blockSetting(config, instance, 'background', 'kind') as string} />}
       <div className="pp-shell">
-        <HeaderLogo onMenu={onMenu} showAudio={showAudio} />
+        {on('header-chrome') && <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />}
         <div className="pp-bottom">
-          <HeroStack kicker="RESULT" title="Well done!" body={brand ? `Thanks for playing ${brand}.` : undefined} />
-          <div className="pp-score-plate">
-            <span className="pp-score-plate__label">Score</span>
-            <span className="pp-score-plate__value">2,480</span>
-            <span className="pp-score-plate__rank">Rank #4</span>
-          </div>
+          {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+          {on('title-block') && <TitleBlock config={config} instance={instance} kicker="RESULT" title="Well done!" subtitle="Here's how you did." />}
+          {on('body-copy') && <BodyCopy>{brand ? `Thanks for playing ${brand}.` : 'Thanks for playing.'}</BodyCopy>}
+          {on('score-illustration') && <ScoreIllustration />}
+          {on('score-readout') && (
+            <div className="pp-score-plate">
+              <span className="pp-score-plate__label">Score</span>
+              <span className="pp-score-plate__value">2,480</span>
+              {Boolean(blockSetting(config, instance, 'score-readout', 'showHighScore')) && (
+                <span className="pp-score-plate__rank">Best 3,120</span>
+              )}
+            </div>
+          )}
+          {on('stats-table') && <StatsTable count={Number(blockSetting(config, instance, 'stats-table', 'count') ?? 3)} />}
+          {on('status-chip') && <StatusChip kind={blockSetting(config, instance, 'status-chip', 'kind') as string | undefined} />}
           {autoNavSec > 0 && (
             <span className="pp-flag pp-flag--ticking">
               <span className="pp-flag__dot" aria-hidden />
               Auto-continue in {remaining}s
             </span>
           )}
-          <div className="pp-actions">
-            <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />
-            {showPlayAgain   && <CtaButton kind={exitVariant(config, instance.id, 'playAgain', 'secondary')} label="Play again"  onClick={() => navigate(instance.id, 'playAgain', 'first')} />}
-            {showLeaderboard && <CtaButton kind={exitVariant(config, instance.id, 'leaderboard', 'tertiary')} label="Leaderboard" onClick={() => navigate(instance.id, 'leaderboard')} />}
-          </div>
+          {on('cta-group') && (
+            <div className="pp-actions">
+              <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />
+              {showPlayAgain   && <CtaButton kind={exitVariant(config, instance.id, 'playAgain', 'secondary')} label="Play again"  onClick={() => navigate(instance.id, 'playAgain', 'first')} />}
+              {showLeaderboard && <CtaButton kind={exitVariant(config, instance.id, 'leaderboard', 'tertiary')} label="Leaderboard" onClick={() => navigate(instance.id, 'leaderboard')} />}
+            </div>
+          )}
+          <PageFooter
+            compliance={on('compliance-badge')}
+            links={on('footer-link-list')}
+            complianceKind={blockSetting(config, instance, 'compliance-badge', 'kind') as string | undefined}
+          />
         </div>
       </div>
     </div>
@@ -636,31 +869,52 @@ function ResultPreview({ config, instance, navigate, onMenu, showAudio }: { conf
 
 // ─────────────── Leaderboard ───────────────
 
+const LB_NAMES = ['Alex P.', 'Sam V.', 'Jordan K.', 'Morgan L.', 'Taylor B.', 'Riley C.', 'Casey M.', 'Jamie T.', 'Drew S.', 'Quinn R.'];
+
 function LeaderboardPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
-  const mock = [
-    { rank: 1, name: 'Alex P.',   score: 4830 },
-    { rank: 2, name: 'Sam V.',    score: 4622 },
-    { rank: 3, name: 'Jordan K.', score: 4501, you: true },
-    { rank: 4, name: 'Morgan L.', score: 4310 },
-    { rank: 5, name: 'Taylor B.', score: 4112 },
-  ];
+  const on = (name: string) => blockOn(config, instance, name);
+  const topN = Number(blockSetting(config, instance, 'top-n-highlight', 'count') ?? 3);
+  // rank-list `rows` controls how many entries render (clamped to a sane mock).
+  const rows = Math.max(3, Math.min(8, Number(blockSetting(config, instance, 'rank-list', 'rows') ?? 5)));
+  const mock = Array.from({ length: rows }, (_, i) => ({
+    rank: i + 1,
+    name: LB_NAMES[i % LB_NAMES.length],
+    score: 4830 - i * 180,
+    you: i === 2,
+  }));
   return (
     <div className="pp pp--hero">
-      <HeroBleed />
+      {on('background') && <HeroBleed kind={blockSetting(config, instance, 'background', 'kind') as string} />}
       <div className="pp-shell">
-        <HeaderLogo onMenu={onMenu} showAudio={showAudio} />
+        {on('header-chrome') && <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />}
         <div className="pp-bottom">
-          <HeroStack kicker="LEADERBOARD" title="Top players" />
-          <ol className="pp-lb">
-            {mock.map(r => (
-              <li key={r.rank} className={`pp-lb__row${r.you ? ' is-you' : ''}`}>
-                <span className="pp-lb__rank">#{r.rank}</span>
-                <span className="pp-lb__name">{r.name}{r.you ? ' (you)' : ''}</span>
-                <span className="pp-lb__score">{r.score.toLocaleString()}</span>
-              </li>
-            ))}
-          </ol>
-          <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />
+          {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+          {on('title-block') && <TitleBlock config={config} instance={instance} kicker="LEADERBOARD" title="Top players" subtitle="See where you rank." />}
+          {on('leaderboard-tabs') && (
+            <SegTabs
+              tabs={(blockSetting(config, instance, 'leaderboard-tabs', 'tabs') as string[]) ?? ['all', 'daily', 'weekly']}
+              active={blockSetting(config, instance, 'leaderboard-tabs', 'defaultTab') as string}
+            />
+          )}
+          {on('rank-list') && (
+            <ol className="pp-lb">
+              {mock.map(r => (
+                <li key={r.rank} className={`pp-lb__row${r.you ? ' is-you' : ''}${on('top-n-highlight') && r.rank <= topN ? ' is-top' : ''}`}>
+                  <span className="pp-lb__rank">#{r.rank}</span>
+                  <span className="pp-lb__name">{r.name}{r.you ? ' (you)' : ''}</span>
+                  <span className="pp-lb__score">{r.score.toLocaleString()}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {on('personal-best-row') && (
+            <div className="pp-lb__personal" aria-hidden>
+              <span className="pp-lb__rank">#3</span>
+              <span className="pp-lb__name">Your best</span>
+              <span className="pp-lb__score">4,501</span>
+            </div>
+          )}
+          {on('cta-group') && <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />}
         </div>
       </div>
     </div>
@@ -671,22 +925,39 @@ function LeaderboardPreview({ config, instance, navigate, onMenu, showAudio }: {
 
 function VoucherPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
   const s = instSettings(config, instance.id);
-  const showQr     = (s.showQr ?? true) as boolean;
+  // QR shows when both the setting allows it AND the qr-display block is on.
+  const showQrSetting = (s.showQr ?? true) as boolean;
   const codeLength = ((s.codeLength as number) || 8);
   const sample = 'LIVEWALL-2025-CAMPAIGN'.replace(/-/g, '');
   const code = sample.slice(0, codeLength).padEnd(codeLength, 'X');
+  const on = (name: string) => blockOn(config, instance, name);
   return (
     <div className="pp pp--hero">
-      <HeroBleed />
+      {on('background') && <HeroBleed kind={blockSetting(config, instance, 'background', 'kind') as string} />}
       <div className="pp-shell">
-        <HeaderLogo onMenu={onMenu} showAudio={showAudio} />
+        {on('header-chrome') && <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />}
         <div className="pp-bottom pp-bottom--center">
-          <HeroStack kicker="REWARD" title="Your voucher" body="Show this code at checkout." />
-          <div className="pp-voucher">
-            <span className="pp-voucher__code">{code}</span>
-            {showQr && <div className="pp-voucher__qr" aria-hidden>▦</div>}
-          </div>
-          <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />
+          {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+          {on('title-block') && <TitleBlock config={config} instance={instance} kicker="REWARD" title="Your voucher" subtitle="Your reward is ready." />}
+          {on('body-copy') && <BodyCopy>Show this code at checkout.</BodyCopy>}
+          {on('channel-tabs') && (
+            <SegTabs
+              tabs={(blockSetting(config, instance, 'channel-tabs', 'tabs') as string[]) ?? ['webshop', 'in-store']}
+              active={blockSetting(config, instance, 'channel-tabs', 'defaultTab') as string}
+            />
+          )}
+          {(on('code-box') || (on('qr-display') && showQrSetting)) && (
+            <div className="pp-voucher">
+              {on('code-box') && <span className="pp-voucher__code">{code}</span>}
+              {on('qr-display') && showQrSetting && <div className="pp-voucher__qr" aria-hidden>▦</div>}
+            </div>
+          )}
+          {on('cta-group') && <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />}
+          <PageFooter
+            compliance={on('compliance-badge')}
+            links={on('footer-link-list')}
+            complianceKind={blockSetting(config, instance, 'compliance-badge', 'kind') as string | undefined}
+          />
         </div>
       </div>
     </div>
@@ -730,6 +1001,48 @@ function MenuPreview({ config, onClose, onNavigate }: {
         </div>
 
         <p className="pp-menu-footer">Powered by Livewall</p>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────── Loading (pre-entry) ───────────────
+
+function LoadingPreview({ config, instance }: { config: ScaffoldConfig; instance: PageInstance }) {
+  const on = (name: string) => blockOn(config, instance, name);
+  const indicatorKind = (blockSetting(config, instance, 'loading-indicator', 'kind') as string) ?? 'ring';
+  return (
+    <div className="pp pp--hero">
+      {on('background') && <HeroBleed kind={blockSetting(config, instance, 'background', 'kind') as string} />}
+      <div className="pp-shell">
+        <div className="pp-bottom pp-bottom--center">
+          {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+          {on('centered-art') && <div className="pp-card-visual" aria-hidden />}
+          {on('tagline') && <p className="pp-body" style={{ textAlign: 'center' }}>Loading your experience…</p>}
+          {on('loading-indicator') && (
+            indicatorKind === 'bar'
+              ? <div className="pp-load-bar" aria-hidden><span /></div>
+              : <span className="pp-video-icon" style={{ animation: 'spin 1.2s linear infinite', alignSelf: 'center' }}>⟳</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────── End / thank-you ───────────────
+
+function EndPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
+  const brand = config.brand?.trim() || config.name?.trim();
+  return (
+    <div className="pp pp--hero">
+      <HeroBleed />
+      <div className="pp-shell">
+        <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />
+        <div className="pp-bottom pp-bottom--center">
+          <HeroStack kicker="THANK YOU" title="See you next time!" body={brand ? `Thanks for playing ${brand}.` : undefined} />
+          <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Done" onClick={() => navigate(instance.id, 'next')} />
+        </div>
       </div>
     </div>
   );

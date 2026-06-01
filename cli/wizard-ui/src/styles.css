@@ -908,6 +908,7 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 }
 
 .flow-card__behavior {
+  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1.3fr);
   gap: 16px;
@@ -979,22 +980,91 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   border-color: transparent;
 }
 
-/* Inline page settings — nested inside an expanded flow card. The
-   PageSettingsCard's own outer chrome is suppressed so it reads as a region
-   of the parent card rather than a card-within-a-card. */
-.flow-card__settings {
-  grid-column: 3 / -1;
-  margin-top: 4px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--color-line);
+/* Full-width focus editor — replaces the flow list while one page is open. */
+.page-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
-.flow-card__settings .page-settings-card {
+.page-focus__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-line);
+}
+.page-focus__back {
+  font: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 13px;
+}
+.page-focus__back:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.page-focus__count {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-soft);
+}
+.page-focus__nav {
+  display: inline-flex;
+  gap: 6px;
+}
+.page-focus__nav button {
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--color-text-soft);
+}
+.page-focus__nav button:not(:disabled):hover {
+  color: var(--color-text);
+  border-color: var(--color-line-strong);
+}
+.page-focus__nav button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.page-focus__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.page-focus__heading strong {
+  font-size: 18px;
+  font-weight: 600;
+}
+.page-focus__heading span {
+  color: var(--color-text-soft);
+  font-size: 13px;
+  line-height: 1.4;
+}
+/* In focus mode the PageSettingsCard is the whole column, so drop its own
+   card chrome and its redundant header (the focus heading already names it). */
+.page-focus .page-settings-card {
   background: transparent;
   border: 0;
   padding: 0;
   border-radius: 0;
 }
-.flow-card__settings .page-settings-card__head {
+.page-focus .page-settings-card__head {
   display: none;
 }
 
@@ -1375,7 +1445,9 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 
 .preview-pane__frame-wrap {
   display: flex; justify-content: center; align-items: flex-start;
-  padding: 12px 0 4px;
+  /* Bottom padding clears the route pill, which floats ~22px below the phone
+     (.phone-frame__route { bottom: -22px }) plus its own height. */
+  padding: 12px 0 32px;
   background:
     radial-gradient(ellipse 60% 50% at 50% 50%, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 70%);
   border-radius: 14px;
@@ -1571,6 +1643,55 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   align-self: center;
 }
 .pp--form .pp-wordmark { filter: none; }
+
+/* background block — solid / gradient variants (image is the default img). */
+.pp-hero-bg { position: absolute; inset: 0; z-index: 0; }
+.pp-hero-bg--solid { background: color-mix(in srgb, var(--color-primary) 20%, #0e0e0e); }
+.pp-hero-bg--gradient { background: linear-gradient(160deg, color-mix(in srgb, var(--color-primary) 55%, #0e0e0e), #0e0e0e); }
+
+/* header-chrome slot layout — left + right corner controls. */
+.pp-header--slots { justify-content: space-between; }
+.pp-slot-spacer { display: inline-block; width: 30px; height: 30px; }
+
+/* brand-chip size variants */
+.pp-brand-chip--sm { font-size: 8px; padding: 2px 7px; }
+.pp-brand-chip--md { font-size: 9px; padding: 3px 9px; }
+
+/* loading-indicator "bar" style */
+.pp-load-bar {
+  align-self: center;
+  width: 60%;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+}
+.pp-load-bar span {
+  display: block;
+  width: 45%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-primary);
+  animation: pp-load-slide 1.3s ease-in-out infinite;
+}
+@keyframes pp-load-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(260%); }
+}
+/* Spinner rotation — referenced by the loading-video + loading indicators. */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* step-indicator "count" style */
+.pp-step-count {
+  align-self: center;
+  font-size: 12px; font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 4px rgba(14,14,14,0.42);
+}
+.pp--tutorial-card .pp-step-count { color: var(--color-text); text-shadow: none; }
 
 .pp-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 12px; }
 .pp-bottom--center { margin-top: 0; align-items: stretch; justify-content: center; flex: 1; gap: 14px; }
@@ -1989,6 +2110,118 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   display: flex; align-items: center; justify-content: center;
   font-size: 38px;
   border-radius: 8px;
+}
+
+/* Optional add-on blocks — appear in the preview when their block is toggled
+   on. Styled to read on the hero (white text + glass) and on form pages. */
+.pp-brand-chip {
+  align-self: flex-start;
+  display: inline-flex; align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(14,14,14,0.4);
+}
+.pp--form .pp-brand-chip {
+  background: rgba(14,14,14,0.06);
+  border-color: var(--color-line);
+  color: var(--color-text-soft);
+  text-shadow: none;
+}
+.pp-body--block { margin-top: 2px; }
+.pp-score-illus {
+  align-self: center;
+  font-size: 40px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 10px rgba(14,14,14,0.35));
+}
+.pp-stats {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+.pp-stats__row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 10px;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(14,14,14,0.42);
+}
+.pp-stats__row strong { font-family: var(--font-mono); font-weight: 700; }
+.pp-status-chip {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  color: #fff;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.04em; text-transform: capitalize;
+  text-shadow: 0 1px 3px rgba(14,14,14,0.4);
+}
+.pp-footer {
+  margin-top: 8px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.pp-compliance {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 26px; padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.85); color: var(--color-text);
+  font-size: 9px; font-weight: 800;
+}
+.pp-footer-links {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 3px rgba(14,14,14,0.4);
+}
+.pp--form .pp-footer-links { color: var(--color-text-soft); text-shadow: none; }
+.pp-sponsor-strip {
+  align-self: stretch;
+  text-align: center;
+  padding: 4px;
+  border-radius: 6px;
+  background: rgba(14,14,14,0.16);
+  color: rgba(255,255,255,0.7);
+  font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.pp-game-score {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  z-index: 2;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(14,14,14,0.55); color: #fff;
+  font-size: 11px; font-weight: 700;
+}
+/* Leaderboard / voucher segmented tabs */
+.pp-lb-tabs {
+  display: inline-flex; gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+.pp-lb-tabs span {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 10px; font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 3px rgba(14,14,14,0.4);
+}
+.pp-lb-tabs span.is-active { background: var(--color-primary); color: var(--color-text); text-shadow: none; }
+.pp-lb__row.is-top { outline: 1px solid color-mix(in srgb, var(--color-primary) 60%, transparent); }
+.pp-lb__personal {
+  display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center;
+  margin-top: 2px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px dashed rgba(255, 255, 255, 0.4);
+  font-size: 11px; color: #fff;
+  text-shadow: 0 1px 4px rgba(14,14,14,0.42);
 }
 
 /* Menu overlay (preview of /menu) */
@@ -2721,8 +2954,9 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 .block-card__title {
   min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px;
+  gap: 5px 8px;
 }
 .block-card__title strong {
   font-size: 13px;
@@ -2738,9 +2972,41 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   border-radius: 4px;
   padding: 2px 6px;
 }
+.block-card__desc {
+  width: 100%;
+  flex-basis: 100%;
+  color: var(--color-text-soft);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
 .block-card__actions {
   display: inline-flex;
   gap: 4px;
+}
+.block-card__expand {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--color-line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--color-text-soft);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background-color 0.1s ease;
+}
+.block-card__expand:hover {
+  border-color: var(--color-line-strong);
+  color: var(--color-text);
+}
+.block-card__expand.is-open {
+  background: color-mix(in srgb, var(--color-primary) 14%, #fff);
+  border-color: color-mix(in srgb, var(--color-primary) 38%, var(--color-line));
+  color: var(--color-text);
+  transform: rotate(180deg);
 }
 .block-card__actions button {
   width: 26px;
@@ -2761,11 +3027,6 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   opacity: 0.35;
   cursor: not-allowed;
 }
-.block-card__description {
-  color: var(--color-text-soft);
-  font-size: 12px;
-  line-height: 1.4;
-}
 .block-card__settings {
   border-top: 1px solid var(--color-line);
   padding-top: 9px;
@@ -2777,19 +3038,8 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
-}
-.block-card__settings-head span {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
 }
 .block-card__settings-head button {
   font: inherit;
@@ -2820,6 +3070,86 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 .block-setting > span {
   color: var(--color-text-soft);
   font-weight: 700;
+}
+
+/* Boolean setting — left-aligned switch + label (replaces the old far-apart
+   label/checkbox row that read as two unrelated things). */
+.block-setting--bool {
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  /* a bool row owns a full grid cell; pad to align with sibling controls */
+  padding-top: 18px;
+}
+.block-setting__switch-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.block-setting__switch {
+  position: relative;
+  flex: none;
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(14,14,14,0.18);
+  transition: background-color 0.12s ease;
+}
+.block-setting__switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(14,14,14,0.3);
+  transition: transform 0.12s ease;
+}
+.block-setting__switch-input:checked + .block-setting__switch {
+  background: var(--color-primary);
+}
+.block-setting__switch-input:checked + .block-setting__switch::after {
+  transform: translateX(14px);
+}
+.block-setting__switch-input:focus-visible + .block-setting__switch {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.block-setting__bool-label {
+  color: var(--color-text);
+  font-weight: 600;
+}
+.block-setting__range { opacity: 0.7; }
+
+/* array-of-enum → toggle chips */
+.block-setting__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.block-chip {
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-line-strong);
+  background: #fff;
+  color: var(--color-text-soft);
+  transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+}
+.block-chip:hover {
+  border-color: var(--color-text-soft);
+  color: var(--color-text);
+}
+.block-chip.is-on {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+  font-weight: 600;
 }
 .block-setting input[type='text'],
 .block-setting input[type='number'],
