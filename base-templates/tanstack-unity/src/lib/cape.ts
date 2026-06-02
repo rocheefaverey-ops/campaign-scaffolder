@@ -17,9 +17,10 @@ const pageCapeSchema = z.object({
   language: z.string(),
 });
 
-// All known cape keys a block can request. Keep in sync with renderBlock in
-// cli/tanstack-block-page-builder.js — every `cape.X` reference there must be
-// fetchable here (otherwise the block silently gets undefined).
+// Cape keys most block components consume. Extend this map as new blocks need
+// keys — missing entries resolve to undefined at runtime, which block components
+// must tolerate. Keep page-type-rooted entries in `{pageType}.X` form so the
+// handler can substitute the resolved page type.
 const CAPE_PATHS: Record<string, Array<string>> = {
   title:       ['{pageType}', 'title'],
   subtitle:    ['{pageType}', 'subtitle'],
@@ -91,7 +92,8 @@ function getNestedTranslation(root: unknown, language: string, path: Array<strin
   const pick = (lang: string): unknown => {
     const langObj = obj[lang];
     if (langObj && typeof langObj === 'object' && 'value' in (langObj as object)) {
-      return (langObj as Record<string, unknown>).value;
+      const value = (langObj as Record<string, unknown>).value;
+      if (value) return value;
     }
     return undefined;
   };
