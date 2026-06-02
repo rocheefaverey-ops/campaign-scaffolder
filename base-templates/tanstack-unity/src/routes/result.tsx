@@ -36,8 +36,12 @@ function Result() {
   const playAgainRoute = '{{PLAY_AGAIN_ROUTE}}';
   const leaderboardRoute = '{{RESULT_LEADERBOARD_ROUTE}}';
   const resultCopy = copy as typeof copy & Record<string, string | undefined>;
-  const showPlayAgainButton = JSON.parse('true') as boolean;
-  const showLeaderboardButton = JSON.parse('false') as boolean;
+  // Derived from the result cta-group block at scaffold time (see flow-bridge).
+  // Unreplaced tokens fall back to the historical defaults (play again on, rest off).
+  const showPlayAgainButtonRaw = '{{SHOW_RESULT_PLAY_AGAIN_BUTTON}}';
+  const showPlayAgainButton = showPlayAgainButtonRaw.startsWith('{{') ? true : showPlayAgainButtonRaw === 'true';
+  const showLeaderboardButtonRaw = '{{SHOW_RESULT_LEADERBOARD_BUTTON}}';
+  const showLeaderboardButton = showLeaderboardButtonRaw.startsWith('{{') ? false : showLeaderboardButtonRaw === 'true';
   const resultVisualUrl = winImageUrl || backgroundUrl;
   const isVideoVisual = !!resultVisualUrl && /\.(mp4|webm|mov)$/i.test(resultVisualUrl);
 

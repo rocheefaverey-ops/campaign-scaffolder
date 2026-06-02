@@ -29,7 +29,7 @@ export const DEFAULT_PAGE_BLOCKS = {
     'header-chrome': block(true, { leftSlot: 'menu', rightSlot: 'none' }),
     'brand-chip': block(true, { size: 'md' }),
     'title-block': block(true, { showKicker: false, showSubtitle: false }),
-    'cta-group': block(true, { count: 1, buttons: [{ variant: 'primary', exit: 'game' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'game' }] }),
     'footer-link-list': block(false, {}),
     'compliance-badge': block(false, { kind: '18+' }),
     'pre-gate-modal': block(false, { kind: 'age-18', persistAcrossSession: true }),
@@ -78,7 +78,7 @@ export const DEFAULT_PAGE_BLOCKS = {
     'score-illustration': block(false, {}),
     'stats-table': block(false, { count: 3, rows: [{ label: 'Score', value: 'score' }, { label: 'Rank', value: 'rank' }, { label: 'Best', value: 'highScore' }] }),
     'status-chip': block(false, { kind: 'registered' }),
-    'cta-group': block(true, { count: 2, buttons: [{ variant: 'primary', exit: 'voucher' }, { variant: 'secondary', exit: 'game' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'voucher' }, { variant: 'secondary', exit: 'game' }] }),
     'compliance-badge': block(false, { kind: '18+' }),
     'footer-link-list': block(false, {}),
   }),
@@ -92,7 +92,7 @@ export const DEFAULT_PAGE_BLOCKS = {
     'rank-list': block(true, { rows: 10 }),
     'top-n-highlight': block(false, { count: 3 }),
     'personal-best-row': block(true, {}),
-    'cta-group': block(true, { count: 1, buttons: [{ variant: 'primary', exit: 'landing' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'landing' }] }),
   }),
 
   register: page({
@@ -104,7 +104,7 @@ export const DEFAULT_PAGE_BLOCKS = {
     'body-copy': block(false, { markdown: true }),
     'field-set': block(true, { fields: ['firstName', 'lastName', 'email'] }),
     'opt-in-list': block(true, { optIns: ['terms'] }),
-    'cta-group': block(true, { count: 1, buttons: [{ variant: 'primary', exit: 'result' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'result' }] }),
     'footer-link-list': block(false, {}),
   }),
 
@@ -117,7 +117,7 @@ export const DEFAULT_PAGE_BLOCKS = {
     'channel-tabs': block(false, { tabs: ['webshop', 'in-store'], defaultTab: 'webshop' }),
     'code-box': block(true, {}),
     'qr-display': block(true, {}),
-    'cta-group': block(true, { count: 1, buttons: [{ variant: 'primary', exit: 'leaderboard' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'leaderboard' }] }),
     'compliance-badge': block(false, { kind: '18+' }),
     'footer-link-list': block(true, {}),
   }),
@@ -129,7 +129,7 @@ export const DEFAULT_PAGE_BLOCKS = {
     'title-block': block(true, { showKicker: true, showSubtitle: false }),
     'body-copy': block(true, { markdown: true }),
     'prize-illustration': block(true, {}),
-    'cta-group': block(true, { count: 2, buttons: [{ variant: 'icon-only', exit: 'leaderboard' }, { variant: 'primary', exit: 'game' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'icon-only', exit: 'leaderboard' }, { variant: 'primary', exit: 'game' }] }),
     'compliance-badge': block(false, { kind: '18+' }),
     'footer-link-list': block(false, {}),
   }),
@@ -138,7 +138,7 @@ export const DEFAULT_PAGE_BLOCKS = {
     background: block(true, { kind: 'image' }),
     'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'none' }),
     'brand-chip': block(true, { size: 'md' }),
-    'menu-item-list': block(true, { items: ['home', 'howToPlay', 'leaderboard', 'terms', 'privacy'] }),
+    'menu-item-list': block(true, { items: ['home', 'howToPlay', 'terms', 'privacy', 'leave'] }),
   }),
 };
 

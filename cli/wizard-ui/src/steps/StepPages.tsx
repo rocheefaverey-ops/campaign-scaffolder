@@ -14,6 +14,7 @@ import {
   FLOW_RULE_OPTIONS, FLOW_RULES_BY_PAGE, defaultFlowRuleForType, defaultBlocksForPage,
   type ScaffoldConfig, type StepProps, type PageInstance, type ButtonVariant, type PageFlowRule, type FlowRuleMode,
 } from '../shared/config.ts';
+import { CTA_GROUP_PAGE_TYPES } from '../../../flow-bridge.js';
 import PageSettingsCard from './PageSettingsCard.tsx';
 import PreviewPane from './PreviewPane.tsx';
 
@@ -418,7 +419,12 @@ function FlowCard({
 
   if (!meta) return null;
 
-  const exits = meta.exits ?? [];
+  // CTA-bearing pages now wire their buttons (target + variant) in the cta-group
+  // block editor ("Edit content"), so the legacy per-exit rows are suppressed
+  // here to avoid two editors for the same buttons. The scaffold derives the
+  // legacy flow maps from the block via deriveFlowFromBlocks. Non-CTA pages
+  // (loading / video / game / tutorial / menu) keep their flow-wiring rows.
+  const exits = CTA_GROUP_PAGE_TYPES.has(instance.type) ? [] : (meta.exits ?? []);
   const defaultBlocks = defaultBlocksForPage(instance.type);
   // Reflect whether the page TYPE can have settings/blocks — not the current
   // block count. Otherwise removing every block hides the "Edit content" button

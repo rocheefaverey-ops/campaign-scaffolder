@@ -59,9 +59,11 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
     ? rawPageSettings as PageSettings
     : defaultPageSettings();
   const rawPageBlocks = wizard.pageBlocks ?? raw.pageBlocks;
-  const pageBlocks: PageBlocksMap = (rawPageBlocks && typeof rawPageBlocks === 'object')
-    ? { ...defaultPageBlocksForPages(pages), ...rawPageBlocks as PageBlocksMap }
-    : defaultPageBlocksForPages(pages);
+  const pageBlocks: PageBlocksMap = normalizeCtaGroupBlocks(
+    (rawPageBlocks && typeof rawPageBlocks === 'object')
+      ? { ...defaultPageBlocksForPages(pages), ...rawPageBlocks as PageBlocksMap }
+      : defaultPageBlocksForPages(pages),
+  );
   const flowEnabledExits: Record<string, boolean> = (wizard.flowEnabledExits && typeof wizard.flowEnabledExits === 'object')
     ? wizard.flowEnabledExits as Record<string, boolean>
     : defaultEnabledExits();
@@ -133,4 +135,23 @@ export function fromScaffolded(raw: Record<string, unknown>): ScaffoldConfig {
 function pickString(obj: Record<string, unknown>, key: string): string | undefined {
   const v = obj[key];
   return typeof v === 'string' ? v : undefined;
+}
+
+/**
+ * Migrate cta-group block settings loaded from an older project: the `count`
+ * field is gone (length is derived from `buttons`), and a stored config might
+ * predate `buttons` entirely. Strip stray `count` and ensure a 1-item default.
+ */
+function normalizeCtaGroupBlocks(pageBlocks: PageBlocksMap): PageBlocksMap {
+  for (const pageConfig of Object.values(pageBlocks)) {
+    const cta = pageConfig?.blocks?.['cta-group'];
+    if (!cta) continue;
+    const settings = { ...(cta.settings ?? {}) } as Record<string, unknown>;
+    delete settings.count;
+    if (!Array.isArray(settings.buttons) || settings.buttons.length === 0) {
+      settings.buttons = [{ variant: 'primary', exit: '' }];
+    }
+    cta.settings = settings as typeof cta.settings;
+  }
+  return pageBlocks;
 }

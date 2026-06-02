@@ -9,6 +9,8 @@ export interface BlockSettingDef {
   /** Allowed values for `enum` / `array-of-enum` settings (manifest shape). */
   of?: string[];
   options?: Array<{ value: string; label?: string }>;
+  /** Per-field schema for `array-of-objects` settings (e.g. cta-group buttons). */
+  item?: Record<string, BlockSettingDef>;
 }
 
 /** Resolve a setting def's choices from either `options` or the manifest `of`. */

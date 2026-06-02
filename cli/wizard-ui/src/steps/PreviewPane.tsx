@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   pageMeta,
   MENU_ITEMS,
@@ -9,7 +9,42 @@ import {
   type PageInstance,
   type PageFlowRule,
 } from '../shared/config.ts';
+import { deriveFlowFromBlocks, mergeDerivedFlow, deriveMenuItemsEnabled } from '../../../flow-bridge.js';
 import { startFrontendPreview } from '../bridge.ts';
+
+/**
+ * Build the list-form blocksConfig the flow bridge expects ({ pageId: { blocks:
+ * [{name, settings}] } }) from the wizard's pageBlocks map, then derive the
+ * legacy flow maps for CTA-bearing pages and merge them over the stored config.
+ * The cta-group block is the single source of truth for CTA buttons; the legacy
+ * maps the preview helpers read are derived from it here (non-CTA pages keep
+ * their stored flow wiring untouched).
+ */
+function withDerivedFlow(config: ScaffoldConfig): ScaffoldConfig {
+  const blocksConfig: Record<string, { blocks: Array<{ name: string; settings: Record<string, unknown> }> }> = {};
+  for (const [pageId, pageBlocks] of Object.entries(config.pageBlocks ?? {})) {
+    const order = pageBlocks.blockOrder?.length ? pageBlocks.blockOrder : Object.keys(pageBlocks.blocks);
+    const blocks = order
+      .filter((name) => pageBlocks.blocks[name]?.enabled)
+      .map((name) => ({ name, settings: pageBlocks.blocks[name]?.settings ?? {} }));
+    if (blocks.length) blocksConfig[pageId] = { blocks };
+  }
+  const pageTypes = Object.fromEntries(
+    config.pages.filter((p) => p.id !== p.type).map((p) => [p.id, p.type]),
+  );
+  const derived = deriveFlowFromBlocks(blocksConfig, config.pages, pageTypes);
+  const gov = derived.governedPageIds ?? [];
+  // Menu visibility is owned by the menu-item-list block; derive it so editing the
+  // block updates the menu overlay (there is no separate menu-items UI).
+  const menuEnabled = deriveMenuItemsEnabled(blocksConfig);
+  return {
+    ...config,
+    flowExits:          mergeDerivedFlow(config.flowExits, derived.flowExits, gov),
+    flowEnabledExits:   mergeDerivedFlow(config.flowEnabledExits, derived.flowEnabledExits, gov),
+    flowButtonVariants: mergeDerivedFlow(config.flowButtonVariants, derived.flowButtonVariants, gov) as ScaffoldConfig['flowButtonVariants'],
+    menuItemsEnabled:   menuEnabled ? { ...config.menuItemsEnabled, ...menuEnabled } : config.menuItemsEnabled,
+  };
+}
 
 function flowRuleLabel(rule: PageFlowRule | undefined): string | null {
   if (!rule || rule.mode === 'always') return null;
@@ -56,7 +91,10 @@ interface Props {
  * page layouts so the user gets visual feedback as they tweak. Real
  * scaffolded pages use the full base-template + module components.
  */
-export default function PreviewPane({ config, activeId, onSelectPage }: Props) {
+export default function PreviewPane({ config: rawConfig, activeId, onSelectPage }: Props) {
+  // CTA buttons are owned by the cta-group block; derive the legacy flow maps the
+  // mock renderers read so editing a button's variant/target updates the preview.
+  const config = useMemo(() => withDerivedFlow(rawConfig), [rawConfig]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [menuOpen, setMenuOpen]   = useState(false);
   const [realUrl, setRealUrl]     = useState<string | null>(null);
@@ -141,6 +179,13 @@ export default function PreviewPane({ config, activeId, onSelectPage }: Props) {
     }
     const next = resolveExit(instId, exitKey, defaultRule);
     if (next !== null) setActiveIdx(next);
+  };
+
+  /** Jump straight to a page by id — used by cta-group buttons, which store a
+   *  destination page id directly rather than a semantic exit key. */
+  const navTo = (pageId: string) => {
+    const i = config.pages.findIndex((p) => p.id === pageId);
+    if (i >= 0) setActiveIdx(i);
   };
 
   return (
@@ -232,7 +277,7 @@ export default function PreviewPane({ config, activeId, onSelectPage }: Props) {
                 // Keyed wrapper so React swaps the subtree on page change,
                 // re-triggering the CSS fade-in. Cheap polish — no JS animation.
                 <div key={inst.id} className="preview-pane__page">
-                  <PageRenderer config={config} instance={inst} navigate={navigate} onMenu={() => setMenuOpen(true)} showAudio={showAudio} />
+                  <PageRenderer config={config} instance={inst} navigate={navigate} navTo={navTo} onMenu={() => setMenuOpen(true)} showAudio={showAudio} />
                 </div>
               )
           )}
@@ -296,22 +341,23 @@ function CookieBanner() {
 // ─── Renderer dispatcher ─────────────────────────────────────────────────────
 
 type NavFn = (instId: string, exitKey: string, defaultRule?: 'next' | 'first') => void;
+type NavToFn = (pageId: string) => void;
 
-function PageRenderer({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
+function PageRenderer({ config, instance, navigate, navTo, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean }) {
   switch (instance.type) {
-    case 'landing':       return <LandingPreview      config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />;
+    case 'landing':       return <LandingPreview      config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
     case 'tutorial':      return <TutorialPreview     config={config} instance={instance} navigate={navigate} />;
     case 'video':
     case 'intro-video':
-    case 'ad-video':      return <VideoPreview        config={config} instance={instance} navigate={navigate} />;
+    case 'ad-video':      return <VideoPreview        config={config} instance={instance} navigate={navigate} navTo={navTo} />;
     case 'loading-video': return <LoadingVideoPreview config={config} instance={instance} navigate={navigate} />;
     case 'loading':       return <LoadingPreview      config={config} instance={instance} />;
-    case 'end':           return <EndPreview          config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />;
+    case 'end':           return <EndPreview          config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
     case 'register':      return <RegisterPreview     config={config} instance={instance} navigate={navigate} />;
     case 'game':          return <GamePreview         config={config} instance={instance} navigate={navigate} showAudio={showAudio} />;
-    case 'result':        return <ResultPreview       config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />;
-    case 'leaderboard':   return <LeaderboardPreview  config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />;
-    case 'voucher':       return <VoucherPreview      config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />;
+    case 'result':        return <ResultPreview       config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
+    case 'leaderboard':   return <LeaderboardPreview  config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
+    case 'voucher':       return <VoucherPreview      config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
     default:              return <PlaceholderPreview  instance={instance} />;
   }
 }
@@ -349,10 +395,6 @@ function blockGate(config: ScaffoldConfig, instance: PageInstance): (name: strin
   const hasBlocks = Object.keys(blocks).length > 0;
   return (name: string) => (hasBlocks ? (blocks[name]?.enabled ?? false) : true);
 }
-function isExitOn(config: ScaffoldConfig, id: string, exitKey: string, defaultEnabled: boolean): boolean {
-  return config.flowEnabledExits[`${id}.${exitKey}`] ?? defaultEnabled;
-}
-
 function exitVariant(config: ScaffoldConfig, id: string, exitKey: string, fallback: 'primary' | 'secondary' | 'tertiary' | 'dark' | 'danger') {
   return config.flowButtonVariants[`${id}.${exitKey}`] ?? fallback;
 }
@@ -431,6 +473,65 @@ function CtaButton({ kind = 'primary', label, onClick }:
     <button type="button" className={`pp-btn pp-btn--${kind}`} onClick={onClick}>
       {label}
     </button>
+  );
+}
+
+// Per-page label for the FIRST (primary) cta-group button. Real labels come from
+// CAPE at runtime; the preview only needs a representative placeholder.
+const PRIMARY_CTA_LABEL: Record<string, string> = {
+  landing: 'Play now',
+  result: 'Continue',
+  leaderboard: 'Continue',
+  voucher: 'Continue',
+  register: 'Register',
+  end: 'Done',
+};
+
+type PreviewButton = { variant: string; exit: string };
+
+const KNOWN_VARIANTS = ['primary', 'secondary', 'tertiary', 'dark', 'danger'] as const;
+function normalizeVariant(v: string): (typeof KNOWN_VARIANTS)[number] {
+  return (KNOWN_VARIANTS as readonly string[]).includes(v) ? (v as (typeof KNOWN_VARIANTS)[number]) : 'secondary';
+}
+
+/** Read the cta-group block's buttons for this page instance (the source of truth). */
+function ctaGroupButtons(config: ScaffoldConfig, instance: PageInstance): PreviewButton[] {
+  const raw = blockSetting(config, instance, 'cta-group', 'buttons');
+  const list = Array.isArray(raw) ? raw : [];
+  const mapped = list
+    .filter((b): b is Record<string, unknown> => Boolean(b) && typeof b === 'object' && !Array.isArray(b))
+    .map((b) => ({ variant: String(b.variant ?? 'primary'), exit: String(b.exit ?? '') }));
+  return mapped.length ? mapped : [{ variant: 'primary', exit: '' }];
+}
+
+function ctaButtonLabel(config: ScaffoldConfig, instance: PageInstance, button: PreviewButton, index: number): string {
+  if (index === 0) return PRIMARY_CTA_LABEL[instance.type] ?? 'Continue';
+  // Secondary buttons: label by their destination page so the user can tell where
+  // each one goes (the real button copy is authored in CAPE).
+  const dest = config.pages.find((p) => p.id === button.exit);
+  const meta = dest ? pageMeta(dest.type) : undefined;
+  return meta?.label ?? 'Continue';
+}
+
+/**
+ * Renders the page's CTA buttons straight from the cta-group block — one button
+ * per entry, with its own variant and destination. This is what makes the
+ * preview reflect exactly what you configured in the block editor (count,
+ * variants, targets), instead of a fixed set of semantic slots.
+ */
+function CtaGroupPreview({ config, instance, navTo }: { config: ScaffoldConfig; instance: PageInstance; navTo: NavToFn }) {
+  const buttons = ctaGroupButtons(config, instance);
+  return (
+    <div className="pp-actions">
+      {buttons.map((b, i) => (
+        <CtaButton
+          key={i}
+          kind={normalizeVariant(b.variant)}
+          label={ctaButtonLabel(config, instance, b, i)}
+          onClick={() => { if (b.exit) navTo(b.exit); }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -526,9 +627,7 @@ function PageFooter({ compliance, links, complianceKind }:
 
 // ─────────────── Landing ───────────────
 
-function LandingPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
-  const showTutorial    = isExitOn(config, instance.id, 'tutorial',    false);
-  const showLeaderboard = isExitOn(config, instance.id, 'leaderboard', false);
+function LandingPreview({ config, instance, navigate, navTo, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean }) {
   const s = instSettings(config, instance.id);
   const skipForReturning = (s.onboardingFirstRunOnly ?? true) as boolean;
   const brand = config.brand?.trim() || config.name?.trim();
@@ -543,13 +642,7 @@ function LandingPreview({ config, instance, navigate, onMenu, showAudio }: { con
           {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
           {on('title-block') && <TitleBlock config={config} instance={instance} kicker="LIVE EXPERIENCE" title={title} subtitle="Are you ready to play?" />}
           {skipForReturning && <span className="pp-flag">Returning players skip the tutorial</span>}
-          {on('cta-group') && (
-            <div className="pp-actions">
-              <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Play now" onClick={() => navigate(instance.id, 'next')} />
-              {showTutorial    && <CtaButton kind={exitVariant(config, instance.id, 'tutorial',    'secondary')} label="Tutorial"    onClick={() => navigate(instance.id, 'tutorial')} />}
-              {showLeaderboard && <CtaButton kind={exitVariant(config, instance.id, 'leaderboard', 'secondary')} label="Leaderboard" onClick={() => navigate(instance.id, 'leaderboard')} />}
-            </div>
-          )}
+          {on('cta-group') && <CtaGroupPreview config={config} instance={instance} navTo={navTo} />}
           <PageFooter
             compliance={on('compliance-badge')}
             links={on('footer-link-list')}
@@ -612,7 +705,7 @@ function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfi
       <div className="pp pp--form pp--tutorial-card">
         <div className="pp-tutorial-panel">
           <button type="button" className="pp-card-close" aria-label="Close" onClick={() => navigate(instance.id, 'next')}>×</button>
-          {on('centered-art') && <div className="pp-card-visual" aria-hidden />}
+          {on('centered-art') && <div className={`pp-card-visual pp-card-visual--${blockSetting(config, instance, 'centered-art', 'size') ?? 'md'}`} aria-hidden />}
           {content}
         </div>
       </div>
@@ -632,7 +725,7 @@ function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfi
 
 // ─────────────── Video ───────────────
 
-function VideoPreview({ config, instance, navigate }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn }) {
+function VideoPreview({ config, instance, navigate, navTo }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn }) {
   const s = instSettings(config, instance.id);
   // intro-video and ad-video default to 'intro' playback even though the shared
   // schema default is 'loadingScreen' (only loading-video uses the loader path).
@@ -661,7 +754,14 @@ function VideoPreview({ config, instance, navigate }: { config: ScaffoldConfig; 
         </button>
       )}
       {on('reveal-cta') && (
-        <CtaButton kind="primary" label="Continue" onClick={() => navigate(instance.id, 'next')} />
+        <CtaButton
+          kind={normalizeVariant(String(blockSetting(config, instance, 'reveal-cta', 'variant') ?? 'primary'))}
+          label="Continue"
+          onClick={() => {
+            const exit = blockSetting(config, instance, 'reveal-cta', 'exit') as string | undefined;
+            if (exit) navTo(exit); else navigate(instance.id, 'next');
+          }}
+        />
       )}
     </div>
   );
@@ -789,7 +889,10 @@ function GamePreview({ config, instance, navigate, showAudio }: { config: Scaffo
         </button>
       )}
       {on('score-readout') && (
-        <div className="pp-game-score" aria-hidden>Score 1,240</div>
+        <div className="pp-game-score" aria-hidden>
+          Score 1,240
+          {Boolean(blockSetting(config, instance, 'score-readout', 'showHighScore')) && <span className="pp-game-highscore"> · Best 3,980</span>}
+        </div>
       )}
       <div className="pp-game-canvas">
         <div className="pp-game-grid" aria-hidden>
@@ -808,9 +911,7 @@ function GamePreview({ config, instance, navigate, showAudio }: { config: Scaffo
 
 // ─────────────── Result ───────────────
 
-function ResultPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
-  const showPlayAgain   = isExitOn(config, instance.id, 'playAgain',   true);
-  const showLeaderboard = isExitOn(config, instance.id, 'leaderboard', false);
+function ResultPreview({ config, instance, navigate, navTo, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean }) {
   const s = instSettings(config, instance.id);
   const autoNavSec = Number(s.autoNavSec ?? 0);
   const brand = config.brand?.trim() || config.name?.trim();
@@ -849,13 +950,7 @@ function ResultPreview({ config, instance, navigate, onMenu, showAudio }: { conf
               Auto-continue in {remaining}s
             </span>
           )}
-          {on('cta-group') && (
-            <div className="pp-actions">
-              <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />
-              {showPlayAgain   && <CtaButton kind={exitVariant(config, instance.id, 'playAgain', 'secondary')} label="Play again"  onClick={() => navigate(instance.id, 'playAgain', 'first')} />}
-              {showLeaderboard && <CtaButton kind={exitVariant(config, instance.id, 'leaderboard', 'tertiary')} label="Leaderboard" onClick={() => navigate(instance.id, 'leaderboard')} />}
-            </div>
-          )}
+          {on('cta-group') && <CtaGroupPreview config={config} instance={instance} navTo={navTo} />}
           <PageFooter
             compliance={on('compliance-badge')}
             links={on('footer-link-list')}
@@ -871,7 +966,7 @@ function ResultPreview({ config, instance, navigate, onMenu, showAudio }: { conf
 
 const LB_NAMES = ['Alex P.', 'Sam V.', 'Jordan K.', 'Morgan L.', 'Taylor B.', 'Riley C.', 'Casey M.', 'Jamie T.', 'Drew S.', 'Quinn R.'];
 
-function LeaderboardPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
+function LeaderboardPreview({ config, instance, navigate, navTo, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean }) {
   const on = (name: string) => blockOn(config, instance, name);
   const topN = Number(blockSetting(config, instance, 'top-n-highlight', 'count') ?? 3);
   // rank-list `rows` controls how many entries render (clamped to a sane mock).
@@ -914,7 +1009,7 @@ function LeaderboardPreview({ config, instance, navigate, onMenu, showAudio }: {
               <span className="pp-lb__score">4,501</span>
             </div>
           )}
-          {on('cta-group') && <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />}
+          {on('cta-group') && <CtaGroupPreview config={config} instance={instance} navTo={navTo} />}
         </div>
       </div>
     </div>
@@ -923,7 +1018,7 @@ function LeaderboardPreview({ config, instance, navigate, onMenu, showAudio }: {
 
 // ─────────────── Voucher ───────────────
 
-function VoucherPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
+function VoucherPreview({ config, instance, navigate, navTo, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean }) {
   const s = instSettings(config, instance.id);
   // QR shows when both the setting allows it AND the qr-display block is on.
   const showQrSetting = (s.showQr ?? true) as boolean;
@@ -952,7 +1047,7 @@ function VoucherPreview({ config, instance, navigate, onMenu, showAudio }: { con
               {on('qr-display') && showQrSetting && <div className="pp-voucher__qr" aria-hidden>▦</div>}
             </div>
           )}
-          {on('cta-group') && <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Continue" onClick={() => navigate(instance.id, 'next')} />}
+          {on('cta-group') && <CtaGroupPreview config={config} instance={instance} navTo={navTo} />}
           <PageFooter
             compliance={on('compliance-badge')}
             links={on('footer-link-list')}
@@ -1017,7 +1112,7 @@ function LoadingPreview({ config, instance }: { config: ScaffoldConfig; instance
       <div className="pp-shell">
         <div className="pp-bottom pp-bottom--center">
           {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
-          {on('centered-art') && <div className="pp-card-visual" aria-hidden />}
+          {on('centered-art') && <div className={`pp-card-visual pp-card-visual--${blockSetting(config, instance, 'centered-art', 'size') ?? 'md'}`} aria-hidden />}
           {on('tagline') && <p className="pp-body" style={{ textAlign: 'center' }}>Loading your experience…</p>}
           {on('loading-indicator') && (
             indicatorKind === 'bar'
@@ -1032,7 +1127,7 @@ function LoadingPreview({ config, instance }: { config: ScaffoldConfig; instance
 
 // ─────────────── End / thank-you ───────────────
 
-function EndPreview({ config, instance, navigate, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; onMenu: () => void; showAudio?: boolean }) {
+function EndPreview({ config, instance, navigate, navTo, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean }) {
   const brand = config.brand?.trim() || config.name?.trim();
   return (
     <div className="pp pp--hero">
@@ -1041,7 +1136,7 @@ function EndPreview({ config, instance, navigate, onMenu, showAudio }: { config:
         <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />
         <div className="pp-bottom pp-bottom--center">
           <HeroStack kicker="THANK YOU" title="See you next time!" body={brand ? `Thanks for playing ${brand}.` : undefined} />
-          <CtaButton kind={exitVariant(config, instance.id, 'next', 'primary')} label="Done" onClick={() => navigate(instance.id, 'next')} />
+          {blockOn(config, instance, 'cta-group') && <CtaGroupPreview config={config} instance={instance} navTo={navTo} />}
         </div>
       </div>
     </div>

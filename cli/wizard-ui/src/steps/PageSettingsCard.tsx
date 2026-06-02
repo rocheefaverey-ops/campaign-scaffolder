@@ -1,5 +1,6 @@
 import {
   defaultBlocksForPage,
+  flowPageOptions,
   PAGE_SETTINGS_SCHEMA,
   type ScaffoldConfig,
   type SettingDef,
@@ -58,26 +59,13 @@ export default function PageSettingsCard({ pageId, schemaType, pageLabel, config
         <code className="page-settings-card__path">settings.pages.{pageId}</code>
       </header>
 
-      {visibleSettings.length > 0 && (
-        <div className="page-settings-card__body">
-          {visibleSettings.map((def) => (
-            <SettingControl
-              key={def.key}
-              def={def}
-              value={pageValues[def.key] ?? def.default}
-              isDefault={(pageValues[def.key] ?? def.default) === def.default}
-              onChange={(v) => update(def.key, v)}
-              onReset={() => update(def.key, def.default)}
-            />
-          ))}
-        </div>
-      )}
-
+      {/* Blocks are the primary editor — what the page is built from. */}
       {supportsBlocks && (
         <BlockListEditor
           pageId={pageId}
           pageType={schemaType}
           value={blocks}
+          pageOptions={flowPageOptions(config, pageId)}
           onChange={(next) => {
             setConfig({
               ...config,
@@ -88,6 +76,26 @@ export default function PageSettingsCard({ pageId, schemaType, pageLabel, config
             });
           }}
         />
+      )}
+
+      {/* Page behavior — non-visual flow/engine settings that aren't blocks
+          (e.g. boot timing, returning-player skip, kiosk auto-continue). */}
+      {visibleSettings.length > 0 && (
+        <div className="page-settings-card__behavior">
+          <h5 className="page-settings-card__behavior-title">Page behavior</h5>
+          <div className="page-settings-card__body">
+            {visibleSettings.map((def) => (
+              <SettingControl
+                key={def.key}
+                def={def}
+                value={pageValues[def.key] ?? def.default}
+                isDefault={(pageValues[def.key] ?? def.default) === def.default}
+                onChange={(v) => update(def.key, v)}
+                onReset={() => update(def.key, def.default)}
+              />
+            ))}
+          </div>
+        </div>
       )}
     </section>
   );

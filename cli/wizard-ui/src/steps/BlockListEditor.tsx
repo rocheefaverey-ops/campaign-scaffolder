@@ -8,6 +8,7 @@ import {
 import {
   defaultBlocksForPage,
   type BlockSetting,
+  type FlowPageOption,
   type PageBlockConfig,
   type PageBlocksConfig,
 } from '../shared/config.ts';
@@ -18,10 +19,12 @@ interface Props {
   pageId: string;
   pageType: string;
   value: PageBlocksConfig;
+  /** Other pages in the flow — destinations for cta-group button exits. */
+  pageOptions: FlowPageOption[];
   onChange: (next: PageBlocksConfig) => void;
 }
 
-export default function BlockListEditor({ pageId, pageType, value, onChange }: Props) {
+export default function BlockListEditor({ pageId, pageType, value, pageOptions, onChange }: Props) {
   const [catalogue, setCatalogue] = useState<BlockCatalogItem[]>([]);
 
   useEffect(() => {
@@ -114,6 +117,7 @@ export default function BlockListEditor({ pageId, pageType, value, onChange }: P
               index={index}
               canMoveUp={index > 0}
               canMoveDown={index < order.length - 1}
+              pageOptions={pageOptions}
               onToggle={(enabled) => updateBlock(name, { ...config, enabled })}
               onMove={(direction) => moveBlock(name, direction)}
               onRemove={() => removeBlock(name)}

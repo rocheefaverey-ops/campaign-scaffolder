@@ -7,7 +7,7 @@ import {
   type BlockCatalogItem,
   type BlockSettingDef,
 } from '../shared/blocksCatalogue.ts';
-import type { BlockSetting, PageBlockConfig } from '../shared/config.ts';
+import { BUTTON_VARIANTS, type BlockSetting, type FlowPageOption, type PageBlockConfig } from '../shared/config.ts';
 
 interface Props {
   name: string;
@@ -16,6 +16,8 @@ interface Props {
   index: number;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  /** Other pages in the flow — destinations for cta-group button exits. */
+  pageOptions: FlowPageOption[];
   onToggle: (enabled: boolean) => void;
   onMove: (direction: -1 | 1) => void;
   onRemove: () => void;
@@ -30,6 +32,7 @@ export default function BlockCard({
   index: _index,
   canMoveUp,
   canMoveDown,
+  pageOptions,
   onToggle,
   onMove,
   onRemove,
@@ -37,8 +40,11 @@ export default function BlockCard({
   onResetSettings,
 }: Props) {
   const settingKeys = useMemo(
-    () => [...new Set([...Object.keys(block?.settings ?? {}), ...Object.keys(config.settings ?? {})])],
-    [block?.settings, config.settings],
+    () => [...new Set([...Object.keys(block?.settings ?? {}), ...Object.keys(config.settings ?? {})])]
+      // `count` is legacy for cta-group (now derived from buttons.length) — don't
+      // surface a stray, no-op control for projects opened before the migration.
+      .filter((key) => !(name === 'cta-group' && key === 'count')),
+    [block?.settings, config.settings, name],
   );
   const hasSettings = settingKeys.length > 0;
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -102,6 +108,7 @@ export default function BlockCard({
                 settingKey={key}
                 def={def}
                 value={value}
+                pageOptions={pageOptions}
                 onChange={(next) => onSettingChange(key, next)}
               />
             );
@@ -116,15 +123,26 @@ function BlockSettingControl({
   settingKey,
   def,
   value,
+  pageOptions,
   onChange,
 }: {
   settingKey: string;
   def?: BlockSettingDef;
   value: BlockSetting;
+  pageOptions: FlowPageOption[];
   onChange: (value: BlockSetting) => void;
 }) {
   const kind = controlKind(def, value);
   const label = settingLabel(settingKey);
+
+  if (kind === 'cta-buttons') {
+    return (
+      <div className="block-setting block-setting--cta">
+        <span>{label}</span>
+        <CtaButtonsControl def={def} value={value} pageOptions={pageOptions} onChange={onChange} />
+      </div>
+    );
+  }
 
   if (kind === 'boolean') {
     return (
@@ -227,6 +245,96 @@ function BlockSettingControl({
   );
 }
 
+type CtaButton = { variant: string; exit: string };
+
+function asButtonList(value: BlockSetting): CtaButton[] {
+  if (!Array.isArray(value)) return [{ variant: 'primary', exit: '' }];
+  return value.map((b) => {
+    const obj = (b && typeof b === 'object' && !Array.isArray(b)) ? (b as Record<string, BlockSetting>) : {};
+    return { variant: String(obj.variant ?? 'primary'), exit: String(obj.exit ?? '') };
+  });
+}
+
+// Structured editor for cta-group's `buttons` (array-of-objects). Each row is one
+// stacked button: a style variant + a destination page. Labels are NOT edited
+// here — they come from CAPE at runtime. Count is derived from the row count
+// (clamped to the manifest min/max).
+function CtaButtonsControl({
+  def,
+  value,
+  pageOptions,
+  onChange,
+}: {
+  def?: BlockSettingDef;
+  value: BlockSetting;
+  pageOptions: FlowPageOption[];
+  onChange: (value: BlockSetting) => void;
+}) {
+  const buttons = asButtonList(value);
+  const min = def?.min ?? 1;
+  const max = def?.max ?? 4;
+  const itemVariantOptions = settingOptions(def?.item?.variant);
+  const variantOptions = itemVariantOptions.length
+    ? itemVariantOptions
+    : BUTTON_VARIANTS.map((v) => ({ value: v.value, label: v.label }));
+
+  const commit = (next: CtaButton[]) => onChange(next as unknown as BlockSetting);
+  const update = (i: number, patch: Partial<CtaButton>) =>
+    commit(buttons.map((b, idx) => (idx === i ? { ...b, ...patch } : b)));
+  const remove = (i: number) => commit(buttons.filter((_, idx) => idx !== i));
+  const add = () => commit([...buttons, { variant: 'primary', exit: pageOptions[0]?.id ?? '' }]);
+
+  return (
+    <div className="cta-buttons">
+      {buttons.map((button, i) => {
+        // Surface an unknown stored target so the select isn't silently blank.
+        const hasOption = pageOptions.some((o) => o.id === button.exit);
+        return (
+          <div className="cta-buttons__row" key={i}>
+            <span className="cta-buttons__index" aria-hidden>{i + 1}</span>
+            <select
+              className="cta-buttons__variant"
+              value={button.variant}
+              onChange={(e) => update(i, { variant: e.target.value })}
+              aria-label={`Button ${i + 1} style`}
+            >
+              {variantOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <select
+              className="cta-buttons__exit"
+              value={button.exit}
+              onChange={(e) => update(i, { exit: e.target.value })}
+              aria-label={`Button ${i + 1} destination`}
+            >
+              <option value="">Select destination…</option>
+              {!hasOption && button.exit && <option value={button.exit}>{button.exit} (not in flow)</option>}
+              {pageOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+            <button
+              type="button"
+              className="cta-buttons__remove"
+              onClick={() => remove(i)}
+              disabled={buttons.length <= min}
+              title="Remove button"
+              aria-label={`Remove button ${i + 1}`}
+            >
+              ×
+            </button>
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        className="cta-buttons__add"
+        onClick={add}
+        disabled={buttons.length >= max}
+      >
+        + Add button
+      </button>
+    </div>
+  );
+}
+
 function JsonSetting({ value, onChange }: { value: BlockSetting; onChange: (value: BlockSetting) => void }) {
   const [text, setText] = useState(() => formatJson(value));
   const [invalid, setInvalid] = useState(false);
@@ -261,8 +369,11 @@ function JsonSetting({ value, onChange }: { value: BlockSetting; onChange: (valu
   );
 }
 
-function controlKind(def: BlockSettingDef | undefined, value: BlockSetting): 'boolean' | 'number' | 'select' | 'multiselect' | 'json' | 'text' {
+function controlKind(def: BlockSettingDef | undefined, value: BlockSetting): 'boolean' | 'number' | 'select' | 'multiselect' | 'cta-buttons' | 'json' | 'text' {
   // Manifest vocabulary first: enum → dropdown, array-of-enum → chip multiselect.
+  // array-of-objects → structured per-item editor (cta-group buttons). Must come
+  // before the value-based array→json inference below.
+  if (def?.kind === 'array-of-objects') return 'cta-buttons';
   if (def?.kind === 'array-of-enum') return 'multiselect';
   if (def?.kind === 'enum' || def?.kind === 'select' || def?.options?.length || def?.of?.length) return 'select';
   if (def?.kind === 'boolean') return 'boolean';

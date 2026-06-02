@@ -756,7 +756,7 @@ function renderBlock(block, ctx) {
     case 'score-illustration':
       return '      <ScoreIllustration image={cape.scoreImage?.url ?? cape.scoreImage} />';
     case 'stats-table':
-      return '      <StatsTable rows={cape.stats ?? []} />';
+      return `      <StatsTable rows={cape.stats ?? []} count={${Number(s.count ?? 3)}} />`;
     case 'status-chip':
       return `      <StatusChip label={cape.statusLabel} kind="${s.kind ?? 'registered'}" />`;
     case 'compliance-badge':
@@ -817,9 +817,13 @@ function slotAction(slot) {
 }
 
 function renderCtaButtons(settings, routeMap = {}) {
-  const count = Number(settings.count ?? settings.buttons?.length ?? 1);
-  const buttons = settings.buttons?.length ? settings.buttons : Array.from({ length: count }, () => ({ variant: 'primary', exit: 'game' }));
-  const entries = buttons.slice(0, count).map((b, i) =>
+  // The button list is the source of truth (count is derived from its length).
+  // Legacy `count`, if present, only caps the list. Clamp to the manifest's 1–4.
+  const list = Array.isArray(settings.buttons) && settings.buttons.length
+    ? settings.buttons
+    : [{ variant: 'primary', exit: 'game' }];
+  const cap = Math.min(4, settings.count ? Number(settings.count) : list.length);
+  const entries = list.slice(0, Math.max(1, cap)).map((b, i) =>
     `{ label: cape.cta?.[${i}]?.label ?? cape.ctaLabel ?? 'Continue', variant: '${b.variant ?? 'primary'}', onClick: () => router.push('${routeForExit(b.exit ?? 'game', routeMap)}') }`,
   );
   return `[${entries.join(', ')}]`;

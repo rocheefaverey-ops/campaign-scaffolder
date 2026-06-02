@@ -10,7 +10,7 @@
   "envVars": [],
   "cspPatch": {},
   "settings": {
-    "items": { "kind": "array-of-enum", "of": ["home", "howToPlay", "leaderboard", "prizes", "terms", "privacy", "language", "profile", "custom"], "default": ["home", "howToPlay", "leaderboard", "terms", "privacy"] }
+    "items": { "kind": "array-of-enum", "of": ["home", "resume", "howToPlay", "leaderboard", "voucher", "terms", "privacy", "faq", "leave"], "default": ["home", "howToPlay", "terms", "privacy", "leave"] }
   },
   "capeBindings": {
     "labels": "{pageType}.items | array | menu item labels"

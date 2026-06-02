@@ -26,7 +26,10 @@ function Landing() {
     ? true
     : onboardingFirstRunOnlyRaw === 'true';
   const tutorialRoute = '{{LANDING_TUTORIAL_ROUTE}}';
-  const showTutorialButton = JSON.parse('false') as boolean;
+  // Derived from the landing cta-group block at scaffold time (see flow-bridge).
+  // Unreplaced token (e.g. a non-flow build) falls back to hidden.
+  const showTutorialButtonRaw = '{{SHOW_LANDING_TUTORIAL_BUTTON}}';
+  const showTutorialButton = showTutorialButtonRaw.startsWith('{{') ? false : showTutorialButtonRaw === 'true';
 
   // Rehydrate the "tutorial seen" flag client-side so returning players skip
   // straight past the tutorial when pressing Play.

@@ -256,7 +256,7 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
     'header-chrome': block(true, { leftSlot: 'menu', rightSlot: 'none' }),
     'brand-chip': block(true, { size: 'md' }),
     'title-block': block(true, { showKicker: false, showSubtitle: false }),
-    'cta-group': block(true, { count: 1, buttons: [{ variant: 'primary', exit: 'game' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'game' }] }),
     'footer-link-list': block(false),
     'compliance-badge': block(false, { kind: '18+' }),
     'pre-gate-modal': block(false, { kind: 'age-18', persistAcrossSession: true }),
@@ -317,7 +317,7 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
     'score-illustration': block(false),
     'stats-table': block(false, { count: 3, rows: [{ label: 'Score', value: 'score' }, { label: 'Rank', value: 'rank' }, { label: 'Best', value: 'highScore' }] }),
     'status-chip': block(false, { kind: 'registered' }),
-    'cta-group': block(true, { count: 2, buttons: [{ variant: 'primary', exit: 'voucher' }, { variant: 'secondary', exit: 'game' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'voucher' }, { variant: 'secondary', exit: 'game' }] }),
     'compliance-badge': block(false, { kind: '18+' }),
     'footer-link-list': block(false),
   }),
@@ -330,7 +330,7 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
     'rank-list': block(true, { rows: 10 }),
     'top-n-highlight': block(false, { count: 3 }),
     'personal-best-row': block(true),
-    'cta-group': block(true, { count: 1, buttons: [{ variant: 'primary', exit: 'landing' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'landing' }] }),
   }),
   register: page({
     background: block(true, { kind: 'image' }),
@@ -341,7 +341,7 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
     'body-copy': block(false, { markdown: true }),
     'field-set': block(true, { fields: ['firstName', 'lastName', 'email'] }),
     'opt-in-list': block(true, { optIns: ['terms'] }),
-    'cta-group': block(true, { count: 1, buttons: [{ variant: 'primary', exit: 'result' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'result' }] }),
     'footer-link-list': block(false),
   }),
   voucher: page({
@@ -353,7 +353,7 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
     'channel-tabs': block(false, { tabs: ['webshop', 'in-store'], defaultTab: 'webshop' }),
     'code-box': block(true),
     'qr-display': block(true),
-    'cta-group': block(true, { count: 1, buttons: [{ variant: 'primary', exit: 'leaderboard' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'leaderboard' }] }),
     'compliance-badge': block(false, { kind: '18+' }),
     'footer-link-list': block(true),
   }),
@@ -364,7 +364,7 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
     'title-block': block(true, { showKicker: true, showSubtitle: false }),
     'body-copy': block(true, { markdown: true }),
     'prize-illustration': block(true),
-    'cta-group': block(true, { count: 2, buttons: [{ variant: 'icon-only', exit: 'leaderboard' }, { variant: 'primary', exit: 'game' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'icon-only', exit: 'leaderboard' }, { variant: 'primary', exit: 'game' }] }),
     'compliance-badge': block(false, { kind: '18+' }),
     'footer-link-list': block(false),
   }),
@@ -372,7 +372,7 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
     background: block(true, { kind: 'image' }),
     'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'none' }),
     'brand-chip': block(true, { size: 'md' }),
-    'menu-item-list': block(true, { items: ['home', 'howToPlay', 'leaderboard', 'terms', 'privacy'] }),
+    'menu-item-list': block(true, { items: ['home', 'howToPlay', 'terms', 'privacy', 'leave'] }),
   }),
 };
 
@@ -500,16 +500,12 @@ export const PAGE_SETTINGS_SCHEMA: Record<string, SettingDef[]> = {
         { value: 'card',          label: 'Card screen' },
       ],
       hint: 'Choose whether the tutorial sits directly on the campaign hero image or inside a centered card.' },
-    { key: 'stepCount', label: 'Step count', kind: 'number', default: 3, min: 1, max: 6,
-      hint: '✓ Number of how-to-play slides. Drives both the wizard preview and the CAPE schema.' },
-    { key: 'allowSkip', label: 'Allow skip', kind: 'boolean', default: false,
-      hint: '✓ Show a "Skip" link on each tutorial slide.' },
+    // Step count → step-indicator block; allow skip → nav-controls block.
   ],
   register: [
     { key: 'showInfix',     label: 'Show name infix field',     kind: 'boolean', default: true,
       hint: '✓ Useful for Dutch markets ("van", "de", etc).' },
-    { key: 'requireOptIns', label: 'Require consent checkboxes', kind: 'boolean', default: true,
-      hint: '✓ Block submission until all consent checkboxes are ticked.' },
+    // Require consent → opt-in-list block.
   ],
   game: [
     { key: 'unityBootMode', label: 'Unity boot timing', kind: 'select', default: 'entry',
@@ -518,18 +514,14 @@ export const PAGE_SETTINGS_SCHEMA: Record<string, SettingDef[]> = {
         { value: 'game',  label: 'Game page only' },
       ],
       hint: 'Choose whether Unity starts loading as soon as the visitor enters the site or only when /game opens.' },
-    { key: 'timerEnabled', label: 'Timer enabled',  kind: 'boolean', default: true,
-      hint: '✓ Render a countdown overlay on the gameplay page.' },
-    { key: 'timerSec',     label: 'Timer duration', kind: 'number',  default: 60, min: 5, max: 600, unit: 'sec', showWhen: [{ key: 'timerEnabled', value: true }],
-      hint: '✓ Countdown duration. Game ends with score=0 if it expires.' },
+    // Timer on/off + duration → timer block.
   ],
   result: [
     { key: 'autoNavSec', label: 'Auto-continue after', kind: 'number', default: 0, min: 0, max: 120, unit: 'sec',
       hint: '✓ For kiosk mode. 0 = disabled (user clicks Continue).' },
   ],
   voucher: [
-    { key: 'showQr',     label: 'Show QR code',         kind: 'boolean', default: true,
-      hint: '✓ Render a QR linking to the voucher in addition to the code.' },
+    // Show QR → qr-display block.
     { key: 'codeLength', label: 'Voucher code length', kind: 'number',  default: 8, min: 4, max: 16,
       hint: '✓ Truncate / pad the displayed code to this many characters.' },
   ],
@@ -713,6 +705,35 @@ export function deriveRegMode(pages: PageInstance[]): RegMode {
 
 export function pageMeta(id: string): PageMeta | undefined {
   return ALL_PAGES.find(p => p.id === id);
+}
+
+/** A pickable navigation target for a CTA button's destination dropdown. */
+export interface FlowPageOption {
+  id:    string;
+  type:  string;
+  label: string;
+  route: string;
+}
+
+/**
+ * The other pages in the flow, as { id, type, label, route } options — the same
+ * shape FlowCard builds for its exit dropdowns. Used by the cta-group button
+ * editor so a button's `exit` (a page id) can be picked from real targets.
+ */
+export function flowPageOptions(config: ScaffoldConfig, selfId: string): FlowPageOption[] {
+  return (config.pages ?? [])
+    .filter((p) => p.id !== selfId)
+    .map((p) => {
+      const m = pageMeta(p.type);
+      if (!m) return null;
+      return {
+        id:    p.id,
+        type:  p.type,
+        label: p.id === p.type ? m.label : `${m.label} · ${p.id}`,
+        route: p.route,
+      };
+    })
+    .filter((o): o is FlowPageOption => Boolean(o));
 }
 
 export function pagesForStack(_stack: Stack): PageMeta[] {

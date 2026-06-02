@@ -35,6 +35,7 @@ import { getGamesByEngine, getGamesByStack, getGame, gameEnvLines, gameLabel } f
 import { checkAuth, validateAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, seedTemplateAssets, publishCampaign } from './cape-client.js';
 import { buildTanStackCapeFormat, buildNextCapeFormat } from './cape-format-builder.js';
 import { pageBlocksToBlocksConfig } from './block-defaults.js';
+import { deriveFlowFromBlocks, mergeDerivedFlow, deriveMenuItemsEnabled } from './flow-bridge.js';
 import { migrateScaffoldConfig } from './block-migration.js';
 import {
   ALL_PAGES,
@@ -1495,6 +1496,27 @@ async function enforceConfigValidation(options, { yes = false } = {}) {
  */
 async function scaffold(options) {
   const { outputDir, isUpdate = false } = options;
+
+  // The cta-group block is the single source of truth for CTA buttons. Derive the
+  // legacy flow maps (exit targets, enabled optional buttons, variants) from each
+  // CTA page's block and make the block authoritative for those pages — stale
+  // legacy keys are stripped, derived values layered on. Non-CTA flow wiring
+  // (video / loading / game / tutorial) passes through untouched, and a build with
+  // no blocks (pure CLI) derives nothing and keeps the legacy maps verbatim.
+  {
+    const derived = deriveFlowFromBlocks(options.blocksConfig ?? {}, options.pages ?? [], options.pageTypes ?? {});
+    const gov = derived.governedPageIds;
+    options.flowExits          = mergeDerivedFlow(options.flowExits, derived.flowExits, gov);
+    options.flowEnabledExits   = mergeDerivedFlow(options.flowEnabledExits, derived.flowEnabledExits, gov);
+    options.flowButtonVariants = mergeDerivedFlow(options.flowButtonVariants, derived.flowButtonVariants, gov);
+    if (derived.warnings.length && options.stack === 'tanstack') {
+      for (const w of derived.warnings) console.log(`  ${c.yellow('⚠')} ${w}`);
+    }
+    // Menu visibility is owned by the menu page's menu-item-list block. Derive
+    // menuItemsEnabled from it (route-gating in the token step still applies).
+    const menuEnabled = deriveMenuItemsEnabled(options.blocksConfig ?? {});
+    if (menuEnabled) options.menuItemsEnabled = { ...options.menuItemsEnabled, ...menuEnabled };
+  }
 
   // ── Update mode: lock + git snapshot + rollback on abort ───────────────────
   if (isUpdate) {
@@ -4230,6 +4252,12 @@ async function main() {
       const autoTitle = (cfg.capeTitle && cfg.capeTitle.trim())
         ? cfg.capeTitle.trim()
         : cfg.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      // CTA show-flags (showLeaderboardButton, showPlayAgainButton, …) come from
+      // the cta-group block — derive them so the freshly-created CAPE schema's
+      // defaults match the block, exactly like the on-disk cape-format.json does.
+      const cfgBlocksConfig = cfg.blocksConfig ?? pageBlocksToBlocksConfig(cfg.pageBlocks ?? {});
+      const cfgDerived = deriveFlowFromBlocks(cfgBlocksConfig, pageIds, pageTypes);
+      const cfgFlowEnabledExits = mergeDerivedFlow(cfg.flowEnabledExits ?? {}, cfgDerived.flowEnabledExits, cfgDerived.governedPageIds);
       const cfgFormat = cfg.stack === 'tanstack'
         ? buildTanStackCapeFormat({
             pages: pageIds,
@@ -4243,9 +4271,9 @@ async function main() {
             },
             pageElementSelections: cfg.pageElementSelections ?? {},
             pageBlocks:            cfg.pageBlocks ?? {},
-            blocksConfig:          cfg.blocksConfig ?? pageBlocksToBlocksConfig(cfg.pageBlocks ?? {}),
+            blocksConfig:          cfgBlocksConfig,
             modules:               resolveModules(cfg.game ?? 'unity', pageIds.map(id => pageTypes[id] ?? id), cfg.modules ?? []),
-            flowEnabledExits:      cfg.flowEnabledExits ?? {},
+            flowEnabledExits:      cfgFlowEnabledExits,
             menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
             iframe:                cfg.iframe ?? false,
           })
@@ -4254,9 +4282,9 @@ async function main() {
             pageTypes,
             pageElementSelections: cfg.pageElementSelections ?? {},
             pageBlocks:            cfg.pageBlocks ?? {},
-            blocksConfig:          cfg.blocksConfig ?? pageBlocksToBlocksConfig(cfg.pageBlocks ?? {}),
+            blocksConfig:          cfgBlocksConfig,
             modules:               resolveModules(cfg.game ?? 'unity', pageIds.map(id => pageTypes[id] ?? id), cfg.modules ?? []),
-            flowEnabledExits:      cfg.flowEnabledExits ?? {},
+            flowEnabledExits:      cfgFlowEnabledExits,
             menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
             iframe:                cfg.iframe ?? false,
           });
