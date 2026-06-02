@@ -10,7 +10,8 @@
   "envVars": [],
   "cspPatch": {},
   "settings": {
-    "size": { "kind": "enum", "of": ["sm", "md", "lg"], "default": "md" }
+    "size": { "kind": "enum", "of": ["sm", "md", "lg"], "default": "md" },
+    "centerMode": { "kind": "enum", "of": ["whitespace", "page"], "default": "whitespace" }
   },
   "capeBindings": {
     "image": "{pageType}.art | image | centered foreground image"

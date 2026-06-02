@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import styles from './HeaderChrome.module.scss';
 
 export type SlotKind = 'none' | 'menu' | 'help' | 'close' | 'back' | 'decorative-icon';
@@ -7,6 +8,8 @@ type Props = {
   rightSlot: SlotKind;
   onLeftClick?: () => void;
   onRightClick?: () => void;
+  /** Optional middle slot — used by brand-chip when its `slot` setting is `header`. */
+  center?: ReactNode;
 };
 
 const SLOT_LABELS: Record<Exclude<SlotKind, 'none'>, string> = {
@@ -17,10 +20,11 @@ const SLOT_LABELS: Record<Exclude<SlotKind, 'none'>, string> = {
   'decorative-icon': '',
 };
 
-export function HeaderChrome({ leftSlot, rightSlot, onLeftClick, onRightClick }: Props) {
+export function HeaderChrome({ leftSlot, rightSlot, onLeftClick, onRightClick, center }: Props) {
   return (
     <header className={styles.header}>
       <SlotButton kind={leftSlot} onClick={onLeftClick} side="left" />
+      {center !== undefined && <div className={styles.center}>{center}</div>}
       <SlotButton kind={rightSlot} onClick={onRightClick} side="right" />
     </header>
   );

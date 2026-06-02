@@ -10,7 +10,9 @@
   "envVars": [],
   "cspPatch": {},
   "settings": {
-    "size": { "kind": "enum", "of": ["sm", "md"], "default": "md" }
+    "size": { "kind": "enum", "of": ["sm", "md"], "default": "md" },
+    "position": { "kind": "enum", "of": ["left", "center", "right"], "default": "center" },
+    "slot": { "kind": "enum", "of": ["content", "header"], "default": "content" }
   },
   "capeBindings": {
     "image": "branding.logo | image | brand or sponsor logo"

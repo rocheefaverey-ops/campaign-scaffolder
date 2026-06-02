@@ -440,10 +440,17 @@ function HeaderChrome({ config, instance, navigate, onMenu, showAudio }:
   const [muted, setMuted] = useState(false);
   const left  = (blockSetting(config, instance, 'header-chrome', 'leftSlot')  as string) ?? 'none';
   const right = (blockSetting(config, instance, 'header-chrome', 'rightSlot') as string) ?? 'none';
+  const showBrandInHeader = blockOn(config, instance, 'brand-chip')
+    && (blockSetting(config, instance, 'brand-chip', 'slot') as string) === 'header';
   const onBack = () => navigate(instance.id, 'back');
   return (
     <div className="pp-header pp-header--slots">
       <HeaderSlot slot={left} onMenu={onMenu} onBack={onBack} />
+      {showBrandInHeader && (
+        <div className="pp-header__center">
+          <BrandChip {...brandChipProps(config, instance)} />
+        </div>
+      )}
       <div className="pp-header__actions">
         {showAudio && (
           <button type="button" className="pp-menu pp-audio" aria-label={muted ? 'Unmute' : 'Mute'} aria-pressed={muted} onClick={(e) => { e.stopPropagation(); setMuted(m => !m); }}>
@@ -454,6 +461,19 @@ function HeaderChrome({ config, instance, navigate, onMenu, showAudio }:
       </div>
     </div>
   );
+}
+
+/**
+ * True when the brand-chip block should render as a standalone element in the
+ * page body. False when it has been moved into the header (slot=header AND
+ * header-chrome is enabled — otherwise it falls back to body placement,
+ * matching the page-builder's fallback behaviour).
+ */
+function showBrandInBody(config: ScaffoldConfig, instance: PageInstance): boolean {
+  if (!blockOn(config, instance, 'brand-chip')) return false;
+  const slot = (blockSetting(config, instance, 'brand-chip', 'slot') as string) ?? 'content';
+  if (slot !== 'header') return true;
+  return !blockOn(config, instance, 'header-chrome');
 }
 
 function HamburgerSvg() {
@@ -547,8 +567,16 @@ function HeroStack({ kicker, title, body }: { kicker?: string; title: string; bo
 
 // ── Optional add-on blocks (off by default; toggling them on shows these) ─────
 
-function BrandChip({ size = 'md' }: { size?: string }) {
-  return <div className={`pp-brand-chip pp-brand-chip--${size}`} aria-hidden>◆ brand</div>;
+function BrandChip({ size = 'md', position = 'center' }: { size?: string; position?: string }) {
+  const pos = position === 'left' || position === 'right' ? position : 'center';
+  return <div className={`pp-brand-chip pp-brand-chip--${size} pp-brand-chip--${pos}`} aria-hidden>◆ brand</div>;
+}
+
+function brandChipProps(config: ScaffoldConfig, instance: PageInstance) {
+  return {
+    size: blockSetting(config, instance, 'brand-chip', 'size') as string,
+    position: blockSetting(config, instance, 'brand-chip', 'position') as string,
+  };
 }
 
 /**
@@ -565,8 +593,89 @@ function TitleBlock({ config, instance, kicker, title, subtitle }:
 function BodyCopy({ children }: { children: React.ReactNode }) {
   return <p className="pp-body pp-body--block">{children}</p>;
 }
+
+/**
+ * Inline SVG placeholder for the centered-art block. Stock visual so the preview
+ * reads as "image goes here" rather than an empty rectangle. Real campaigns
+ * supply their own asset via CAPE (`{pageType}.art`) at runtime — this only
+ * appears in the wizard preview.
+ *
+ * Variant `step` rotates through three light glyphs keyed to the current step
+ * index, so flipping between tutorial steps looks like distinct slides.
+ */
+function CenteredArtPlaceholder({ size = 'md', variant = 'play' }: { size?: string; variant?: string }) {
+  return (
+    <div className={`pp-card-visual pp-card-visual--${size} pp-card-visual--${variant}`} aria-hidden>
+      <svg viewBox="0 0 120 80" className="pp-card-visual__svg" preserveAspectRatio="xMidYMid meet">
+        {variant === 'play' && (
+          <g fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="22" y="18" width="32" height="32" rx="6" />
+            <rect x="66" y="18" width="32" height="32" rx="6" />
+            <circle cx="38" cy="34" r="6" />
+            <path d="M74 30 L82 38 L90 26" />
+          </g>
+        )}
+        {variant === 'target' && (
+          <g fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <circle cx="60" cy="36" r="22" />
+            <circle cx="60" cy="36" r="13" />
+            <circle cx="60" cy="36" r="4" />
+            <path d="M60 6 L60 14 M60 58 L60 66 M30 36 L38 36 M82 36 L90 36" />
+          </g>
+        )}
+        {variant === 'trophy' && (
+          <g fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M44 14 L76 14 L74 38 Q60 50 46 38 Z" />
+            <path d="M44 20 L34 20 Q30 20 30 26 Q30 34 44 36" />
+            <path d="M76 20 L86 20 Q90 20 90 26 Q90 34 76 36" />
+            <path d="M52 50 L52 60 L68 60 L68 50" />
+            <path d="M44 64 L76 64" />
+          </g>
+        )}
+        {variant === 'logo' && (
+          <g fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="60" cy="40" r="22" />
+            <path d="M60 24 L60 56 M44 40 L76 40" strokeWidth="2" />
+            <circle cx="60" cy="40" r="5" fill="currentColor" stroke="none" />
+            <path d="M60 14 L60 20 M60 60 L60 66 M34 40 L40 40 M80 40 L86 40" strokeWidth="2" />
+          </g>
+        )}
+      </svg>
+    </div>
+  );
+}
+
 function ScoreIllustration() {
-  return <div className="pp-score-illus" aria-hidden>🏆</div>;
+  return (
+    <div className="pp-score-illus" aria-hidden>
+      <svg viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet">
+        <g fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 8 L42 8 L40 30 Q32 38 24 30 Z" />
+          <path d="M22 14 L14 14 Q10 14 10 20 Q10 26 22 28" />
+          <path d="M42 14 L50 14 Q54 14 54 20 Q54 26 42 28" />
+          <path d="M28 40 L28 48 L36 48 L36 40" />
+          <path d="M22 52 L42 52" />
+          <path d="M8 6 L10 10 M56 6 L54 10 M6 24 L10 24 M54 24 L58 24" strokeWidth="2" />
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+function PrizeIllustration() {
+  return (
+    <div className="pp-prize-illus" aria-hidden>
+      <svg viewBox="0 0 80 80" preserveAspectRatio="xMidYMid meet">
+        <g fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="10" y="28" width="60" height="38" rx="3" />
+          <path d="M10 40 L70 40" />
+          <path d="M40 28 L40 66" />
+          <path d="M40 28 Q26 20 22 12 Q22 8 28 8 Q34 8 40 28" />
+          <path d="M40 28 Q54 20 58 12 Q58 8 52 8 Q46 8 40 28" />
+        </g>
+      </svg>
+    </div>
+  );
 }
 function StatsTable({ count = 3 }: { count?: number }) {
   const rows = [
@@ -639,7 +748,7 @@ function LandingPreview({ config, instance, navigate, navTo, onMenu, showAudio }
       <div className="pp-shell">
         {on('header-chrome') && <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />}
         <div className="pp-bottom">
-          {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+          {showBrandInBody(config, instance) && <BrandChip {...brandChipProps(config, instance)} />}
           {on('title-block') && <TitleBlock config={config} instance={instance} kicker="LIVE EXPERIENCE" title={title} subtitle="Are you ready to play?" />}
           {skipForReturning && <span className="pp-flag">Returning players skip the tutorial</span>}
           {on('cta-group') && <CtaGroupPreview config={config} instance={instance} navTo={navTo} />}
@@ -667,35 +776,51 @@ function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfi
   }));
   const isLast = step === STEPS.length - 1;
   const on = (name: string) => blockOn(config, instance, name);
-  const content = (
+  const stepIndicator = on('step-indicator')
+    ? (blockSetting(config, instance, 'step-indicator', 'style') === 'count'
+        ? <div className="pp-step-count" aria-hidden>{step + 1} / {STEPS.length}</div>
+        : (
+          <div className="pp-dots">
+            {STEPS.map((_, i) => (
+              <button key={i} type="button" aria-label={`step ${i + 1}`} className={`pp-dot${i === step ? ' is-active' : ''}`} onClick={() => setStep(i)} />
+            ))}
+          </div>
+        ))
+    : null;
+  const stepBelow = (blockSetting(config, instance, 'step-indicator', 'position') as string) === 'below';
+  const navControls = on('nav-controls') ? (
+    <div className="pp-actions">
+      {Boolean(blockSetting(config, instance, 'nav-controls', 'showPrev')) && (
+        <CtaButton kind="tertiary" label="Prev" onClick={() => setStep(Math.max(0, step - 1))} />
+      )}
+      <CtaButton
+        kind={exitVariant(config, instance.id, 'next', 'primary')}
+        label={isLast ? 'Start' : 'Continue'}
+        onClick={() => isLast ? navigate(instance.id, 'next') : setStep(step + 1)}
+      />
+      {Boolean(s.allowSkip) && <CtaButton kind="secondary" label="Skip" onClick={() => navigate(instance.id, 'next')} />}
+    </div>
+  ) : null;
+  // Three illustration variants cycle by step so flipping through the tutorial
+  // shows distinct stock visuals — looks more like a real onboarding slideshow
+  // than a single repeating placeholder.
+  const ART_VARIANTS = ['play', 'target', 'trophy'] as const;
+  const artSize = (blockSetting(config, instance, 'centered-art', 'size') as string) ?? 'md';
+  const artCenterMode = (blockSetting(config, instance, 'centered-art', 'centerMode') as string) ?? 'whitespace';
+  const centeredArt = on('centered-art')
+    ? <CenteredArtPlaceholder size={artSize} variant={ART_VARIANTS[step % ART_VARIANTS.length]} />
+    : null;
+  // Hero layout: art floats in the whitespace between the header and the
+  // bottom-anchored text/CTA stack. Card layout: art sits at the top of the
+  // panel (inline with the rest of the content).
+  const contentWithoutArt = (
     <>
-      {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+      {showBrandInBody(config, instance) && <BrandChip {...brandChipProps(config, instance)} />}
       {on('title-block') && <TitleBlock config={config} instance={instance} kicker={`HOW TO PLAY · ${step + 1} / ${STEPS.length}`} title={STEPS[step].title} subtitle="Follow along to learn the game." />}
       {on('body-copy') && <BodyCopy>{STEPS[step].body}</BodyCopy>}
-      {on('step-indicator') && (
-        blockSetting(config, instance, 'step-indicator', 'style') === 'count'
-          ? <div className="pp-step-count" aria-hidden>{step + 1} / {STEPS.length}</div>
-          : (
-            <div className="pp-dots">
-              {STEPS.map((_, i) => (
-                <button key={i} type="button" aria-label={`step ${i + 1}`} className={`pp-dot${i === step ? ' is-active' : ''}`} onClick={() => setStep(i)} />
-              ))}
-            </div>
-          )
-      )}
-      {on('nav-controls') && (
-        <div className="pp-actions">
-          {Boolean(blockSetting(config, instance, 'nav-controls', 'showPrev')) && (
-            <CtaButton kind="tertiary" label="Prev" onClick={() => setStep(Math.max(0, step - 1))} />
-          )}
-          <CtaButton
-            kind={exitVariant(config, instance.id, 'next', 'primary')}
-            label={isLast ? 'Start' : 'Continue'}
-            onClick={() => isLast ? navigate(instance.id, 'next') : setStep(step + 1)}
-          />
-          {Boolean(s.allowSkip) && <CtaButton kind="secondary" label="Skip" onClick={() => navigate(instance.id, 'next')} />}
-        </div>
-      )}
+      {!stepBelow && stepIndicator}
+      {navControls}
+      {stepBelow && stepIndicator}
       <PageFooter compliance={on('compliance-badge')} links={false} complianceKind={blockSetting(config, instance, 'compliance-badge', 'kind') as string | undefined} />
     </>
   );
@@ -705,8 +830,8 @@ function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfi
       <div className="pp pp--form pp--tutorial-card">
         <div className="pp-tutorial-panel">
           <button type="button" className="pp-card-close" aria-label="Close" onClick={() => navigate(instance.id, 'next')}>×</button>
-          {on('centered-art') && <div className={`pp-card-visual pp-card-visual--${blockSetting(config, instance, 'centered-art', 'size') ?? 'md'}`} aria-hidden />}
-          {content}
+          {centeredArt}
+          {contentWithoutArt}
         </div>
       </div>
     );
@@ -715,9 +840,13 @@ function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfi
   return (
     <div className="pp pp--hero">
       {on('background') && <HeroBleed kind={blockSetting(config, instance, 'background', 'kind') as string} />}
+      {centeredArt && artCenterMode === 'page' && (
+        <div className="pp-hero-visual pp-hero-visual--page">{centeredArt}</div>
+      )}
       <div className="pp-shell">
         {on('header-chrome') && <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={() => navigate(instance.id, 'next')} />}
-        <div className="pp-bottom">{content}</div>
+        {centeredArt && artCenterMode !== 'page' && <div className="pp-hero-visual">{centeredArt}</div>}
+        <div className="pp-bottom">{contentWithoutArt}</div>
       </div>
     </div>
   );
@@ -821,7 +950,7 @@ function RegisterPreview({ config, instance, navigate }: { config: ScaffoldConfi
   return (
     <div className="pp pp--form">
       <div className="pp-shell pp-shell--scroll">
-        {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+        {showBrandInBody(config, instance) && <BrandChip {...brandChipProps(config, instance)} />}
         {on('title-block') && <TitleBlock config={config} instance={instance} kicker="REGISTER" title="Join the game" subtitle="It only takes a minute." />}
         {on('body-copy') && <BodyCopy>Fill in your details to play.</BodyCopy>}
         <div className="pp-form">
@@ -923,16 +1052,27 @@ function ResultPreview({ config, instance, navigate, navTo, onMenu, showAudio }:
     return () => clearInterval(id);
   }, [autoNavSec, instance.id]);
   const on = (name: string) => blockOn(config, instance, name);
+  const scoreIllusOn = on('score-illustration');
+  const scoreIllusAboveTitle = scoreIllusOn
+    && (blockSetting(config, instance, 'score-illustration', 'position') as string) === 'above-title';
+  const scoreIllusCenterMode = (blockSetting(config, instance, 'score-illustration', 'centerMode') as string) ?? 'whitespace';
+  const scoreIllusPageCentered = scoreIllusAboveTitle && scoreIllusCenterMode === 'page';
   return (
     <div className="pp pp--hero">
       {on('background') && <HeroBleed kind={blockSetting(config, instance, 'background', 'kind') as string} />}
+      {scoreIllusPageCentered && (
+        <div className="pp-hero-visual pp-hero-visual--page"><ScoreIllustration /></div>
+      )}
       <div className="pp-shell">
         {on('header-chrome') && <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />}
+        {scoreIllusAboveTitle && !scoreIllusPageCentered && (
+          <div className="pp-hero-visual"><ScoreIllustration /></div>
+        )}
         <div className="pp-bottom">
-          {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+          {showBrandInBody(config, instance) && <BrandChip {...brandChipProps(config, instance)} />}
           {on('title-block') && <TitleBlock config={config} instance={instance} kicker="RESULT" title="Well done!" subtitle="Here's how you did." />}
           {on('body-copy') && <BodyCopy>{brand ? `Thanks for playing ${brand}.` : 'Thanks for playing.'}</BodyCopy>}
-          {on('score-illustration') && <ScoreIllustration />}
+          {scoreIllusOn && !scoreIllusAboveTitle && <ScoreIllustration />}
           {on('score-readout') && (
             <div className="pp-score-plate">
               <span className="pp-score-plate__label">Score</span>
@@ -983,7 +1123,7 @@ function LeaderboardPreview({ config, instance, navigate, navTo, onMenu, showAud
       <div className="pp-shell">
         {on('header-chrome') && <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />}
         <div className="pp-bottom">
-          {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+          {showBrandInBody(config, instance) && <BrandChip {...brandChipProps(config, instance)} />}
           {on('title-block') && <TitleBlock config={config} instance={instance} kicker="LEADERBOARD" title="Top players" subtitle="See where you rank." />}
           {on('leaderboard-tabs') && (
             <SegTabs
@@ -1032,7 +1172,7 @@ function VoucherPreview({ config, instance, navigate, navTo, onMenu, showAudio }
       <div className="pp-shell">
         {on('header-chrome') && <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />}
         <div className="pp-bottom pp-bottom--center">
-          {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
+          {showBrandInBody(config, instance) && <BrandChip {...brandChipProps(config, instance)} />}
           {on('title-block') && <TitleBlock config={config} instance={instance} kicker="REWARD" title="Your voucher" subtitle="Your reward is ready." />}
           {on('body-copy') && <BodyCopy>Show this code at checkout.</BodyCopy>}
           {on('channel-tabs') && (
@@ -1106,13 +1246,42 @@ function MenuPreview({ config, onClose, onNavigate }: {
 function LoadingPreview({ config, instance }: { config: ScaffoldConfig; instance: PageInstance }) {
   const on = (name: string) => blockOn(config, instance, name);
   const indicatorKind = (blockSetting(config, instance, 'loading-indicator', 'kind') as string) ?? 'ring';
+  const brandSlotIsHeader = on('brand-chip')
+    && (blockSetting(config, instance, 'brand-chip', 'slot') as string) === 'header';
+  // Local body gate: when the chip is in the (loading-specific) header bar, the
+  // global showBrandInBody helper would still return true because header-chrome
+  // is off — but we *are* rendering a header here, so duplicate the chip into
+  // the bottom group only when slot is explicitly `content`.
+  const brandInBody = on('brand-chip') && !brandSlotIsHeader;
+  // Loading is a 3-zone layout: brand pinned top, art centered in the
+  // whitespace, tagline+indicator pinned bottom. The header-chrome block isn't
+  // usable on loading, so brand-chip slot=header renders into its own minimal
+  // header bar here (rather than being absorbed into HeaderChrome like on other
+  // pages).
+  const artSize = (blockSetting(config, instance, 'centered-art', 'size') as string) ?? 'md';
+  const artCenterMode = (blockSetting(config, instance, 'centered-art', 'centerMode') as string) ?? 'whitespace';
+  const loadingArt = on('centered-art')
+    ? <CenteredArtPlaceholder size={artSize} variant="logo" />
+    : null;
   return (
     <div className="pp pp--hero">
       {on('background') && <HeroBleed kind={blockSetting(config, instance, 'background', 'kind') as string} />}
+      {loadingArt && artCenterMode === 'page' && (
+        <div className="pp-hero-visual pp-hero-visual--page">{loadingArt}</div>
+      )}
       <div className="pp-shell">
-        <div className="pp-bottom pp-bottom--center">
-          {on('brand-chip') && <BrandChip size={blockSetting(config, instance, 'brand-chip', 'size') as string} />}
-          {on('centered-art') && <div className={`pp-card-visual pp-card-visual--${blockSetting(config, instance, 'centered-art', 'size') ?? 'md'}`} aria-hidden />}
+        {brandSlotIsHeader && (
+          <div className="pp-header pp-header--slots">
+            <span className="pp-slot-spacer" aria-hidden />
+            <div className="pp-header__center"><BrandChip {...brandChipProps(config, instance)} /></div>
+            <span className="pp-slot-spacer" aria-hidden />
+          </div>
+        )}
+        {loadingArt && artCenterMode !== 'page' && (
+          <div className="pp-hero-visual">{loadingArt}</div>
+        )}
+        <div className="pp-bottom pp-bottom--loading">
+          {brandInBody && <BrandChip {...brandChipProps(config, instance)} />}
           {on('tagline') && <p className="pp-body" style={{ textAlign: 'center' }}>Loading your experience…</p>}
           {on('loading-indicator') && (
             indicatorKind === 'bar'
@@ -1129,14 +1298,16 @@ function LoadingPreview({ config, instance }: { config: ScaffoldConfig; instance
 
 function EndPreview({ config, instance, navigate, navTo, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean }) {
   const brand = config.brand?.trim() || config.name?.trim();
+  const on = (name: string) => blockOn(config, instance, name);
   return (
     <div className="pp pp--hero">
       <HeroBleed />
       <div className="pp-shell">
         <HeaderChrome config={config} instance={instance} navigate={navigate} onMenu={onMenu} showAudio={showAudio} />
         <div className="pp-bottom pp-bottom--center">
+          {on('prize-illustration') && <PrizeIllustration />}
           <HeroStack kicker="THANK YOU" title="See you next time!" body={brand ? `Thanks for playing ${brand}.` : undefined} />
-          {blockOn(config, instance, 'cta-group') && <CtaGroupPreview config={config} instance={instance} navTo={navTo} />}
+          {on('cta-group') && <CtaGroupPreview config={config} instance={instance} navTo={navTo} />}
         </div>
       </div>
     </div>

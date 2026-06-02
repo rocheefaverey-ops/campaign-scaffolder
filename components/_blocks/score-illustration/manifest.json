@@ -9,7 +9,10 @@
   "packages": [],
   "envVars": [],
   "cspPatch": {},
-  "settings": {},
+  "settings": {
+    "position": { "kind": "enum", "of": ["inline", "above-title"], "default": "inline" },
+    "centerMode": { "kind": "enum", "of": ["whitespace", "page"], "default": "whitespace" }
+  },
   "capeBindings": {
     "image": "{pageType}.scoreImage | image | score/result illustration"
   },

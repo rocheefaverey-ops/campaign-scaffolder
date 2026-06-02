@@ -598,6 +598,37 @@ function settingsOf(block) {
   return block?.settings ?? {};
 }
 
+/**
+ * Move the block named `target` so it renders immediately after the block named
+ * `anchor`. Used when a block exposes a "position relative to another" setting
+ * (e.g. step-indicator's below/above relative to nav-controls). No-op if either
+ * block is missing or `target` already follows `anchor`.
+ */
+function reorderAfter(blocks, target, anchor) {
+  const targetIdx = blocks.findIndex((b) => b.name === target);
+  const anchorIdx = blocks.findIndex((b) => b.name === anchor);
+  if (targetIdx < 0 || anchorIdx < 0) return blocks;
+  if (targetIdx === anchorIdx + 1) return blocks;
+  const without = blocks.filter((_, i) => i !== targetIdx);
+  const insertAt = without.findIndex((b) => b.name === anchor) + 1;
+  return [...without.slice(0, insertAt), blocks[targetIdx], ...without.slice(insertAt)];
+}
+
+/**
+ * Mirror of reorderAfter — moves `target` to render immediately *before* `anchor`
+ * instead. Used for hero-treatment positioning (e.g. score-illustration above
+ * the title on a result page).
+ */
+function reorderBefore(blocks, target, anchor) {
+  const targetIdx = blocks.findIndex((b) => b.name === target);
+  const anchorIdx = blocks.findIndex((b) => b.name === anchor);
+  if (targetIdx < 0 || anchorIdx < 0) return blocks;
+  if (targetIdx === anchorIdx - 1) return blocks;
+  const without = blocks.filter((_, i) => i !== targetIdx);
+  const insertAt = without.findIndex((b) => b.name === anchor);
+  return [...without.slice(0, insertAt), blocks[targetIdx], ...without.slice(insertAt)];
+}
+
 function slotUsesRouter(slot) {
   return ['menu', 'back', 'close', 'help'].includes(slot);
 }
@@ -645,7 +676,38 @@ export function buildBlockDrivenPage(pageId, pageType, blocks, options = {}) {
   const background = blocks.find((b) => b.name === 'background');
   const card = blocks.find((b) => b.name === 'card-wrapper');
   const innerBlocks = blocks.filter((b) => b.name !== 'background' && b.name !== 'card-wrapper');
-  const children = innerBlocks.map((block) => renderBlock(block, { pageId, pageType: type, routeMap: options.routeMap ?? {} }));
+  // brand-chip with slot=header rides inside the header-chrome block instead of
+  // rendering as a sibling. Requires header-chrome to actually be present; if it
+  // isn't, the brand-chip falls back to its standalone (content) placement.
+  const brandChipBlock = innerBlocks.find((b) => b.name === 'brand-chip');
+  const headerChromeBlock = innerBlocks.find((b) => b.name === 'header-chrome');
+  const brandSlot = settingsOf(brandChipBlock).slot;
+  const brandInHeader = brandChipBlock && headerChromeBlock && brandSlot === 'header'
+    ? brandChipBlock
+    : null;
+  const renderableBlocks = brandInHeader
+    ? innerBlocks.filter((b) => b.name !== 'brand-chip')
+    : innerBlocks;
+  // step-indicator with position=below swaps with nav-controls so the dots/count
+  // render after the buttons. Requires nav-controls to be present; otherwise the
+  // setting is a no-op and the indicator stays in its declared position.
+  const stepIndicatorBlock = renderableBlocks.find((b) => b.name === 'step-indicator');
+  const navControlsBlock = renderableBlocks.find((b) => b.name === 'nav-controls');
+  const stepBelow = stepIndicatorBlock && navControlsBlock
+    && settingsOf(stepIndicatorBlock).position === 'below';
+  let orderedBlocks = stepBelow
+    ? reorderAfter(renderableBlocks, 'step-indicator', 'nav-controls')
+    : renderableBlocks;
+  // score-illustration with position=above-title hoists itself to render
+  // immediately before the title-block (hero-style result page). No-op if
+  // title-block is absent.
+  const scoreIllusBlock = orderedBlocks.find((b) => b.name === 'score-illustration');
+  const titleBlock = orderedBlocks.find((b) => b.name === 'title-block');
+  if (scoreIllusBlock && titleBlock && settingsOf(scoreIllusBlock).position === 'above-title') {
+    orderedBlocks = reorderBefore(orderedBlocks, 'score-illustration', 'title-block');
+  }
+  const ctx = { pageId, pageType: type, routeMap: options.routeMap ?? {}, brandInHeader };
+  const children = orderedBlocks.map((block) => renderBlock(block, ctx));
   const usesRouter = innerBlocks.some(blockUsesRouter);
   const content = card
     ? [
@@ -725,10 +787,15 @@ export function buildBlockDrivenMenu(blocks, options = {}) {
 function renderBlock(block, ctx) {
   const s = settingsOf(block);
   switch (block.name) {
-    case 'header-chrome':
-      return `      <HeaderChrome leftSlot="${s.leftSlot ?? 'none'}" rightSlot="${s.rightSlot ?? 'none'}" onLeftClick={() => ${slotAction(s.leftSlot)}} onRightClick={() => ${slotAction(s.rightSlot)}} />`;
+    case 'header-chrome': {
+      const brand = ctx.brandInHeader ? settingsOf(ctx.brandInHeader) : null;
+      const centerProp = brand
+        ? ` center={<BrandChip image={cape.brandChip?.image ?? cape.logo} size="${brand.size ?? 'md'}" position="${brand.position ?? 'center'}" />}`
+        : '';
+      return `      <HeaderChrome leftSlot="${s.leftSlot ?? 'none'}" rightSlot="${s.rightSlot ?? 'none'}" onLeftClick={() => ${slotAction(s.leftSlot)}} onRightClick={() => ${slotAction(s.rightSlot)}}${centerProp} />`;
+    }
     case 'brand-chip':
-      return `      <BrandChip image={cape.brandChip?.image ?? cape.logo} size="${s.size ?? 'md'}" />`;
+      return `      <BrandChip image={cape.brandChip?.image ?? cape.logo} size="${s.size ?? 'md'}" position="${s.position ?? 'center'}" />`;
     case 'title-block':
       return `      <TitleBlock${s.showKicker ? ' kicker={cape.kicker}' : ''} title={cape.title ?? 'Title'}${s.showSubtitle ? ' subtitle={cape.subtitle}' : ''} />`;
     case 'body-copy':

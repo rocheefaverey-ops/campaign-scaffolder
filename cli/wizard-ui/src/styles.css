@@ -1652,6 +1652,19 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 /* header-chrome slot layout — left + right corner controls. */
 .pp-header--slots { justify-content: space-between; }
 .pp-slot-spacer { display: inline-block; width: 30px; height: 30px; }
+.pp-header__center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  justify-content: center;
+}
+/* When the brand-chip rides inside the header the column-level align-self the
+   chip uses for body placement is meaningless — center it vertically and let
+   the wrapper's justify-content drive horizontal alignment instead. */
+.pp-header__center .pp-brand-chip { align-self: center; }
+.pp-header__center:has(.pp-brand-chip--left)  { justify-content: flex-start; }
+.pp-header__center:has(.pp-brand-chip--right) { justify-content: flex-end; }
 
 /* brand-chip size variants */
 .pp-brand-chip--sm { font-size: 8px; padding: 2px 7px; }
@@ -1695,6 +1708,36 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 
 .pp-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 12px; }
 .pp-bottom--center { margin-top: 0; align-items: stretch; justify-content: center; flex: 1; gap: 14px; }
+/* Loading-page bottom group — tagline + indicator stacked tightly, centered. */
+.pp-bottom--loading { align-items: center; gap: 10px; padding-bottom: 8px; }
+.pp-bottom--loading .pp-body { margin: 0; }
+/* Hero-visual slot — claims the leftover whitespace between the header and the
+   bottom-anchored content stack, centering its child so the illustration reads
+   as the page's focal point (matches typical tutorial/result layouts). */
+.pp-hero-visual {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  /* Cancel pp-bottom's margin-top:auto when the hero-visual sibling already
+     filled the gap — keeps bottom content pinned. */
+}
+.pp-hero-visual + .pp-bottom { margin-top: 0; }
+.pp-hero-visual .pp-card-visual { max-width: 240px; }
+.pp-hero-visual .pp-score-illus { width: 96px; height: 96px; }
+/* Page-centered variant — pinned to the dead centre of the phone screen,
+   ignoring the header/footer flow. Sits above the background, below the shell
+   content (pointer-events:none so CTAs in the shell stay clickable). */
+.pp-hero-visual--page {
+  position: absolute;
+  inset: 0;
+  flex: none;
+  padding: 0;
+  z-index: 1;
+  pointer-events: none;
+}
 
 .pp-stack { display: flex; flex-direction: column; gap: 5px; }
 .pp-kicker {
@@ -1804,18 +1847,29 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   font-size: 18px;
   cursor: pointer;
 }
+/* centered-art placeholder. The inline SVG IS the visual — no card frame, no
+   gradient. Sizes constrain the wrapper and the SVG fills it. Real campaigns
+   replace this with the CAPE-driven asset at runtime. */
 .pp-card-visual {
   width: 100%;
-  aspect-ratio: 1.25;
-  margin-bottom: auto;
-  border-radius: 16px;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 38%, #fff), #f4f5ee),
-    var(--campaign-ambient);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.92);
+  filter: drop-shadow(0 4px 12px rgba(14,14,14,0.35));
 }
-.pp-card-visual--sm { max-width: 96px; aspect-ratio: 1; align-self: center; }
-.pp-card-visual--md { max-width: 200px; align-self: center; }
-.pp-card-visual--lg { max-width: 100%; }
+.pp-card-visual__svg {
+  width: 100%;
+  height: 100%;
+}
+.pp-card-visual--sm { max-width: 96px;  aspect-ratio: 1.5; align-self: center; }
+.pp-card-visual--md { max-width: 160px; aspect-ratio: 1.5; align-self: center; }
+.pp-card-visual--lg { max-width: 220px; aspect-ratio: 1.5; align-self: center; }
+/* On form/card pages the white background needs a darker stroke to read. */
+.pp--form .pp-card-visual { color: color-mix(in srgb, var(--color-primary) 80%, #0e0e0e); }
+/* The logo variant reads as a brand mark — give it a square-ish bounding box. */
+.pp-card-visual--logo { aspect-ratio: 1; max-width: 110px; }
 .pp-game-highscore { opacity: 0.7; }
 .pp--tutorial-card .pp-dots .pp-dot { background: rgba(14,14,14,0.28); }
 .pp--tutorial-card .pp-dots .pp-dot.is-active { background: var(--color-text); }
@@ -2119,7 +2173,7 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 /* Optional add-on blocks — appear in the preview when their block is toggled
    on. Styled to read on the hero (white text + glass) and on form pages. */
 .pp-brand-chip {
-  align-self: flex-start;
+  align-self: center;
   display: inline-flex; align-items: center;
   padding: 3px 9px;
   border-radius: 999px;
@@ -2129,6 +2183,9 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
   text-shadow: 0 1px 3px rgba(14,14,14,0.4);
 }
+.pp-brand-chip--left   { align-self: flex-start; }
+.pp-brand-chip--center { align-self: center; }
+.pp-brand-chip--right  { align-self: flex-end; }
 .pp--form .pp-brand-chip {
   background: rgba(14,14,14,0.06);
   border-color: var(--color-line);
@@ -2138,10 +2195,18 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
 .pp-body--block { margin-top: 2px; }
 .pp-score-illus {
   align-self: center;
-  font-size: 40px;
-  line-height: 1;
-  filter: drop-shadow(0 4px 10px rgba(14,14,14,0.35));
+  width: 64px; height: 64px;
+  color: #f5d05f;
+  filter: drop-shadow(0 4px 10px rgba(14,14,14,0.4));
 }
+.pp-score-illus svg { width: 100%; height: 100%; }
+.pp-prize-illus {
+  align-self: center;
+  width: 88px; height: 88px;
+  color: color-mix(in srgb, var(--color-primary) 75%, #fff);
+  filter: drop-shadow(0 4px 12px rgba(14,14,14,0.4));
+}
+.pp-prize-illus svg { width: 100%; height: 100%; }
 .pp-stats {
   display: flex; flex-direction: column; gap: 3px;
   padding: 8px 10px;

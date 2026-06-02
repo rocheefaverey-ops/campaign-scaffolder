@@ -8,6 +8,14 @@
   z-index: 10;
 }
 
+.center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+}
+
 .slot {
   width: 2.5rem;
   height: 2.5rem;
