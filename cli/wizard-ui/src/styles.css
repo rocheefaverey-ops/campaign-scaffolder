@@ -2129,6 +2129,30 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   font-weight: 700;
 }
 
+/* Score-readout headline variant — the score IS the page title. No chip
+   background; the value dominates and the high-score reads as a subtitle. */
+.pp-score-headline {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(14,14,14,0.45);
+  margin-bottom: 2px;
+}
+.pp-score-headline__value {
+  font-size: 42px; font-weight: 800; line-height: 1; letter-spacing: -0.03em;
+}
+.pp-score-headline__rank {
+  font-size: 11px; font-weight: 500; opacity: 0.84; letter-spacing: 0.02em;
+}
+
+/* Stats-table iconified style — adds a leading column for a glyph per row. */
+.pp-stats--iconified .pp-stats__row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.pp-stats__icon { font-size: 12px; line-height: 1; }
+
 /* Leaderboard */
 .pp-lb { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .pp-lb__row {

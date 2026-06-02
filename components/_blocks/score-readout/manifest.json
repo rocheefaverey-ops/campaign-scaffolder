@@ -10,7 +10,8 @@
   "envVars": [],
   "cspPatch": {},
   "settings": {
-    "showHighScore": { "kind": "boolean", "default": false }
+    "showHighScore": { "kind": "boolean", "default": false },
+    "size": { "kind": "enum", "of": ["inline", "headline"], "default": "inline" }
   },
   "capeBindings": {
     "label": "{pageType}.scoreLabel | i18n-string | score label"

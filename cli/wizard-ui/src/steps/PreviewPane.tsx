@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   pageMeta,
   MENU_ITEMS,
@@ -677,23 +677,54 @@ function PrizeIllustration() {
     </div>
   );
 }
-function StatsTable({ count = 3 }: { count?: number }) {
+function StatsTable({ count = 3, style = 'plain' }: { count?: number; style?: string }) {
   const rows = [
-    { k: 'Accuracy', v: '92%' },
-    { k: 'Best combo', v: '×14' },
-    { k: 'Time left', v: '0:08' },
-    { k: 'Coins', v: '320' },
+    { k: 'Accuracy', v: '92%', icon: '🎯' },
+    { k: 'Best combo', v: '×14', icon: '🔥' },
+    { k: 'Time left', v: '0:08', icon: '⏱' },
+    { k: 'Coins', v: '320', icon: '🪙' },
   ].slice(0, Math.max(1, Math.min(4, count)));
+  const iconified = style === 'iconified';
   return (
-    <div className="pp-stats">
+    <div className={`pp-stats${iconified ? ' pp-stats--iconified' : ''}`}>
       {rows.map(r => (
-        <div key={r.k} className="pp-stats__row"><span>{r.k}</span><strong>{r.v}</strong></div>
+        <div key={r.k} className="pp-stats__row">
+          {iconified && <span className="pp-stats__icon" aria-hidden>{r.icon}</span>}
+          <span>{r.k}</span>
+          <strong>{r.v}</strong>
+        </div>
       ))}
     </div>
   );
 }
 function StatusChip({ kind = 'registered' }: { kind?: string }) {
-  return <span className="pp-status-chip" aria-hidden>● {kind}</span>;
+  const glyph = kind === 'winner' ? '🏆' : kind === 'offline' ? '✕' : '✓';
+  return <span className="pp-status-chip" aria-hidden>{glyph} {kind}</span>;
+}
+/**
+ * Score readout — `inline` is the small "Score: 2,480 / Best 3,120" plate.
+ * `headline` is the page-as-stat treatment: huge number with a small "High
+ * score: X" subline below, no chip background. Toggled via the score-readout
+ * block's `size` setting.
+ */
+function ScoreReadout({ size = 'inline', showHighScore = false }:
+  { size?: string; showHighScore?: boolean }
+) {
+  if (size === 'headline') {
+    return (
+      <div className="pp-score-headline">
+        <span className="pp-score-headline__value">2.480</span>
+        {showHighScore && <span className="pp-score-headline__rank">High score: 3,120</span>}
+      </div>
+    );
+  }
+  return (
+    <div className="pp-score-plate">
+      <span className="pp-score-plate__label">Score</span>
+      <span className="pp-score-plate__value">2,480</span>
+      {showHighScore && <span className="pp-score-plate__rank">Best 3,120</span>}
+    </div>
+  );
 }
 function ComplianceBadge({ kind = '18+' }: { kind?: string }) {
   return <span className="pp-compliance" aria-hidden>{kind}</span>;
@@ -1040,6 +1071,73 @@ function GamePreview({ config, instance, navigate, showAudio }: { config: Scaffo
 
 // ─────────────── Result ───────────────
 
+/**
+ * Context object passed to every body-zone block renderer in the result page.
+ * Captures the shared values each renderer might need (config, the live page
+ * instance, navigation helpers, derived flags). Renderers stay pure: read from
+ * ctx, return a ReactNode (or null when the block should be hidden by another
+ * rule — e.g. score-illustration when it's been hoisted into the hero slot).
+ */
+type ResultRenderCtx = {
+  config: ScaffoldConfig;
+  instance: PageInstance;
+  navigate: NavFn;
+  navTo: NavToFn;
+  brand?: string;
+  /** True when score-illustration has been hoisted out of the body flow into a
+   *  hero-visual or page-centered slot. Body renderer should yield null. */
+  scoreIllusHoisted: boolean;
+  showBrandInBody: boolean;
+};
+
+/**
+ * Block-name → React renderer registry for the result body zone. Adding a new
+ * block to result amounts to registering one entry here. Order in the rendered
+ * page follows the user's blockOrder from pageBlocks[id], so reordering blocks
+ * in the wizard's editor is reflected live in the preview without per-block
+ * `position` enums.
+ *
+ * Returning null is how a renderer opts out (e.g. a block hoisted to a hero
+ * slot still appears in blockOrder but renders nothing in the body).
+ */
+const RESULT_BODY_RENDERERS: Record<string, (ctx: ResultRenderCtx) => React.ReactNode> = {
+  'brand-chip': (ctx) => ctx.showBrandInBody
+    ? <BrandChip {...brandChipProps(ctx.config, ctx.instance)} />
+    : null,
+  'title-block': (ctx) => (
+    <TitleBlock config={ctx.config} instance={ctx.instance} kicker="RESULT" title="Well done!" subtitle="Here's how you did." />
+  ),
+  'body-copy': (ctx) => (
+    <BodyCopy>{ctx.brand ? `Thanks for playing ${ctx.brand}.` : 'Thanks for playing.'}</BodyCopy>
+  ),
+  'score-illustration': (ctx) => ctx.scoreIllusHoisted ? null : <ScoreIllustration />,
+  'score-readout': (ctx) => (
+    <ScoreReadout
+      size={(blockSetting(ctx.config, ctx.instance, 'score-readout', 'size') as string) ?? 'inline'}
+      showHighScore={Boolean(blockSetting(ctx.config, ctx.instance, 'score-readout', 'showHighScore'))}
+    />
+  ),
+  'stats-table': (ctx) => (
+    <StatsTable
+      count={Number(blockSetting(ctx.config, ctx.instance, 'stats-table', 'count') ?? 3)}
+      style={(blockSetting(ctx.config, ctx.instance, 'stats-table', 'style') as string) ?? 'plain'}
+    />
+  ),
+  'status-chip': (ctx) => (
+    <StatusChip kind={blockSetting(ctx.config, ctx.instance, 'status-chip', 'kind') as string | undefined} />
+  ),
+  'cta-group': (ctx) => <CtaGroupPreview config={ctx.config} instance={ctx.instance} navTo={ctx.navTo} />,
+};
+
+/** Blocks that render outside the body flow (background, header-chrome, footer
+ *  items in PageFooter) — the body loop skips them so they don't double-render. */
+const RESULT_HOISTED_BLOCKS = new Set([
+  'background',
+  'header-chrome',
+  'compliance-badge',
+  'footer-link-list',
+]);
+
 function ResultPreview({ config, instance, navigate, navTo, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean }) {
   const s = instSettings(config, instance.id);
   const autoNavSec = Number(s.autoNavSec ?? 0);
@@ -1057,6 +1155,17 @@ function ResultPreview({ config, instance, navigate, navTo, onMenu, showAudio }:
     && (blockSetting(config, instance, 'score-illustration', 'position') as string) === 'above-title';
   const scoreIllusCenterMode = (blockSetting(config, instance, 'score-illustration', 'centerMode') as string) ?? 'whitespace';
   const scoreIllusPageCentered = scoreIllusAboveTitle && scoreIllusCenterMode === 'page';
+  const scoreIllusHoisted = scoreIllusAboveTitle; // both above-title modes pull it out of the body
+
+  const blockOrder: string[] = config.pageBlocks?.[instance.id]?.blockOrder
+    ?? defaultBlocksForPage(instance.type).blockOrder
+    ?? [];
+  const ctx: ResultRenderCtx = {
+    config, instance, navigate, navTo, brand,
+    scoreIllusHoisted,
+    showBrandInBody: showBrandInBody(config, instance),
+  };
+
   return (
     <div className="pp pp--hero">
       {on('background') && <HeroBleed kind={blockSetting(config, instance, 'background', 'kind') as string} />}
@@ -1069,28 +1178,20 @@ function ResultPreview({ config, instance, navigate, navTo, onMenu, showAudio }:
           <div className="pp-hero-visual"><ScoreIllustration /></div>
         )}
         <div className="pp-bottom">
-          {showBrandInBody(config, instance) && <BrandChip {...brandChipProps(config, instance)} />}
-          {on('title-block') && <TitleBlock config={config} instance={instance} kicker="RESULT" title="Well done!" subtitle="Here's how you did." />}
-          {on('body-copy') && <BodyCopy>{brand ? `Thanks for playing ${brand}.` : 'Thanks for playing.'}</BodyCopy>}
-          {scoreIllusOn && !scoreIllusAboveTitle && <ScoreIllustration />}
-          {on('score-readout') && (
-            <div className="pp-score-plate">
-              <span className="pp-score-plate__label">Score</span>
-              <span className="pp-score-plate__value">2,480</span>
-              {Boolean(blockSetting(config, instance, 'score-readout', 'showHighScore')) && (
-                <span className="pp-score-plate__rank">Best 3,120</span>
-              )}
-            </div>
-          )}
-          {on('stats-table') && <StatsTable count={Number(blockSetting(config, instance, 'stats-table', 'count') ?? 3)} />}
-          {on('status-chip') && <StatusChip kind={blockSetting(config, instance, 'status-chip', 'kind') as string | undefined} />}
+          {blockOrder
+            .filter((name) => on(name))
+            .filter((name) => !RESULT_HOISTED_BLOCKS.has(name))
+            .map((name) => {
+              const render = RESULT_BODY_RENDERERS[name];
+              if (!render) return null;
+              return <Fragment key={name}>{render(ctx)}</Fragment>;
+            })}
           {autoNavSec > 0 && (
             <span className="pp-flag pp-flag--ticking">
               <span className="pp-flag__dot" aria-hidden />
               Auto-continue in {remaining}s
             </span>
           )}
-          {on('cta-group') && <CtaGroupPreview config={config} instance={instance} navTo={navTo} />}
           <PageFooter
             compliance={on('compliance-badge')}
             links={on('footer-link-list')}
