@@ -11,7 +11,7 @@ export function BrandChip({ image, alt = '', size = 'md', position = 'center' }:
   if (!image) return null;
   return (
     <div className={`${styles.chip} ${styles[`chip--${size}`]} ${styles[`chip--${position}`]}`}>
-      <img src={image} alt={alt} />
+      <img src={image} alt={alt} className="campaign-hero-logo" />
     </div>
   );
 }

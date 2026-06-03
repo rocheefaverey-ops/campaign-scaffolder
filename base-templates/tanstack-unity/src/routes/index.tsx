@@ -11,7 +11,8 @@ export const Route = createFileRoute('/')({
 function App() {
   const router = useRouter();
   const entryRoute = '{{FLOW_ENTRY}}';
-  const shouldPreloadUnity = '{{UNITY_BOOT_MODE}}' === 'entry';
+  const unityBootMode = '{{UNITY_BOOT_MODE}}';
+  const shouldPreloadUnity = isTokenValue(unityBootMode, 'entry');
   const { sceneKey } = useLoaderData({ from: '__root__' });
   const { initializeUnity, setTargetScene } = useUnity();
   const initialized = useRef(false);
@@ -31,4 +32,8 @@ function App() {
   }, []);
 
   return null;
+}
+
+function isTokenValue(value: string, expected: string): boolean {
+  return !value.startsWith('{{') && value === expected;
 }

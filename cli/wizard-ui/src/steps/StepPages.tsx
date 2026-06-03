@@ -10,11 +10,10 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import {
-  pagesForStack, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, BUTTON_VARIANTS, defaultRouteForType, deriveRegMode,
+  pagesForStack, pageMeta, PAGE_SETTINGS_SCHEMA, nextInstanceId, defaultRouteForType, deriveRegMode,
   FLOW_RULE_OPTIONS, FLOW_RULES_BY_PAGE, defaultFlowRuleForType, defaultBlocksForPage,
-  type ScaffoldConfig, type StepProps, type PageInstance, type ButtonVariant, type PageFlowRule, type FlowRuleMode,
+  type ScaffoldConfig, type StepProps, type PageInstance, type PageFlowRule, type FlowRuleMode,
 } from '../shared/config.ts';
-import { CTA_GROUP_PAGE_TYPES } from '../../../flow-bridge.js';
 import PageSettingsCard from './PageSettingsCard.tsx';
 import PreviewPane from './PreviewPane.tsx';
 
@@ -191,9 +190,6 @@ export default function StepPages({ config, setConfig }: StepProps) {
                   index={i}
                   isLast={i === inFlow.length - 1}
                   inFlow={inFlow}
-                  flowExits={config.flowExits}
-                  enabledExits={config.flowEnabledExits}
-                  buttonVariants={config.flowButtonVariants}
                   config={config}
                   setConfig={setConfig}
                   onFocus={() => setFocusId(instance.id)}
@@ -206,20 +202,6 @@ export default function StepPages({ config, setConfig }: StepProps) {
                         [pageId]: rule,
                       },
                     });
-                  }}
-                  onChangeExit={(pageId, exitKey, target) => {
-                    const k = `${pageId}.${exitKey}`;
-                    const next = { ...config.flowExits };
-                    if (target === '') delete next[k]; else next[k] = target;
-                    setConfig({ ...config, flowExits: next });
-                  }}
-                  onToggleExit={(pageId, exitKey, enabled) => {
-                    const k = `${pageId}.${exitKey}`;
-                    setConfig({ ...config, flowEnabledExits: { ...config.flowEnabledExits, [k]: enabled } });
-                  }}
-                  onChangeVariant={(pageId, exitKey, variant) => {
-                    const k = `${pageId}.${exitKey}`;
-                    setConfig({ ...config, flowButtonVariants: { ...config.flowButtonVariants, [k]: variant } });
                   }}
                   onRemove={() => removeInstance(instance.id)}
                   onChangeRoute={onChangeRoute}
@@ -387,26 +369,20 @@ interface FlowCardProps {
   index:            number;
   isLast:           boolean;
   inFlow:           PageInstance[];
-  flowExits:        Record<string, string>;
-  enabledExits:     Record<string, boolean>;
-  buttonVariants:   Record<string, ButtonVariant>;
   config:           ScaffoldConfig;
   setConfig:        (next: ScaffoldConfig) => void;
   onFocus:          () => void;
   flowRules:        Record<string, PageFlowRule>;
   onChangeRule:     (pageId: string, rule: PageFlowRule) => void;
-  onChangeExit:     (pageId: string, exitKey: string, target: string) => void;
-  onToggleExit:     (pageId: string, exitKey: string, enabled: boolean) => void;
-  onChangeVariant:  (pageId: string, exitKey: string, variant: ButtonVariant) => void;
   onRemove:         () => void;
   onChangeRoute:    (instanceId: string, raw: string) => void;
   onBlurRoute:      (instanceId: string, raw: string) => void;
 }
 
 function FlowCard({
-  instance, index, isLast, inFlow, flowExits, enabledExits, buttonVariants,
+  instance, index, isLast, inFlow,
   onFocus, flowRules, onChangeRule,
-  onChangeExit, onToggleExit, onChangeVariant, onRemove, onChangeRoute, onBlurRoute,
+  onRemove, onChangeRoute, onBlurRoute,
 }: FlowCardProps) {
   const meta = pageMeta(instance.type);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: instance.id });
@@ -419,12 +395,9 @@ function FlowCard({
 
   if (!meta) return null;
 
-  // CTA-bearing pages now wire their buttons (target + variant) in the cta-group
-  // block editor ("Edit content"), so the legacy per-exit rows are suppressed
-  // here to avoid two editors for the same buttons. The scaffold derives the
-  // legacy flow maps from the block via deriveFlowFromBlocks. Non-CTA pages
-  // (loading / video / game / tutorial / menu) keep their flow-wiring rows.
-  const exits = CTA_GROUP_PAGE_TYPES.has(instance.type) ? [] : (meta.exits ?? []);
+  // Exits are wired exclusively by blocks now — CTA pages via the cta-group block
+  // (deriveFlowFromBlocks), non-CTA pages via their nav-controls / video-player /
+  // skip-control block settings inside the page's block editor.
   const defaultBlocks = defaultBlocksForPage(instance.type);
   // Reflect whether the page TYPE can have settings/blocks — not the current
   // block count. Otherwise removing every block hides the "Edit content" button
@@ -449,11 +422,6 @@ function FlowCard({
       } : null;
     })
     .filter((m): m is NonNullable<typeof m> => Boolean(m));
-
-  const resolveDefault = (rule: 'next-in-flow' | 'first-in-flow' | undefined): string | null => {
-    if (rule === 'first-in-flow') return inFlow[0]?.id ?? null;
-    return inFlow[index + 1]?.id ?? null;
-  };
 
   const title = instance.id === instance.type ? meta.label : `${meta.label} · ${instance.id}`;
   const currentRule = flowRules[instance.id] ?? defaultFlowRuleForType(instance.type);
@@ -519,66 +487,6 @@ function FlowCard({
           ×
         </button>
       </div>
-
-      {exits.length > 0 && otherInstances.length > 0 && (
-        <div className="flow-card__exits">
-          {exits.map((exit) => {
-            const choiceKey = `${instance.id}.${exit.key}`;
-            const choice    = flowExits[choiceKey] ?? '';
-            const defId     = resolveDefault(exit.defaultRule);
-            const defLabel  = defId
-              ? (otherInstances.find(o => o.id === defId)?.label ?? defId)
-              : '—';
-
-            const isOptional = Boolean(exit.optional);
-            const enabled    = isOptional
-              ? (enabledExits[choiceKey] ?? exit.defaultEnabled ?? false)
-              : true;
-            const variant = buttonVariants[choiceKey] ?? exit.defaultVariant ?? 'primary';
-
-            return (
-              <div key={exit.key} className={`flow-card__exit${isOptional && !enabled ? ' is-disabled' : ''}`}>
-                {isOptional ? (
-                  <label className="flow-card__exit-toggle">
-                    <input
-                      type="checkbox"
-                      checked={enabled}
-                      onChange={(e) => onToggleExit(instance.id, exit.key, e.target.checked)}
-                      aria-label={`Show ${exit.label}`}
-                    />
-                    <span className="flow-card__exit-label">{exit.label}</span>
-                  </label>
-                ) : (
-                  <span className="flow-card__exit-label">→ {exit.label}</span>
-                )}
-
-                <div className="flow-card__exit-controls">
-                <select
-                  value={choice}
-                  onChange={(e) => onChangeExit(instance.id, exit.key, e.target.value)}
-                  disabled={!enabled}
-                  aria-label={`Destination for ${title} ${exit.label}`}
-                >
-                  <option value="">{`Default · ${defLabel}`}</option>
-                  {otherInstances.map((o) => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
-                  ))}
-                </select>
-                <select
-                  className="flow-card__variant"
-                  value={variant}
-                  onChange={(e) => onChangeVariant(instance.id, exit.key, e.target.value as ButtonVariant)}
-                  disabled={!enabled}
-                  aria-label={`Button variant for ${title} ${exit.label}`}
-                >
-                  {BUTTON_VARIANTS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
-                </select>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {ruleOptions.length > 1 && otherInstances.length > 0 && (
         <div className="flow-card__behavior">

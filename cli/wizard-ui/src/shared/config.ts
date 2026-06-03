@@ -283,7 +283,7 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
   }),
   'loading-video': page({
     background: block(true, { kind: 'solid' }),
-    'header-chrome': block(true, { leftSlot: 'none', rightSlot: 'close' }),
+    'header-chrome': block(true, { leftSlot: 'none', rightSlot: 'none' }),
     'brand-chip': block(false, { size: 'sm' }),
     'video-player': block(true, { muted: true, loop: true, onEnd: 'wait-for-engine', availableAfterMs: 0 }),
     'fallback-indicator': block(true),
@@ -485,9 +485,20 @@ const VIDEO_PAGE_SETTINGS: SettingDef[] = [
     hint: '✓ Auto-allow skip if the game-ready signal never fires.' },
 ];
 
+const LOADING_VIDEO_PAGE_SETTINGS: SettingDef[] = [
+  { key: 'mode', label: 'Playback mode', kind: 'select', default: 'loadingScreen',
+    options: [
+      { value: 'loadingScreen', label: 'Loading screen — loops until game ready' },
+    ],
+    hint: '✓ Waits for the game to finish loading before continuing.',
+  },
+  { key: 'readyFallbackSec', label: 'Game-ready fallback', kind: 'number', default: 8, min: 1, max: 60, unit: 'sec',
+    hint: '✓ Allows the loading screen to continue if the game-ready signal never fires.' },
+];
+
 export const PAGE_SETTINGS_SCHEMA: Record<string, SettingDef[]> = {
   'intro-video': VIDEO_PAGE_SETTINGS,
-  'loading-video': VIDEO_PAGE_SETTINGS,
+  'loading-video': LOADING_VIDEO_PAGE_SETTINGS,
   'ad-video': VIDEO_PAGE_SETTINGS,
   landing: [
     { key: 'onboardingFirstRunOnly', label: 'Skip tutorial for returning players', kind: 'boolean', default: true,
@@ -655,8 +666,10 @@ export const ALL_PAGES: PageMeta[] = [
     exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_INTRO_VIDEO' }] },
   { id: 'tutorial',    label: 'Tutorial',    hint: 'How-to-play steps / slides before gameplay.',route: '/tutorial',
     exits: [{ key: 'next', label: 'Start / Final CTA', token: 'NEXT_AFTER_TUTORIAL', defaultVariant: 'primary' }] },
+  { id: 'howto-play',  label: 'How to play', hint: 'Standalone how-to-play screen reachable from the menu.', route: '/howto-play',
+    exits: [{ key: 'next', label: 'Continue button', token: 'NEXT_AFTER_HOWTO_PLAY', defaultVariant: 'primary' }] },
   { id: 'loading-video', label: 'Loading video', hint: 'Looping loading screen until the game is ready.', route: '/loading-video', requires: 'video',
-    exits: [{ key: 'next', label: 'On end / skip',  token: 'NEXT_AFTER_LOADING_VIDEO' }] },
+    exits: [{ key: 'next', label: 'When game ready',  token: 'NEXT_AFTER_LOADING_VIDEO' }] },
   { id: 'register',    label: 'Register',    hint: 'Player registration form.',                 route: '/register',      requires: 'registration',
     exits: [{ key: 'next', label: 'On submit',       token: 'NEXT_AFTER_REGISTER', defaultVariant: 'primary' }] },
   { id: 'game',        label: 'Game',        hint: 'The actual game canvas.',                   route: '/gameplay',

@@ -24,12 +24,12 @@ function Landing() {
   const onboardingFirstRunOnlyRaw = '{{LANDING_ONBOARDING_FIRST_RUN_ONLY}}';
   const onboardingFirstRunOnly = onboardingFirstRunOnlyRaw.startsWith('{{')
     ? true
-    : onboardingFirstRunOnlyRaw === 'true';
+    : isTokenValue(onboardingFirstRunOnlyRaw, 'true');
   const tutorialRoute = '{{LANDING_TUTORIAL_ROUTE}}';
   // Derived from the landing cta-group block at scaffold time (see flow-bridge).
   // Unreplaced token (e.g. a non-flow build) falls back to hidden.
   const showTutorialButtonRaw = '{{SHOW_LANDING_TUTORIAL_BUTTON}}';
-  const showTutorialButton = showTutorialButtonRaw.startsWith('{{') ? false : showTutorialButtonRaw === 'true';
+  const showTutorialButton = showTutorialButtonRaw.startsWith('{{') ? false : isTokenValue(showTutorialButtonRaw, 'true');
 
   // Rehydrate the "tutorial seen" flag client-side so returning players skip
   // straight past the tutorial when pressing Play.
@@ -85,6 +85,10 @@ function Landing() {
       </div>
     </PageContainer>
   );
+}
+
+function isTokenValue(value: string, expected: string): boolean {
+  return !value.startsWith('{{') && value === expected;
 }
 
 function HamburgerIcon() {

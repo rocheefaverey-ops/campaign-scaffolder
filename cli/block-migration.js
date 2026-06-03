@@ -46,13 +46,26 @@ export function migratePageSettingsToBlocks(pageType, legacySettings = {}) {
 export function migrateScaffoldConfig(config) {
   if (config.pageBlocks && Object.keys(config.pageBlocks).length > 0) return config;
   const migrated = ensurePageBlocksForPages(config);
+  // Clone pageSettings so we can strip migrated keys without mutating the caller's object.
+  const nextPageSettings = { ...(migrated.pageSettings ?? config.pageSettings ?? {}) };
   for (const page of migrated.pages ?? []) {
     const pageId = typeof page === 'string' ? page : page.id;
     const pageType = typeof page === 'string' ? page : (page.type ?? page.id);
-    migrated.pageBlocks[pageId] = migratePageSettingsToBlocks(
-      pageType,
-      config.pageSettings?.[pageId] ?? {},
-    );
+    const legacy = config.pageSettings?.[pageId] ?? {};
+    migrated.pageBlocks[pageId] = migratePageSettingsToBlocks(pageType, legacy);
+
+    // After migration, drop the keys that now live on blocks so they can't
+    // shadow block values on subsequent loads. Keys without a block mapping
+    // (e.g. landing.onboardingFirstRunOnly, tutorial.screenLayout) stay put.
+    const mapping = LEGACY_TO_BLOCK_MAPPING[pageType] ?? {};
+    const migratedKeys = Object.keys(mapping);
+    if (migratedKeys.length > 0 && nextPageSettings[pageId]) {
+      const remaining = { ...nextPageSettings[pageId] };
+      for (const key of migratedKeys) delete remaining[key];
+      if (Object.keys(remaining).length > 0) nextPageSettings[pageId] = remaining;
+      else delete nextPageSettings[pageId];
+    }
   }
+  migrated.pageSettings = nextPageSettings;
   return migrated;
 }

@@ -638,8 +638,6 @@ const scaffoldConfigSchema = {
     menuButtonVariants: { type: 'object' },
     buildMode:        { type: 'string', enum: ['create', 'update', 'recreate'] },
     loadedProjectDir: { type: 'string' },
-    pageElementSelections:   { type: 'object' },
-    tsPageElementSelections: { type: 'object' },
   },
 };
 

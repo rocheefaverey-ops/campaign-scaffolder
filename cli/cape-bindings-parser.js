@@ -11,7 +11,7 @@ export function parseCapeBindings(bindings, context = {}) {
     const path = pathTemplate
       .replaceAll('{pageType}', context.pageType ?? '')
       .replaceAll('{pageId}', context.pageId ?? context.pageType ?? '');
-    out.push({ path, type, description: description.join(' | ') });
+    out.push({ key, path, type, description: description.join(' | ') });
   }
   return out;
 }

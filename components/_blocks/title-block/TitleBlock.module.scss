@@ -1,22 +1,32 @@
 .titleBlock {
-  text-align: center;
-  padding: 1rem 1.5rem;
+  text-align: left;
+  padding: 0.25rem 0 0;
 }
 .kicker {
   font-size: 0.875rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   opacity: 0.85;
   margin-bottom: 0.5rem;
+  font-weight: 800;
 }
 .title {
-  font-size: clamp(1.75rem, 6vw, 2.75rem);
-  font-weight: 700;
-  line-height: 1.1;
+  font-size: clamp(2.25rem, 10vw, 3.8rem);
+  font-weight: 900;
+  line-height: 0.92;
   margin: 0;
+  text-wrap: balance;
+  text-shadow: 0 2px 18px rgba(14, 14, 14, 0.28);
 }
 .subtitle {
-  font-size: 1rem;
+  font-size: clamp(1rem, 4vw, 1.25rem);
+  font-weight: 650;
+  line-height: 1.25;
   margin: 0.75rem 0 0;
   opacity: 0.9;
+  text-wrap: balance;
+}
+
+:global(.campaign-block-shell--center) .titleBlock {
+  text-align: center;
 }

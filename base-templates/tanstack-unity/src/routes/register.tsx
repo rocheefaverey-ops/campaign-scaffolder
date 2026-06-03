@@ -28,7 +28,7 @@ function Register() {
 
   // Skip the registration page once the user has registered for this campaign.
   useEffect(() => {
-    if (FLOW_RULE === 'skip-if-registered' && isRegistered()) {
+    if (isTokenValue(FLOW_RULE, 'skip-if-registered') && isRegistered()) {
       router.navigate({ to: SKIP_ROUTE as never, replace: true });
     }
   }, []);
@@ -73,7 +73,7 @@ function Register() {
 
       try {
         await sleep(2000);
-        if (FLOW_RULE === 'skip-if-registered') markRegistered();
+        if (isTokenValue(FLOW_RULE, 'skip-if-registered')) markRegistered();
         router.navigate({ to: '{{NEXT_AFTER_REGISTER}}' as never, replace: true });
       } catch (e) {
         console.error('Error during form submission:', e);
@@ -126,6 +126,10 @@ function Register() {
       </div>
     </PageContainer>
   );
+}
+
+function isTokenValue(value: string, expected: string): boolean {
+  return !value.startsWith('{{') && value === expected;
 }
 
 function HamburgerIcon() {

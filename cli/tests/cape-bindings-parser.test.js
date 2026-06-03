@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { parseCapeBindings } from '../cape-bindings-parser.js';
 
 describe('parseCapeBindings', () => {
-  it('parses a single binding into { path, type, description }', () => {
+  it('parses a single binding into { key, path, type, description }', () => {
     const result = parseCapeBindings(
       { source: '{pageType}.background | image | full-bleed canvas' },
       { pageType: 'landing' },
     );
     assert.deepEqual(result, [
-      { path: 'landing.background', type: 'image', description: 'full-bleed canvas' },
+      { key: 'source', path: 'landing.background', type: 'image', description: 'full-bleed canvas' },
     ]);
   });
 

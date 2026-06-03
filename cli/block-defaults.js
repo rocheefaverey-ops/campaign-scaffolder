@@ -57,6 +57,14 @@ export const DEFAULT_PAGE_BLOCKS = {
     'fallback-indicator': block(false, {}),
   }),
 
+  'loading-video': page({
+    background: block(true, { kind: 'solid' }),
+    'header-chrome': block(true, { leftSlot: 'none', rightSlot: 'none' }),
+    'brand-chip': block(false, { size: 'sm' }),
+    'video-player': block(true, { muted: true, loop: true, onEnd: 'wait-for-engine', availableAfterMs: 0 }),
+    'fallback-indicator': block(true, {}),
+  }),
+
   game: page({
     background: block(true, { kind: 'solid' }),
     'header-chrome': block(false, { leftSlot: 'none', rightSlot: 'none' }),
@@ -143,8 +151,8 @@ export const DEFAULT_PAGE_BLOCKS = {
 };
 
 DEFAULT_PAGE_BLOCKS.tutorial = DEFAULT_PAGE_BLOCKS.onboarding;
+DEFAULT_PAGE_BLOCKS['howto-play'] = DEFAULT_PAGE_BLOCKS.onboarding;
 DEFAULT_PAGE_BLOCKS['intro-video'] = DEFAULT_PAGE_BLOCKS.video;
-DEFAULT_PAGE_BLOCKS['loading-video'] = DEFAULT_PAGE_BLOCKS.video;
 DEFAULT_PAGE_BLOCKS['ad-video'] = DEFAULT_PAGE_BLOCKS.video;
 
 export function clone(value) {

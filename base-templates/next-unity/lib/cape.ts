@@ -15,7 +15,9 @@ function resolvePageCape(capeData: unknown, pageId: string): AnyRecord {
   const general = asRecord(asRecord(root.general)[pageId]);
   const files = asRecord(asRecord(root.files)[pageId]);
   const pageSettings = asRecord(asRecord(asRecord(root.settings).pages)[pageId]);
-  const logo = firstAsset(general.logo) || firstAsset(asRecord(root.header).logo);
+  const logo = firstAsset(general.logo)
+    || firstAsset(asRecord(asRecord(root.general).header).logo)
+    || firstAsset(asRecord(asRecord(root.settings).branding).logo);
   return {
     ...copy,
     ...general,
@@ -23,7 +25,7 @@ function resolvePageCape(capeData: unknown, pageId: string): AnyRecord {
     ...pageSettings,
     logo,
     brandChip: { image: logo },
-    background: backgroundSource(general.background ?? files.background),
+    background: backgroundSource(general.background ?? files.background ?? files.backgroundImage ?? files.heroImage),
   };
 }
 

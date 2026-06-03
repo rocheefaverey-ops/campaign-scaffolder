@@ -26,7 +26,7 @@ interface IUnityContext {
   sendMessage: UnityMessageFunction;
   setTargetScene: (sceneKey: string) => void;
   setData: (data: IUnityInput) => void;
-  initializeUnity: () => Promise<void>;
+  initializeUnity: (omitLogs?: boolean) => Promise<void>;
   preloadScene: () => Promise<void>;
   loadScene: () => Promise<void>;
   startGame: () => void;

@@ -2,10 +2,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
+  padding: 0;
   width: 100%;
   position: relative;
   z-index: 10;
+  animation: fadeIn 0.35s ease both;
 }
 
 .center {
@@ -17,12 +18,35 @@
 }
 
 .slot {
-  width: 2.5rem;
-  height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 50%;
   border: 0;
-  background: var(--chrome-bg, rgba(255, 255, 255, 0.9));
+  background: var(--chrome-bg, rgba(14, 14, 14, 0.42));
+  color: #fff;
   cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.slot svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.textIcon {
+  font-size: 1.25rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .slotPlaceholder {

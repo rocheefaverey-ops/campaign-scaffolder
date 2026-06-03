@@ -46,14 +46,14 @@ describe('mapButtonsToExits', () => {
     assert.deepEqual(out.warnings, []);
   });
 
-  it('warns when an extra button has no semantic slot (Next-only)', () => {
+  it('warns when an extra button has no semantic exit slot', () => {
     const out = mapButtonsToExits('leaderboard', 'leaderboard', [
       { variant: 'primary', exit: 'landing' },
       { variant: 'secondary', exit: 'voucher' }, // leaderboard page has only `next`
     ], ctx);
     assert.equal(out.flowExits['leaderboard.next'], 'landing');
     assert.equal(out.warnings.length, 1);
-    assert.match(out.warnings[0], /no semantic slot/);
+    assert.match(out.warnings[0], /no semantic exit slot/);
   });
 
   it('returns empty fragments for an empty button list', () => {

@@ -30,12 +30,12 @@ function Tutorial() {
   const nextRoute = '{{NEXT_AFTER_TUTORIAL}}';
   const isPending = false;
   useEffect(() => {
-    if (FLOW_RULE === 'once-per-browser' && isOnboardingDone()) {
+    if (isTokenValue(FLOW_RULE, 'once-per-browser') && isOnboardingDone()) {
       void router.navigate({ to: SKIP_ROUTE as never, replace: true });
     }
   }, [router]);
   const navigate = () => {
-    if (FLOW_RULE === 'once-per-browser') markOnboardingDone();
+    if (isTokenValue(FLOW_RULE, 'once-per-browser')) markOnboardingDone();
     void router.navigate({ to: nextRoute as never, replace: true });
   };
   const contentRef = useRef<IContentSliderHandle>(null);
@@ -131,4 +131,8 @@ function Tutorial() {
       </div>
     </PageContainer>
   );
+}
+
+function isTokenValue(value: string, expected: string): boolean {
+  return !value.startsWith('{{') && value === expected;
 }

@@ -690,37 +690,114 @@ function fieldKeyFromPath(path) {
   return `block-${path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase()}`;
 }
 
-function bindingToField(binding) {
+function compatModelForBinding(binding, { pageId, pageType }) {
+  const parts = binding.path.split('.').filter(Boolean);
+  const leaf = parts[parts.length - 1] ?? binding.key;
+  const modelId = capeModelId(pageId || pageType || parts[0] || '');
+  const rawId = pageId || pageType || parts[0] || modelId;
+  const copyId = pageType === 'video' ? modelId : rawId;
+  const isPageScoped = parts[0] === pageId || parts[0] === pageType || parts[0] === modelId;
+  const copyName = {
+    title: 'headline',
+    subtitle: 'subline',
+    nextLabel: 'cta',
+    ctaLabel: 'cta',
+    fallbackLabel: 'loadingText',
+    loadingLabel: 'loadingText',
+  }[leaf] ?? leaf;
+
+  if (leaf === 'background') return `files.${modelId}.backgroundImage`;
+  if (leaf === 'logo') return 'general.header.logo';
+  if (!isPageScoped) return binding.path;
+  if (binding.type === 'video') {
+    return leaf === 'video'
+      ? `files.${modelId}.loadingVideo`
+      : `files.${modelId}.${leaf}`;
+  }
+  if (binding.type === 'image' || binding.type === 'asset') return `files.${modelId}.${leaf}`;
+  if (binding.type === 'i18n-string' || binding.type === 'markdown' || binding.type === 'array') {
+    return `copy.${copyId}.${copyName}`;
+  }
+  return binding.path;
+}
+
+function defaultValueForBinding(binding, context = {}) {
+  const pageId = context.pageId ?? '';
+  const projectName = context.projectName || 'Livewall';
+  const leaf = binding.path.split('.').filter(Boolean).at(-1) ?? binding.key;
+  if (leaf === 'title') {
+    if (pageId === 'landing') return `Welcome to ${projectName}`;
+    if (pageId === 'tutorial') return 'How to play';
+    if (pageId === 'register') return 'Register';
+    if (pageId === 'result') return 'Your score';
+    if (pageId === 'loading') return projectName;
+    return 'Title';
+  }
+  if (leaf === 'subtitle') {
+    if (pageId === 'landing') return 'Are you ready to play?';
+    if (pageId === 'tutorial') return 'Follow the steps before you start.';
+    if (pageId === 'register') return 'Enter your details to continue.';
+    if (pageId === 'result') return 'Well played.';
+    return '';
+  }
+  if (leaf === 'kicker') {
+    if (pageId === 'result') return 'Result';
+    if (pageId === 'tutorial') return 'Tutorial';
+    return '';
+  }
+  if (leaf === 'cta') {
+    if (pageId === 'landing') return 'Play now';
+    if (pageId === 'register') return 'Submit';
+    if (pageId === 'result') return 'Play again';
+    return 'Continue';
+  }
+  if (leaf === 'nextLabel' || leaf === 'ctaLabel') return 'Continue';
+  if (leaf === 'prevLabel') return 'Back';
+  if (leaf === 'loadingLabel' || leaf === 'fallbackLabel') return 'Loading';
+  if (leaf === 'tagline') return 'Loading game...';
+  if (leaf === 'body') return '';
+  return '';
+}
+
+function bindingToField(binding, context = {}) {
   const key = fieldKeyFromPath(binding.path);
+  const model = compatModelForBinding(binding, context);
+  const leaf = binding.path.split('.').filter(Boolean).at(-1) ?? binding.key;
   let field;
   switch (binding.type) {
     case 'image':
     case 'asset':
-      field = asset(binding.path, binding.description, key);
+      field = leaf === 'background'
+        ? assetMediaBg(model, binding.description, key)
+        : leaf === 'logo'
+          ? assetLogo(model, binding.description, key)
+          : asset(model, binding.description, key);
       break;
     case 'video':
-      field = assetVideo(binding.path, binding.description, key);
+      field = assetVideo(model, binding.description, key);
       break;
     case 'i18n-string':
     case 'markdown':
-      field = textML(binding.path, binding.description, key, '');
+      field = textML(model, binding.description, key, defaultValueForBinding(binding, context));
       break;
     case 'number':
-      field = number(binding.path, binding.description, key, 0);
+      field = number(model, binding.description, key, 0);
       break;
     case 'boolean':
-      field = bool(binding.path, binding.description, key, false);
+      field = bool(model, binding.description, key, false);
+      break;
+    case 'array':
+      field = textML(model, binding.description, key, defaultValueForBinding(binding, context));
       break;
     case 'url':
-    case 'array':
     default:
-      field = text(binding.path, binding.description, key, '');
+      field = text(model, binding.description, key, '');
       break;
   }
-  return { ...field, name: binding.path };
+  return { ...field, name: binding.path, blockBindingPath: binding.path };
 }
 
-export function emitBlockDrivenFields(pageType, blocks, pageId = pageType) {
+export function emitBlockDrivenFields(pageType, blocks, pageId = pageType, options = {}) {
   const library = new Map(listBlocks().map(({ manifest }) => [manifest.name, manifest]));
   const seen = new Set();
   const fields = [];
@@ -730,15 +807,15 @@ export function emitBlockDrivenFields(pageType, blocks, pageId = pageType) {
     for (const binding of parseCapeBindings(manifest.capeBindings, { pageType, pageId })) {
       if (seen.has(binding.path)) continue;
       seen.add(binding.path);
-      fields.push(bindingToField(binding));
+      fields.push(bindingToField(binding, { pageType, pageId, projectName: options.projectName }));
     }
   }
   return fields;
 }
 
-function nextBlockDrivenTab(instanceId, pageType, blocks) {
+function nextBlockDrivenTab(instanceId, pageType, blocks, options = {}) {
   const title = instanceTitle(pageType[0].toUpperCase() + pageType.slice(1), pageType, instanceId);
-  const fields = emitBlockDrivenFields(pageType, blocks, instanceId);
+  const fields = emitBlockDrivenFields(pageType, blocks, instanceId, options);
   return tab(tabKey('next-block', pageType, instanceId), title, instanceId, [
     block(blockKey('next-block', pageType, instanceId, 'fields'), 'Block content', fields),
   ], true);
@@ -749,7 +826,7 @@ const VIDEO_PAGE_IDS = new Set(['video', 'intro-video', 'loading-video', 'ad-vid
 export const KNOWN_PAGE_TYPES = new Set([
   'intro-video', 'loading-video', 'ad-video',
   'loading', 'landing', 'tutorial', 'result',
-  'leaderboard', 'register', 'voucher', 'game', 'end', 'menu',
+  'leaderboard', 'register', 'voucher', 'game', 'end', 'menu', 'howto-play',
 ]);
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -778,6 +855,7 @@ export function buildNextCapeFormat({
   flowEnabledExits      = {},
   menuItemsEnabled      = {},
   iframe                = false,
+  projectName           = 'Livewall',
 }) {
   // Normalise to a list of instances so the rest of this function only
   // deals with one shape. New callers pass `instances` directly. Legacy
@@ -806,13 +884,13 @@ export function buildNextCapeFormat({
     const els = pageElementSelections[inst.id] ?? pageElementSelections[type] ?? [];
     const blockList = blockListFromConfig(pageBlocks[inst.id] ?? blocksConfig[inst.id] ?? pageBlocks[type] ?? blocksConfig[type]);
     if (blockList.length > 0) {
-      pageTabs.push(nextBlockDrivenTab(inst.id, type, blockList));
+      pageTabs.push(nextBlockDrivenTab(inst.id, type, blockList, { projectName }));
       if (type === 'menu') hasMenuTab = true;
       continue;
     }
     switch (type) {
       case 'loading':
-        pageTabs.push(nextBlockDrivenTab(inst.id, type, []));
+        pageTabs.push(nextBlockDrivenTab(inst.id, type, [], { projectName }));
         break;
       case 'video':
         pageTabs.push(nextVideoTab(inst.id));
@@ -841,7 +919,10 @@ export function buildNextCapeFormat({
         // game UI is engine-driven — intentionally no CAPE tab
         break;
       case 'end':
-        pageTabs.push(nextBlockDrivenTab(inst.id, type, []));
+        pageTabs.push(nextBlockDrivenTab(inst.id, type, [], { projectName }));
+        break;
+      case 'howto-play':
+        pageTabs.push(nextBlockDrivenTab(inst.id, type, [], { projectName }));
         break;
       case 'menu':
         // menu tab is appended once below
@@ -896,6 +977,7 @@ export function buildTanStackCapeFormat({
   flowEnabledExits = {},
   menuItemsEnabled = {},
   iframe = false,
+  projectName = 'Livewall',
 }) {
   const selectionSource = Object.keys(pageElementSelections).length > 0
     ? pageElementSelections
@@ -917,6 +999,7 @@ export function buildTanStackCapeFormat({
     flowEnabledExits,
     menuItemsEnabled,
     iframe,
+    projectName,
   });
 
   format.publishProfiles.export.title = 'Publish game';

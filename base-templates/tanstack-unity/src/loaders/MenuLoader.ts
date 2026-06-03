@@ -9,6 +9,12 @@ function coerceVariant(value: string | null | undefined, fallback: StyledButtonV
   return ALLOWED_VARIANTS.includes(lower) ? lower : fallback;
 }
 
+function tokenBoolean(value: string, fallback: boolean): boolean {
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return fallback;
+}
+
 export async function loadMenuData(language: string) {
   const [
     copy,
@@ -94,15 +100,15 @@ export async function loadMenuData(language: string) {
     // Defaults are seeded by the CLI from the wizard's menuItemsEnabled.
     // CAPE values still override at runtime.
     flags: {
-      showHome:        showHome.asBoolean({{MENU_SHOW_HOME}}),
-      showResume:      showResume.asBoolean({{MENU_SHOW_RESUME}}),
-      showHowToPlay:   showHowToPlay.asBoolean({{MENU_SHOW_HOWTOPLAY}}),
-      showLeaderboard: showLeaderboard.asBoolean({{MENU_SHOW_LEADERBOARD}}),
-      showVoucher:     showVoucher.asBoolean({{MENU_SHOW_VOUCHER}}),
-      showTerms:       showTerms.asBoolean({{MENU_SHOW_TERMS}}),
-      showPrivacy:     showPrivacy.asBoolean({{MENU_SHOW_PRIVACY}}),
-      showFaq:         showFaq.asBoolean({{MENU_SHOW_FAQ}}),
-      showLeave:       showLeave.asBoolean({{MENU_SHOW_LEAVE}}),
+      showHome:        showHome.asBoolean(tokenBoolean('{{MENU_SHOW_HOME}}', true)),
+      showResume:      showResume.asBoolean(tokenBoolean('{{MENU_SHOW_RESUME}}', false)),
+      showHowToPlay:   showHowToPlay.asBoolean(tokenBoolean('{{MENU_SHOW_HOWTOPLAY}}', true)),
+      showLeaderboard: showLeaderboard.asBoolean(tokenBoolean('{{MENU_SHOW_LEADERBOARD}}', false)),
+      showVoucher:     showVoucher.asBoolean(tokenBoolean('{{MENU_SHOW_VOUCHER}}', false)),
+      showTerms:       showTerms.asBoolean(tokenBoolean('{{MENU_SHOW_TERMS}}', true)),
+      showPrivacy:     showPrivacy.asBoolean(tokenBoolean('{{MENU_SHOW_PRIVACY}}', true)),
+      showFaq:         showFaq.asBoolean(tokenBoolean('{{MENU_SHOW_FAQ}}', false)),
+      showLeave:       showLeave.asBoolean(tokenBoolean('{{MENU_SHOW_LEAVE}}', true)),
     },
     // Per-item button variant. Defaults reflect the agency house style:
     // navigation items are secondary (ink), informational links are

@@ -21,7 +21,7 @@ describe('migratePageSettingsToBlocks', () => {
 });
 
 describe('migrateScaffoldConfig', () => {
-  it('adds pageBlocks to a legacy config without losing the original pageSettings', () => {
+  it('moves migrated keys to blocks and strips them from pageSettings', () => {
     const legacy = {
       pages: [{ id: 'landing', type: 'landing', route: '/landing' }],
       pageSettings: { landing: { showKicker: true } },
@@ -29,7 +29,19 @@ describe('migrateScaffoldConfig', () => {
     const migrated = migrateScaffoldConfig(legacy);
     assert.ok(migrated.pageBlocks.landing);
     assert.equal(migrated.pageBlocks.landing.blocks['title-block'].settings.showKicker, true);
-    assert.deepEqual(migrated.pageSettings, legacy.pageSettings);
+    // showKicker has a block mapping — it must not linger in pageSettings.
+    assert.equal(migrated.pageSettings.landing, undefined);
+  });
+
+  it('preserves pageSettings keys that have no block mapping', () => {
+    const legacy = {
+      pages: [{ id: 'landing', type: 'landing', route: '/landing' }],
+      pageSettings: { landing: { showKicker: true, onboardingFirstRunOnly: false } },
+    };
+    const migrated = migrateScaffoldConfig(legacy);
+    assert.equal(migrated.pageBlocks.landing.blocks['title-block'].settings.showKicker, true);
+    assert.equal(migrated.pageSettings.landing.onboardingFirstRunOnly, false);
+    assert.equal(migrated.pageSettings.landing.showKicker, undefined);
   });
 
   it('is a no-op for configs that already have pageBlocks', () => {

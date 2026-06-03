@@ -29,12 +29,12 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { networkInterfaces, tmpdir } from 'os';
 import { execSync, spawn, spawnSync } from 'child_process';
 import { printPostScaffoldMessage } from './post-scaffold-message.js';
-import { PAGE_ELEMENTS, PAGE_DEFAULTS, ELEMENT_CATALOGUE, buildPage } from './page-builder.js';
-import { TS_PAGE_ELEMENTS, TS_PAGE_DEFAULTS, TS_ELEMENT_CATALOGUE, TS_ALL_PAGES, TS_PAGE_ROUTES, buildTsPage } from './tanstack-page-builder.js';
+import { TS_ALL_PAGES, TS_PAGE_ROUTES } from './tanstack-page-builder.js';
+import { buildTsBlockDrivenPage, buildTsBlockDrivenLoader } from './tanstack-block-page-builder.js';
 import { getGamesByEngine, getGamesByStack, getGame, gameEnvLines, gameLabel } from './game-registry.js';
 import { checkAuth, validateAuth, login, clearTokenCache, createCampaign, pushFormat, populateDefaults, seedTemplateAssets, publishCampaign } from './cape-client.js';
 import { buildTanStackCapeFormat, buildNextCapeFormat } from './cape-format-builder.js';
-import { pageBlocksToBlocksConfig } from './block-defaults.js';
+import { ensurePageBlocksForPages, pageBlocksToBlocksConfig } from './block-defaults.js';
 import { deriveFlowFromBlocks, mergeDerivedFlow, deriveMenuItemsEnabled } from './flow-bridge.js';
 import { migrateScaffoldConfig } from './block-migration.js';
 import {
@@ -807,42 +807,8 @@ async function runWizard(pre) {
     if (!tsPages.includes('game')) tsPages.push('game');
     printRouteTable(tsPages);
 
-    // 5. Page builder — element selection per page
-    const BUILDABLE_TS = ['landing', 'tutorial', 'result', 'register'];
-    const tsPageElementSelections = {};
-    for (const page of tsPages.filter(p => BUILDABLE_TS.includes(p))) {
-      const available = TS_PAGE_ELEMENTS[page] ?? [];
-      if (available.length === 0) continue;
-      const defaults = TS_PAGE_DEFAULTS[page] ?? available;
-
-      console.log('');
-      console.log(`  ${c.bold('Page builder —')} ${c.cyan(page)} ${c.dim(`(${TS_PAGE_ROUTES[page]})`)}`);
-      console.log(`  ${c.dim('Toggle elements on/off (comma-separated numbers):')}`);
-      available.forEach((id, i) => {
-        const info = TS_ELEMENT_CATALOGUE[id] ?? {};
-        const on   = defaults.includes(id) ? c.green('●') : c.dim('○');
-        const desc = info.description ? c.dim(` — ${info.description}`) : '';
-        console.log(`    ${on} ${c.dim(`${i + 1})`)} ${id}${desc}`);
-      });
-
-      const defaultNums = defaults.filter(id => available.includes(id)).map(id => available.indexOf(id) + 1).join(',');
-      const v = (await ask(`  ${c.cyan('Select')} ${c.dim(`[default: ${defaultNums}]`)}: `)).trim();
-      if (v) {
-        tsPageElementSelections[page] = v.split(',').map(s => { const n = parseInt(s.trim(), 10); return (n >= 1 && n <= available.length) ? available[n - 1] : null; }).filter(Boolean);
-      } else {
-        tsPageElementSelections[page] = defaults.filter(id => available.includes(id));
-      }
-
-      // Tutorial step count
-      if (page === 'tutorial' && tsPageElementSelections[page].includes('steps')) {
-        const sv = (await ask(`  ${c.cyan('How many tutorial steps?')} ${c.dim('[default: 3]')}: `)).trim();
-        const n  = parseInt(sv, 10);
-        tsPageElementSelections['tutorial__stepCount'] = (!isNaN(n) && n > 0) ? n : 3;
-      }
-    }
-
-    // 5b. CAPE campaign — now that selections are known, build a project-specific format
-    const generatedFormat = buildTanStackCapeFormat({ pages: tsPages, tsPageElementSelections });
+    // 5b. CAPE campaign — page composition comes from blocks (wizard) or defaults
+    const generatedFormat = buildTanStackCapeFormat({ pages: tsPages });
     if (!capeId) {
       console.log('');
       const capeOpt = (await ask(`  ${c.cyan('CAPE campaign')}  ${c.dim('[n=create new / e=use existing ID / s=skip]')} ${c.dim('(default: n)')}: `)).trim().toLowerCase();
@@ -1087,57 +1053,13 @@ async function runWizard(pre) {
   if (game && game !== 'pure-react' && game !== 'none' && !pages.includes('game')) pages.push('game');
   printRouteTable(pages);
 
-  // 5b. Page builder — ask what elements each page should have
-  const BUILDABLE = ['landing', 'tutorial', 'result', 'menu'];
+  // Page composition comes from blocks (wizard) or block defaults — no element picker.
   const pageElementSelections = {};
 
-  // Always build menu (header button always points to /menu)
-  const builderPages = [...new Set([...pages.filter(p => BUILDABLE.includes(p)), 'menu'])];
-
-  for (const page of builderPages) {
-    const available = PAGE_ELEMENTS[page] ?? [];
-    if (available.length === 0) continue;
-
-    const defaults = PAGE_DEFAULTS[page] ?? available;
-
-    console.log('');
-    console.log(`  ${c.bold(`Page builder — `)}${c.cyan(page)} ${c.dim(`(${routeFor(page) ?? '/menu'})`)}`);
-    console.log(`  ${c.dim('Toggle elements on/off (comma-separated numbers):')}`);
-
-    available.forEach((id, i) => {
-      const info = ELEMENT_CATALOGUE[id] ?? {};
-      const on   = defaults.includes(id) ? c.green('●') : c.dim('○');
-      const desc = info.description ? c.dim(` — ${info.description}`) : '';
-      console.log(`    ${on} ${c.dim(`${i + 1})`)} ${id}${desc}`);
-    });
-
-    const defaultNums = defaults
-      .filter(id => available.includes(id))
-      .map(id => available.indexOf(id) + 1)
-      .join(',');
-
-    const v = (await ask(`  ${c.cyan('Select')} ${c.dim(`[default: ${defaultNums}]`)}: `)).trim();
-
-    if (v) {
-      pageElementSelections[page] = v.split(',')
-        .map(s => { const n = parseInt(s.trim(), 10); return (n >= 1 && n <= available.length) ? available[n - 1] : null; })
-        .filter(Boolean);
-    } else {
-      pageElementSelections[page] = defaults.filter(id => available.includes(id));
-    }
-
-    // Step-list: ask how many steps
-    if (pageElementSelections[page].includes('step-list') && page === 'tutorial') {
-      const sv = (await ask(`  ${c.cyan('How many how-to-play steps?')} ${c.dim('[default: 3]')}: `)).trim();
-      const n  = parseInt(sv, 10);
-      pageElementSelections[`${page}__stepCount`] = (!isNaN(n) && n > 0) ? n : 3;
-    }
-  }
-
-  // 5c. CAPE — now that page/element selections are known, build a project-specific format
+  // 5c. CAPE — page composition comes from blocks (wizard) or defaults
   if (!capeId) {
     const formatModules = resolveModules(game, pages, []);
-    const generatedFormat = buildNextCapeFormat({ pages, pageElementSelections, modules: formatModules });
+    const generatedFormat = buildNextCapeFormat({ pages, modules: formatModules });
     console.log('');
     const capeOpt = (await ask(`  ${c.cyan('CAPE campaign')}  ${c.dim('[n=create new / e=use existing ID / s=skip]')} ${c.dim('(default: n)')}: `)).trim().toLowerCase();
     if (capeOpt === '' || capeOpt === 'n' || capeOpt === 'new') {
@@ -1436,10 +1358,6 @@ function moduleSelectionPolicy(pages, game = '') {
 function resolveModules(game, pages, extraModules) {
   const all = new Set();
   const pageTypes = (pages ?? []).map((p) => pageModuleType(p));
-  // Game engine module
-  if (game && GAME_ENGINES.includes(game) && game !== 'pure-react' && game !== 'video' && game !== 'none') {
-    all.add(game);
-  }
   // Page-required modules
   for (const [page, mod] of Object.entries(PAGE_REQUIRES_MODULE)) {
     if (pageTypes.includes(page)) all.add(mod);
@@ -1669,11 +1587,136 @@ async function scaffold(options) {
   releaseLock(lockPath);
 }
 
-async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], modules = [], gtmId = '', tsPageElementSelections = {}, selectedGame = null, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowRules = {}, pageSettings = {}, pageTypes = {}, routeMap = {}, menuItemsEnabled = {}, _wizardMeta = null }) {
+function normalizeTanstackRouteMap(pages = [], routeMap = {}) {
+  const out = { ...(routeMap ?? {}) };
+  for (const page of pages ?? []) {
+    const defaultNextRoute = PAGE_ROUTES[page] ?? `/${page}`;
+    const defaultTsRoute = TS_PAGE_ROUTES[page] ?? `/${page}`;
+    if (!out[page] || out[page] === defaultNextRoute) out[page] = defaultTsRoute;
+  }
+  return out;
+}
+
+function tanstackRouteName(route) {
+  if (route === '/') return 'IndexRoute';
+  if (route === '/api/cape') return 'ApiCapeRoute';
+  if (route === '/api/unity') return 'ApiUnityRoute';
+  return `${route.replace(/^\//, '').split('-').map((part) => part[0]?.toUpperCase() + part.slice(1)).join('')}Route`;
+}
+
+function tanstackRouteImport(route) {
+  if (route === '/') return './routes/index';
+  if (route === '/api/cape') return './routes/api/cape';
+  if (route === '/api/unity') return './routes/api/unity';
+  return `./routes/${route.replace(/^\//, '')}`;
+}
+
+function writeTanstackRouteTree(frontendDir, pages = [], routeMap = {}) {
+  const routes = ['/', ...pages.map((page) => routeMap[page] ?? TS_PAGE_ROUTES[page] ?? `/${page}`), '/api/cape', '/api/unity'];
+  const routeEntries = [...new Set(routes)].map((route) => ({
+    route,
+    name: tanstackRouteName(route),
+    importPath: tanstackRouteImport(route),
+  }));
+  const imports = [
+    "import { Route as rootRouteImport } from './routes/__root'",
+    ...routeEntries.map((entry) => `import { Route as ${entry.name}Import } from '${entry.importPath}'`),
+  ];
+  const updates = routeEntries.map((entry) => [
+    `const ${entry.name} = ${entry.name}Import.update({`,
+    `  id: '${entry.route}',`,
+    `  path: '${entry.route}',`,
+    '  getParentRoute: () => rootRouteImport,',
+    '} as any)',
+  ].join('\n'));
+  const routeFields = routeEntries.map((entry) => `  '${entry.route}': typeof ${entry.name}`).join('\n');
+  const routeUnion = routeEntries.map((entry) => `    | '${entry.route}'`).join('\n');
+  const childFields = routeEntries.map((entry) => `  ${entry.name}: typeof ${entry.name}`).join('\n');
+  const pathAugmentations = routeEntries
+    .map((entry) => [
+      `    '${entry.route}': {`,
+      `      id: '${entry.route}'`,
+      `      path: '${entry.route}'`,
+      `      fullPath: '${entry.route}'`,
+      `      preLoaderRoute: typeof ${entry.name}Import`,
+      '      parentRoute: typeof rootRouteImport',
+      '    }',
+    ].join('\n'))
+    .join('\n');
+  const children = routeEntries.map((entry) => `  ${entry.name}: ${entry.name},`).join('\n');
+
+  const content = [
+    '/* eslint-disable */',
+    '',
+    '// @ts-nocheck',
+    '',
+    '// noinspection JSUnusedGlobalSymbols',
+    '',
+    '// This file was automatically generated by campaign-scaffolder.',
+    '',
+    ...imports,
+    '',
+    ...updates,
+    '',
+    'export interface FileRoutesByFullPath {',
+    routeFields,
+    '}',
+    'export interface FileRoutesByTo {',
+    routeFields,
+    '}',
+    'export interface FileRoutesById {',
+    '  __root__: typeof rootRouteImport',
+    routeFields,
+    '}',
+    'export interface FileRouteTypes {',
+    '  fileRoutesByFullPath: FileRoutesByFullPath',
+    '  fullPaths:',
+    routeUnion,
+    '  fileRoutesByTo: FileRoutesByTo',
+    '  to:',
+    routeUnion,
+    '  id:',
+    "    | '__root__'",
+    routeUnion,
+    '  fileRoutesById: FileRoutesById',
+    '}',
+    'export interface RootRouteChildren {',
+    childFields,
+    '}',
+    '',
+    "declare module '@tanstack/react-router' {",
+    '  interface FileRoutesByPath {',
+    pathAugmentations,
+    '  }',
+    '}',
+    '',
+    'const rootRouteChildren: RootRouteChildren = {',
+    children,
+    '}',
+    'export const routeTree = rootRouteImport',
+    '  ._addFileChildren(rootRouteChildren)',
+    '  ._addFileTypes<FileRouteTypes>()',
+    '',
+    "import type { getRouter } from './router.tsx'",
+    "import type { startInstance } from './start.ts'",
+    "declare module '@tanstack/react-start' {",
+    '  interface Register {',
+    '    ssr: true',
+    '    router: Awaited<ReturnType<typeof getRouter>>',
+    '    config: Awaited<ReturnType<typeof startInstance.getOptions>>',
+    '  }',
+    '}',
+    '',
+  ].join('\n');
+  writeFileSync(join(frontendDir, 'src', 'routeTree.gen.ts'), content, 'utf8');
+}
+
+async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], modules = [], gtmId = '', tsPageElementSelections = {}, selectedGame = null, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowRules = {}, pageSettings = {}, pageTypes = {}, routeMap = {}, menuItemsEnabled = {}, blocksConfig = null, _wizardMeta = null }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
 
+  routeMap = normalizeTanstackRouteMap(pages, routeMap);
   const frontendDir = join(outputDir, 'frontend');
   const flowTokens = computeFlowTokens(pages, 'none', flowExits, flowEntry, pageTypes, routeMap);
   const flowRuleTokens = computeFlowRuleTokens(pages, flowRules, flowExits, flowEntry, pageTypes, routeMap);
@@ -2011,10 +2054,26 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
 
   // 3b. Remove excluded pages + generate page builder output
   const normalizedPages = pages;
+  const normalizedPagesForRoutes = [...new Set([...normalizedPages, 'menu'])];
 
-  const BUILDABLE_TS = ['landing', 'tutorial', 'result', 'register', 'leaderboard'];
-  const ROUTE_FILES  = { landing: 'landing.tsx', tutorial: 'tutorial.tsx', game: 'game.tsx', register: 'register.tsx', result: 'result.tsx', leaderboard: 'leaderboard.tsx' };
-  const LOADER_FILES = { landing: 'LandingLoader.ts', tutorial: 'TutorialLoader.ts', register: 'RegisterLoader.ts', result: 'ResultLoader.ts', leaderboard: 'LeaderboardLoader.ts' };
+  const BUILDABLE_TS = [
+    'loading',
+    'landing',
+    'tutorial',
+    'result',
+    'register',
+    'menu',
+    'leaderboard',
+    'voucher',
+    'end',
+    'intro-video',
+    'loading-video',
+    'ad-video',
+    'howto-play',
+  ];
+  const CLEANUP_TS = [...BUILDABLE_TS, 'game'];
+  const routeFileFor = (pageId) => `${pageId}.tsx`;
+  const loaderFileFor = (pageId) => `${pageId.split('-').map((part) => part[0]?.toUpperCase() + part.slice(1)).join('')}Loader.ts`;
   const LEGACY_LOADER_FILES = { landing: 'landingLoader.ts', tutorial: 'tutorialLoader.ts', register: 'registerLoader.ts', result: 'resultLoader.ts', leaderboard: 'leaderboardLoader.ts' };
   const routesDir  = join(frontendDir, 'src', 'routes');
   const loadersDir = join(frontendDir, 'src', 'loaders');
@@ -2024,9 +2083,14 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
     step('3b', 'Configuring pages…');
     let removed = 0; let generated = 0;
 
-    for (const page of BUILDABLE_TS) {
-      if (normalizedPages.includes(page)) continue;
-      for (const f of [join(routesDir, ROUTE_FILES[page]), join(loadersDir, LOADER_FILES[page]), join(legacyLoadersDir, LEGACY_LOADER_FILES[page])]) {
+    for (const page of CLEANUP_TS) {
+      if (normalizedPagesForRoutes.includes(page)) continue;
+      const cleanupFiles = [
+        join(routesDir, routeFileFor(page)),
+        join(loadersDir, loaderFileFor(page)),
+        LEGACY_LOADER_FILES[page] ? join(legacyLoadersDir, LEGACY_LOADER_FILES[page]) : null,
+      ].filter(Boolean);
+      for (const f of cleanupFiles) {
         if (existsSync(f)) { try { rmSync(f); removed++; } catch { /* non-fatal */ } }
       }
     }
@@ -2043,15 +2107,45 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
     }
     if (removed > 0) ok(`${removed} excluded page file(s) removed`);
 
+    const effectiveBlocksConfig = blocksConfig ?? {};
+    const blockPages = normalizedPages
+      .filter((page) => BUILDABLE_TS.includes(page))
+      .filter((page) => Array.isArray(effectiveBlocksConfig?.[page]?.blocks) && effectiveBlocksConfig[page].blocks.length > 0);
+
+    if (blockPages.length > 0) {
+      const { listBlocks, copyBlockFiles } = await import('./block-resolver.js');
+      const allBlocks = listBlocks();
+      const knownNames = new Set(allBlocks.map((b) => b.manifest.name));
+      const requestedNames = new Set();
+      for (const page of blockPages) {
+        for (const block of effectiveBlocksConfig[page].blocks) {
+          if (!knownNames.has(block.name)) {
+            throw new Error(
+              `Unknown block "${block.name}" referenced in blocks-config for ${page}. ` +
+              `Available: ${[...knownNames].sort().join(', ')}`,
+            );
+          }
+          requestedNames.add(block.name);
+        }
+      }
+      const blocksToCopy = allBlocks.filter((b) => requestedNames.has(b.manifest.name));
+      copyBlockFiles(blocksToCopy, join(frontendDir, 'src'), {
+        PROJECT_NAME: name,
+        CAPE_ID: capeId,
+        MARKET: market,
+      });
+    }
+
     mkdirSync(loadersDir, { recursive: true });
-    for (const [page, elements] of Object.entries(tsPageElementSelections)) {
-      if (page.includes('__') || !BUILDABLE_TS.includes(page)) continue;
-      if (page === 'tutorial') continue;
+    for (const page of blockPages) {
       const stepCount = tsPageElementSelections[`${page}__stepCount`] ?? 3;
       try {
-        const { route, loader } = buildTsPage(page, elements, { stepCount, pages: normalizedPages });
-        writeFileSync(join(routesDir, ROUTE_FILES[page]), route, 'utf8');
-        writeFileSync(join(loadersDir, LOADER_FILES[page]), loader, 'utf8');
+        const blockList = effectiveBlocksConfig[page].blocks;
+        const pageType = pageTypes[page] ?? pageModuleType(page);
+        const route = buildTsBlockDrivenPage(page, pageType, blockList, { routeMap, stepCount, pages: normalizedPages, projectName: name });
+        const loader = buildTsBlockDrivenLoader(page, pageType, blockList);
+        writeFileSync(join(routesDir, routeFileFor(page)), route, 'utf8');
+        writeFileSync(join(loadersDir, loaderFileFor(page)), loader, 'utf8');
         generated++;
       } catch (e) { warn(`[page-builder] ${page}: ${e.message}`); }
     }
@@ -2082,6 +2176,8 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
     const f = join(routesDir, 'voucher.tsx');
     if (existsSync(f)) rmSync(f, { force: true });
   }
+
+  writeTanstackRouteTree(frontendDir, normalizedPagesForRoutes, routeMap);
 
   const indexRoute = join(routesDir, 'index.tsx');
   if (existsSync(indexRoute) && selectedVideoPages.includes('intro-video')) {
@@ -2196,6 +2292,7 @@ export function useGameNavigation() {
     pageTypes: Object.keys(pageTypes).length > 0 ? pageTypes : undefined,
     routeMap: Object.keys(routeMap).length > 0 ? routeMap : undefined,
     tsPageElementSelections,
+    blocksConfig: blocksConfig && Object.keys(blocksConfig).length > 0 ? blocksConfig : undefined,
     pageSettings: Object.keys(pageSettings ?? {}).length > 0 ? pageSettings : undefined,
     flowEntry: flowEntry || undefined,
     flowEnabledExits: Object.keys(flowEnabledExits ?? {}).length > 0 ? flowEnabledExits : undefined,
@@ -2221,8 +2318,10 @@ export function useGameNavigation() {
     instances:        pages.map((id) => ({ id, type: pageTypes[id] ?? id })),
     pageTypes,
     tsPageElementSelections,
+    blocksConfig,
     flowEnabledExits,
     menuItemsEnabled,
+    projectName: name,
   });
   const capeFormatFile = join(outputDir, 'cape-format.json');
   writeFileSync(capeFormatFile, JSON.stringify(capeFormatSpec, null, 2), 'utf8');
@@ -2505,68 +2604,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
   const flowSequence = pages.map(p => routeFor(p, routeMap));
   ok(`Flow: ${flowSequence.join(' → ')}`);
 
-  // 3b. Generate pages from page builder (overwrites static template pages)
-  if (Object.keys(pageElementSelections).length > 0) {
-    step('3b', 'Generating pages from page builder…');
-    const flowTokens = computeFlowTokens(pages, regMode, flowExits, flowEntry, pageTypes, routeMap);
-
-    // Helpers to get computed next-route from flow tokens
-    const nextRoute  = (page) => flowTokens[`{{NEXT_AFTER_${page.toUpperCase()}}}`] ?? '/';
-    const retryRoute = flowTokens['{{PLAY_AGAIN_ROUTE}}'] ?? '/gameplay';
-
-    const PAGE_DIR = join(frontendDir, 'app', '(campaign)');
-    const BUILDABLE_TO_DIR = {
-      landing:  'landing',
-      tutorial: 'tutorial',
-      gameplay: 'gameplay',
-      result:   'result',
-      menu:     'menu',
-    };
-
-    let generated = 0;
-    for (const [page, elements] of Object.entries(pageElementSelections)) {
-      if (page.includes('__')) continue; // skip meta keys like tutorial__stepCount
-      if (page === 'tutorial') continue;
-      const dirName = BUILDABLE_TO_DIR[page];
-      if (!dirName) continue;
-
-      const opts = {
-        nextRoute:  nextRoute(page),
-        retryRoute,
-        stepCount:  pageElementSelections[`${page}__stepCount`] ?? 3,
-        buttonVariants: flowButtonVariants,
-        menuButtonVariants,
-      };
-
-      try {
-        const code    = buildPage(page, elements, opts);
-        const pageDir = join(PAGE_DIR, dirName);
-        mkdirSync(pageDir, { recursive: true });
-        writeFileSync(join(pageDir, 'page.tsx'), code, 'utf8');
-        generated++;
-      } catch (e) {
-        warn(`[page-builder] ${page}: ${e.message}`);
-      }
-    }
-
-    // Generate gameplay stub — but skip if a module already owns that file
-    const gameplayPagePath = join(PAGE_DIR, 'gameplay', 'page.tsx');
-    if (pages.includes('game') && !pageElementSelections['gameplay'] && !moduleReplacedPaths.has(gameplayPagePath)) {
-      try {
-        const code = buildPage('gameplay', [], { nextRoute: nextRoute('game') });
-        const dir  = join(PAGE_DIR, 'gameplay');
-        mkdirSync(dir, { recursive: true });
-        writeFileSync(gameplayPagePath, code, 'utf8');
-        generated++;
-      } catch (e) {
-        warn(`[page-builder] gameplay: ${e.message}`);
-      }
-    }
-
-    ok(`${generated} page(s) generated`);
-  }
-
-  // 3b'. Block-driven landing override (Plan 1; wizard will populate this in Plan 2).
+  // 3b. Block-driven landing override (Plan 1; wizard populates this in Plan 2).
   // When --blocks-config supplies a `landing.blocks` list, replace whatever the
   // legacy page builder produced for landing with a block-composed file.
   // Writes to the SAME path as the legacy generator (frontendDir/app/(campaign)/landing/page.tsx)
@@ -2843,6 +2881,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     flowEnabledExits,
     menuItemsEnabled,
     iframe,
+    projectName: name,
   });
   const capeFormatFile = join(outputDir, 'cape-format.json');
   writeFileSync(capeFormatFile, JSON.stringify(capeFormatSpec, null, 2), 'utf8');
@@ -3422,26 +3461,6 @@ function writeChecklistFile(outputDir, cfg) {
     br();
   }
 
-  // ── Page builder element selections ────────────────────────────────────────
-  const elSel = cfg.pageElementSelections ?? cfg.tsPageElementSelections ?? {};
-  const elKeys = Object.keys(elSel).filter(k => !k.includes('__'));
-  if (elKeys.length > 0) {
-    sep();
-    h2('Page Builder — Element Selections');
-    note('These were generated into page.tsx / route files. Open each file to verify the output.');
-    br();
-    for (const page of elKeys) {
-      const els      = elSel[page] ?? [];
-      const stepKey  = `${page}__stepCount`;
-      const steps    = elSel[stepKey];
-      h3(page);
-      for (const el of els) lines.push(`- [x] \`${el}\``);
-      if (steps !== undefined) lines.push(`- [x] Steps: **${steps}**`);
-      chk(`Open generated \`${page}\` file and verify all elements render correctly`);
-      br();
-    }
-  }
-
   // ── Modules ─────────────────────────────────────────────────────────────────
   if (cfg.modules?.length > 0) {
     sep();
@@ -3765,12 +3784,6 @@ async function runUpdateWizard(existing, args) {
   const stack      = existing.stack ?? 'next';
   const allPagesList  = stack === 'tanstack' ? TS_ALL_PAGES  : ALL_PAGES;
   const pageRoutes    = stack === 'tanstack' ? TS_PAGE_ROUTES : PAGE_ROUTES;
-  const pageEls       = stack === 'tanstack' ? TS_PAGE_ELEMENTS  : PAGE_ELEMENTS;
-  const pageElDefs    = stack === 'tanstack' ? TS_PAGE_DEFAULTS  : PAGE_DEFAULTS;
-  const elCatalogue   = stack === 'tanstack' ? TS_ELEMENT_CATALOGUE : ELEMENT_CATALOGUE;
-  const buildablePages = stack === 'tanstack'
-    ? ['landing', 'tutorial', 'result', 'register']
-    : ['landing', 'onboarding', 'result', 'menu'];
 
   console.log('');
   console.log(c.bold('  ┌──────────────────────────────────────────────┐'));
@@ -3815,44 +3828,9 @@ async function runUpdateWizard(existing, args) {
     }).filter(Boolean);
     if (newPages.length === 0) { rl.close(); return null; }
 
-    // Page builder for newly added pages
-    const existingSelections = existing.pageElementSelections ?? existing.tsPageElementSelections ?? {};
-    const pageElementSelections = { ...existingSelections };
-
-    for (const page of newPages.filter(p => buildablePages.includes(p))) {
-      const available_els = pageEls[page] ?? [];
-      if (available_els.length === 0) continue;
-      const defaults = pageElDefs[page] ?? available_els;
-
-      console.log('');
-      console.log(`  ${c.bold('Page builder —')} ${c.cyan(page)}`);
-      console.log(`  ${c.dim('Toggle elements on/off (comma-separated numbers):')}`);
-      available_els.forEach((id, i) => {
-        const info = elCatalogue[id] ?? {};
-        const on   = defaults.includes(id) ? c.green('●') : c.dim('○');
-        const desc = info.description ? c.dim(` — ${info.description}`) : '';
-        console.log(`    ${on} ${c.dim(`${i + 1})`)} ${id}${desc}`);
-      });
-
-      const defaultNums = defaults.filter(id => available_els.includes(id)).map(id => available_els.indexOf(id) + 1).join(',');
-      const pv = (await ask(`  ${c.cyan('Select')} ${c.dim(`[default: ${defaultNums}]`)}: `)).trim();
-      if (pv) {
-        pageElementSelections[page] = pv.split(',').map(s => { const n = parseInt(s.trim(), 10); return (n >= 1 && n <= available_els.length) ? available_els[n - 1] : null; }).filter(Boolean);
-      } else {
-        pageElementSelections[page] = defaults.filter(id => available_els.includes(id));
-      }
-
-      if (page === 'onboarding' && pageElementSelections[page].includes('step-list')) {
-        const sv = (await ask(`  ${c.cyan('How many how-to-play steps?')} ${c.dim('[default: 3]')}: `)).trim();
-        const n  = parseInt(sv, 10);
-        pageElementSelections[`${page}__stepCount`] = (!isNaN(n) && n > 0) ? n : 3;
-      }
-      if (page === 'tutorial' && pageElementSelections[page].includes('steps')) {
-        const sv = (await ask(`  ${c.cyan('How many tutorial steps?')} ${c.dim('[default: 3]')}: `)).trim();
-        const n  = parseInt(sv, 10);
-        pageElementSelections[`${page}__stepCount`] = (!isNaN(n) && n > 0) ? n : 3;
-      }
-    }
+    // Preserve any element selections from prior runs (block-driven defaults
+    // apply automatically to newly added pages via ensurePageBlocksForPages).
+    const pageElementSelections = existing.pageElementSelections ?? existing.tsPageElementSelections ?? {};
 
     rl.close();
     console.log('');
@@ -4263,12 +4241,7 @@ async function main() {
             pages: pageIds,
             instances: pageIds.map(id => ({ id, type: pageTypes[id] ?? id })),
             pageTypes,
-            tsPageElementSelections: {
-              ...Object.fromEntries(pageIds
-                .filter((id) => TS_PAGE_DEFAULTS[id])
-                .map((id) => [id, TS_PAGE_DEFAULTS[id]])),
-              ...(cfg.tsPageElementSelections ?? {}),
-            },
+            tsPageElementSelections: cfg.tsPageElementSelections ?? {},
             pageElementSelections: cfg.pageElementSelections ?? {},
             pageBlocks:            cfg.pageBlocks ?? {},
             blocksConfig:          cfgBlocksConfig,
@@ -4276,6 +4249,7 @@ async function main() {
             flowEnabledExits:      cfgFlowEnabledExits,
             menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
             iframe:                cfg.iframe ?? false,
+            projectName:           cfg.name,
           })
         : buildNextCapeFormat({
             instances:         pageIds.map(id => ({ id, type: pageTypes[id] ?? id })),
@@ -4287,6 +4261,7 @@ async function main() {
             flowEnabledExits:      cfgFlowEnabledExits,
             menuItemsEnabled:      cfg.menuItemsEnabled ?? {},
             iframe:                cfg.iframe ?? false,
+            projectName:           cfg.name,
           });
       console.log(`\n  ${c.bold('Creating CAPE campaign...')}`);
       const created = await runCapeCreateFlow(null, cfg.name, market, autoTitle, false, cfgFormat);
@@ -4557,9 +4532,8 @@ async function main() {
 
       const formatPages = pages;
 
-      // Both stacks share the Next-style page vocabulary at the wizard /
-      // non-interactive level; TanStack's launch/tutorial/score legacy
-      // vocabulary is only used inside the interactive CLI flow above.
+      // Both stacks share the same page vocabulary at the wizard /
+      // non-interactive level.
       const argsFormat = buildNextCapeFormat({
         instances:        formatPages.map(id => ({ id, type: pageTypes[id] ?? id })),
         pageTypes,
@@ -4593,6 +4567,10 @@ async function main() {
       }
     }
 
+    const defaultBlocksConfig = pageBlocksToBlocksConfig(
+      ensurePageBlocksForPages({ pages, pageTypes }).pageBlocks,
+    );
+
     options = {
       stack,
       name:      args.name,
@@ -4610,7 +4588,7 @@ async function main() {
       outputDir: args.output ? resolve(args.output) : resolve(SCAFFOLDER_ROOT, '..', args.name),
       skipInstall: Boolean(args.skipInstall),
       skipGit: Boolean(args.skipGit),
-      blocksConfig: nonInteractiveBlocksConfig,
+      blocksConfig: nonInteractiveBlocksConfig ?? defaultBlocksConfig,
       pageTypes,
       flowExits: pages.includes('result') && pages.includes('landing') ? { 'result.next': 'landing' } : {},
       flowEnabledExits: { 'landing.leaderboard': false, 'result.playAgain': true, 'result.leaderboard': false },
@@ -4646,7 +4624,7 @@ async function main() {
     options.routeMap = Object.fromEntries(
       (options.pages ?? []).map(id => [
         id,
-        args.routeOverrides?.[id] ?? PAGE_ROUTES[id] ?? `/${id}`
+        args.routeOverrides?.[id] ?? (options.stack === 'tanstack' ? TS_PAGE_ROUTES[id] : PAGE_ROUTES[id]) ?? `/${id}`
       ])
     );
   }

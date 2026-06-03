@@ -130,9 +130,6 @@ export function moduleSelectionPolicy(pages, game = '') {
 export function resolveModules(game, pages, extraModules) {
   const all = new Set();
   const pageTypes = (pages ?? []).map((p) => pageModuleType(p));
-  if (game && GAME_ENGINES.includes(game) && game !== 'pure-react' && game !== 'video' && game !== 'none') {
-    all.add(game);
-  }
   for (const [page, mod] of Object.entries(PAGE_REQUIRES_MODULE)) {
     if (pageTypes.includes(page)) all.add(mod);
   }

@@ -5,7 +5,7 @@ import { useAppSession } from '~/server/api/Session.ts';
 
 const LeaderboardSchema = z.object({
   type:   z.enum(['daily', 'weekly', 'total']).default('total'),
-  offset: z.number().int().nonneg().default(0),
+  offset: z.number().int().nonnegative().default(0),
   limit:  z.number().int().positive().default(100),
 });
 

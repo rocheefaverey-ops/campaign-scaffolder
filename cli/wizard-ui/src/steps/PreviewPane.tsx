@@ -350,7 +350,7 @@ function PageRenderer({ config, instance, navigate, navTo, onMenu, showAudio }: 
     case 'video':
     case 'intro-video':
     case 'ad-video':      return <VideoPreview        config={config} instance={instance} navigate={navigate} navTo={navTo} />;
-    case 'loading-video': return <LoadingVideoPreview config={config} instance={instance} navigate={navigate} />;
+    case 'loading-video': return <LoadingVideoPreview config={config} instance={instance} />;
     case 'loading':       return <LoadingPreview      config={config} instance={instance} />;
     case 'end':           return <EndPreview          config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
     case 'register':      return <RegisterPreview     config={config} instance={instance} navigate={navigate} />;
@@ -797,9 +797,8 @@ function LandingPreview({ config, instance, navigate, navTo, onMenu, showAudio }
 function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn }) {
   const s = instSettings(config, instance.id);
   const layout = (s.screenLayout as string) ?? 'fullBleedHero';
-  // Step count comes from the step-indicator block (falling back to the legacy
-  // page setting). Clamp so we always show at least one step.
-  const stepCount = Math.max(1, Math.min(6, Number(blockSetting(config, instance, 'step-indicator', 'count') ?? s.stepCount ?? 3)));
+  // Step count comes from the step-indicator block. Clamp so we always show at least one step.
+  const stepCount = Math.max(1, Math.min(6, Number(blockSetting(config, instance, 'step-indicator', 'count') ?? 3)));
   const [step, setStep] = useState(0);
   const STEPS = Array.from({ length: stepCount }, (_, i) => ({
     title: `Step ${i + 1}`,
@@ -829,7 +828,7 @@ function TutorialPreview({ config, instance, navigate }: { config: ScaffoldConfi
         label={isLast ? 'Start' : 'Continue'}
         onClick={() => isLast ? navigate(instance.id, 'next') : setStep(step + 1)}
       />
-      {Boolean(s.allowSkip) && <CtaButton kind="secondary" label="Skip" onClick={() => navigate(instance.id, 'next')} />}
+      {Boolean(blockSetting(config, instance, 'nav-controls', 'allowSkip')) && <CtaButton kind="secondary" label="Skip" onClick={() => navigate(instance.id, 'next')} />}
     </div>
   ) : null;
   // Three illustration variants cycle by step so flipping through the tutorial
@@ -927,9 +926,8 @@ function VideoPreview({ config, instance, navigate, navTo }: { config: ScaffoldC
   );
 }
 
-function LoadingVideoPreview({ config, instance, navigate }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn }) {
+function LoadingVideoPreview({ config, instance }: { config: ScaffoldConfig; instance: PageInstance }) {
   const s = instSettings(config, instance.id);
-  const alwaysSkip  = Boolean(s.alwaysSkip);
   const fallbackSec = (s.readyFallbackSec ?? 8) as number;
   const on = blockGate(config, instance);
   return (
@@ -941,9 +939,9 @@ function LoadingVideoPreview({ config, instance, navigate }: { config: ScaffoldC
         </div>
       )}
       {on('fallback-indicator') && (
-        <button type="button" className="pp-video-skip" onClick={() => navigate(instance.id, 'next')}>
-          {alwaysSkip ? 'Skip →' : `Skip (${fallbackSec}s fallback)`}
-        </button>
+        <span className="pp-video-skip" aria-label={`Continue appears after game ready or ${fallbackSec} second fallback`}>
+          Ready after game load ({fallbackSec}s fallback)
+        </span>
       )}
     </div>
   );
@@ -1028,9 +1026,9 @@ function GamePreview({ config, instance, navigate, showAudio }: { config: Scaffo
   const bootMode  = (s.unityBootMode as string) ?? 'entry';
   const isUnity   = config.game === 'unity';
   const on = (name: string) => blockOn(config, instance, name);
-  // Timer block drives the clock + mode; fall back to the legacy page settings.
+  // Timer block drives the clock + mode.
   const timerMode = (blockSetting(config, instance, 'timer', 'mode') as string) ?? 'countdown';
-  const timerSec  = Number(blockSetting(config, instance, 'timer', 'durationSec') ?? s.timerSec ?? 60);
+  const timerSec  = Number(blockSetting(config, instance, 'timer', 'durationSec') ?? 60);
   const m = Math.floor(timerSec / 60);
   const r = timerSec % 60;
   const clock = timerMode === 'countup' ? '0:00' : `${m}:${r.toString().padStart(2, '0')}`;
@@ -1193,8 +1191,7 @@ function LeaderboardPreview({ config, instance, navigate, navTo, onMenu, showAud
 
 function VoucherPreview({ config, instance, navigate, navTo, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean }) {
   const s = instSettings(config, instance.id);
-  // QR shows when both the setting allows it AND the qr-display block is on.
-  const showQrSetting = (s.showQr ?? true) as boolean;
+  // QR visibility is the qr-display block's enabled state (no separate legacy flag).
   const codeLength = ((s.codeLength as number) || 8);
   const sample = 'LIVEWALL-2025-CAMPAIGN'.replace(/-/g, '');
   const code = sample.slice(0, codeLength).padEnd(codeLength, 'X');
@@ -1214,10 +1211,10 @@ function VoucherPreview({ config, instance, navigate, navTo, onMenu, showAudio }
               active={blockSetting(config, instance, 'channel-tabs', 'defaultTab') as string}
             />
           )}
-          {(on('code-box') || (on('qr-display') && showQrSetting)) && (
+          {(on('code-box') || on('qr-display')) && (
             <div className="pp-voucher">
               {on('code-box') && <span className="pp-voucher__code">{code}</span>}
-              {on('qr-display') && showQrSetting && <div className="pp-voucher__qr" aria-hidden>▦</div>}
+              {on('qr-display') && <div className="pp-voucher__qr" aria-hidden>▦</div>}
             </div>
           )}
           {on('cta-group') && <CtaGroupPreview config={config} instance={instance} navTo={navTo} />}

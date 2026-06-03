@@ -39,9 +39,9 @@ function Result() {
   // Derived from the result cta-group block at scaffold time (see flow-bridge).
   // Unreplaced tokens fall back to the historical defaults (play again on, rest off).
   const showPlayAgainButtonRaw = '{{SHOW_RESULT_PLAY_AGAIN_BUTTON}}';
-  const showPlayAgainButton = showPlayAgainButtonRaw.startsWith('{{') ? true : showPlayAgainButtonRaw === 'true';
+  const showPlayAgainButton = showPlayAgainButtonRaw.startsWith('{{') ? true : isTokenValue(showPlayAgainButtonRaw, 'true');
   const showLeaderboardButtonRaw = '{{SHOW_RESULT_LEADERBOARD_BUTTON}}';
-  const showLeaderboardButton = showLeaderboardButtonRaw.startsWith('{{') ? false : showLeaderboardButtonRaw === 'true';
+  const showLeaderboardButton = showLeaderboardButtonRaw.startsWith('{{') ? false : isTokenValue(showLeaderboardButtonRaw, 'true');
   const resultVisualUrl = winImageUrl || backgroundUrl;
   const isVideoVisual = !!resultVisualUrl && /\.(mp4|webm|mov)$/i.test(resultVisualUrl);
 
@@ -90,4 +90,8 @@ function Result() {
       </div>
     </PageContainer>
   );
+}
+
+function isTokenValue(value: string, expected: string): boolean {
+  return !value.startsWith('{{') && value === expected;
 }

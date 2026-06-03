@@ -76,8 +76,8 @@ export function mapButtonsToExits(pageId, pageType, buttons, ctx) {
     });
     if (!rule) {
       warnings.push(
-        `${pageId}: CTA button #${i + 1} (→ ${btn.exit || '?'}) has no semantic slot on the ` +
-        `"${pageType}" page — it renders on the Next stack but is dropped on TanStack.`,
+        `${pageId}: CTA button #${i + 1} (→ ${btn.exit || '?'}) has no semantic exit slot on the ` +
+        `"${pageType}" page — its target route is wired but no CAPE show-flag controls its visibility.`,
       );
       continue;
     }

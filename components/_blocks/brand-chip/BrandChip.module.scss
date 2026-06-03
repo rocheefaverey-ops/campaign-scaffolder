@@ -1,10 +1,10 @@
 .chip {
   display: flex;
-  padding: 0.5rem 0;
+  padding: 0.25rem 0;
   img { display: block; height: 100%; width: auto; }
 }
 .chip--left   { justify-content: flex-start; }
 .chip--center { justify-content: center; }
 .chip--right  { justify-content: flex-end; }
-.chip--sm img { height: 1.5rem; }
-.chip--md img { height: 2.5rem; }
+.chip--sm img { height: 1.8rem; }
+.chip--md img { height: 3rem; max-width: min(62vw, 220px); object-fit: contain; }

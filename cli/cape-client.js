@@ -48,6 +48,10 @@ const _AMBIENT_BG   = { url: 'https://storage-acceptance.bycape.io/account-60/up
 const _HEADER_VIDEO = { url: 'https://storage-acceptance.bycape.io/account-60/upload/8c9d3de1-bc42-4a8f-bc5f-e204a6cd1dc7_header-video.mp4',            extension: 'mp4',  title: 'header-video',          fileName: 'header-video.mp4',           size: 14254076, type: 'video' };
 const _VIDEO        = { url: 'https://storage-acceptance.bycape.io/account-60/upload/af4c37b4-6782-4948-9a86-e5adecb1664e_intro-livewall.mp4',          extension: 'mp4',  title: 'intro-livewall',        fileName: 'intro-livewall.mp4',         size: 7390553,  type: 'video' };
 const _BACKGROUND_VIDEO  = { url: 'https://storage-acceptance.bycape.io/account-60/upload/6eefdf4f-c446-4e3b-9134-c902f4842293_background-loop.mp4',             extension: 'mp4',  title: 'background-loop',       fileName: 'background-loop.mp4',        size: 4659357,  type: 'video' };
+// _LOADING_VIDEO: dedicated Livewall loading-screen video. The corresponding file
+// is bundled at base-templates/*/public/assets/livewall-intro-loadingvid.mp4 so
+// the dev/no-CAPE fallback also works.
+const _LOADING_VIDEO = { url: 'https://storage-acceptance.bycape.io/account-60/upload/a771bf44-8f4e-4527-883a-1bcb0eaafc3a_livewall-intro-loadingvid.mp4', extension: 'mp4', title: 'livewall-intro-loadingvid', fileName: 'livewall-intro-loadingvid.mp4', size: 7390553, type: 'video' };
 
 const TEMPLATE_ASSET_SEEDS = [
   // ── Global brand ──────────────────────────────────────────────────────────
@@ -85,12 +89,22 @@ const TEMPLATE_ASSET_SEEDS = [
   // instanceId 'intro-video'   → modelId 'introVideo'
   // instanceId 'loading-video' → modelId 'loadingVideo'
   // instanceId 'ad-video'      → modelId 'adVideo'
+  // Note: the 'loadingVideo' fallback slot on each video instance and the
+  // entire loading-video instance are intentionally NOT seeded with _VIDEO
+  // (intro-livewall.mp4) — they need the dedicated livewall-intro-loadingvid.mp4
+  // file. Once that asset is uploaded to CAPE storage, replace _LOADING_VIDEO
+  // above and add a seed entry for it here.
   { capeFile: _VIDEO,        fields: [
-    'general.video.introVideo',        'files.video.loadingVideo',
-    'general.introVideo.introVideo',   'files.introVideo.loadingVideo',
-    'general.loadingVideo.introVideo', 'files.loadingVideo.loadingVideo',
-    'general.adVideo.introVideo',      'files.adVideo.loadingVideo',
+    'general.video.introVideo',
+    'general.introVideo.introVideo',
+    'general.adVideo.introVideo',
   ]},
+  ...(_LOADING_VIDEO ? [{ capeFile: _LOADING_VIDEO, fields: [
+    'files.video.loadingVideo',
+    'files.introVideo.loadingVideo',
+    'general.loadingVideo.introVideo', 'files.loadingVideo.loadingVideo',
+    'files.adVideo.loadingVideo',
+  ]}] : []),
   { capeFile: _LOGO_ZWART,   fields: [
     'general.video.logo',
     'general.introVideo.logo',

@@ -22,7 +22,7 @@ const SLOT_LABELS: Record<Exclude<SlotKind, 'none'>, string> = {
 
 export function HeaderChrome({ leftSlot, rightSlot, onLeftClick, onRightClick, center }: Props) {
   return (
-    <header className={styles.header}>
+    <header className={`${styles.header} campaign-hero-header campaign-hero-header--with-close`}>
       <SlotButton kind={leftSlot} onClick={onLeftClick} side="left" />
       {center !== undefined && <div className={styles.center}>{center}</div>}
       <SlotButton kind={rightSlot} onClick={onRightClick} side="right" />
@@ -40,6 +40,22 @@ function SlotButton({ kind, onClick, side }: { kind: SlotKind; onClick?: () => v
       onClick={onClick}
       aria-label={label || undefined}
       data-side={side}
-    />
+    >
+      <SlotIcon kind={kind} />
+    </button>
+  );
+}
+
+function SlotIcon({ kind }: { kind: Exclude<SlotKind, 'none'> }) {
+  if (kind === 'decorative-icon') return <span className={styles.dot} aria-hidden />;
+  if (kind === 'help') return <span className={styles.textIcon} aria-hidden>?</span>;
+  if (kind === 'close') return <span className={styles.textIcon} aria-hidden>x</span>;
+  if (kind === 'back') return <span className={styles.textIcon} aria-hidden>&lt;</span>;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+      <line x1="5" y1="7" x2="19" y2="7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="5" y1="17" x2="19" y2="17" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
   );
 }

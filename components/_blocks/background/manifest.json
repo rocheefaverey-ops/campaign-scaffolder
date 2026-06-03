@@ -10,10 +10,10 @@
   "envVars": [],
   "cspPatch": {},
   "settings": {
-    "kind": { "kind": "enum", "of": ["image", "solid", "gradient"], "default": "image" }
+    "kind": { "kind": "enum", "of": ["image", "video", "solid", "gradient"], "default": "image" }
   },
   "capeBindings": {
-    "source": "{pageType}.background | image | image url, color, or gradient spec"
+    "source": "{pageType}.background | image | image/video url, color, or gradient spec"
   },
   "usableOn": ["loading", "landing", "onboarding", "video", "result", "leaderboard", "register", "voucher", "end", "menu"]
 }

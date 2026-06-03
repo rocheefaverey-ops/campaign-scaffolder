@@ -199,7 +199,7 @@ The wizard's **block editor** is the primary editing surface. CTA buttons (`cta-
 
 ### Stack config divergence (Next vs TanStack)
 
-The **Next** stack is block-driven (`buildBlockDrivenPage`) and honors rich block settings. The **TanStack** stack uses fixed template routes with a smaller set of semantic slots, so several block settings only affect Next output and are silently dropped on TanStack: per-button/menu **variants** (`{{BUTTON_VARIANT_*}}` / `{{MENU_VARIANT_*}}` exist only in next-* templates), **timer duration**, **leaderboard tabs**, **field ordering / extra opt-ins**, `status-chip`, `top-n-highlight`, `pre-gate-modal`, `loading-indicator.kind`, and any CTA button that doesn't map to a fixed semantic exit (these emit a build-time warning via `deriveFlowFromBlocks`). TanStack also has no leaderboard/voucher/end routes. This is by design — do not generalize the TanStack templates without an explicit decision.
+Both **Next** and **TanStack** are block-driven. Next uses `buildBlockDrivenPage`; TanStack uses `buildTsBlockDrivenPage` / `buildTsBlockDrivenLoader` in `cli/tanstack-block-page-builder.js`. The wizard block list, CTA/menu derivation, and page types should stay aligned across both stacks. The only shipped TanStack template is `tanstack-unity`; adding TanStack R3F/Phaser/Memory/None requires new base templates, not just generator changes.
 
 ## Architecture Decisions
 
