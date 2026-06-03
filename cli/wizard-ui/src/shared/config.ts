@@ -959,6 +959,13 @@ export const MENU_ITEMS: MenuItemDef[] = [
   { id: 'leave',       label: 'Leave campaign', target: '/',            kind: 'danger',    defaultEnabled: true  },
 ];
 
+/** Default route per header slot type — used as placeholder text in the wizard. */
+export const HEADER_SLOT_DEFAULTS: Record<string, string> = {
+  menu: '/menu',
+  help: '/tutorial',
+  close: '/',
+};
+
 export function defaultMenuItemsEnabled(): Record<string, boolean> {
   const out: Record<string, boolean> = {};
   for (const item of MENU_ITEMS) out[item.id] = item.defaultEnabled;

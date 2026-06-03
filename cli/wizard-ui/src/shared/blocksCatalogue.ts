@@ -11,6 +11,9 @@ export interface BlockSettingDef {
   options?: Array<{ value: string; label?: string }>;
   /** Per-field schema for `array-of-objects` settings (e.g. cta-group buttons). */
   item?: Record<string, BlockSettingDef>;
+  /** Conditional visibility: show this setting only when a sibling setting's value
+   *  is one of the listed values. Key = sibling setting key, value = allowed values. */
+  visibleWhen?: Record<string, string[]>;
 }
 
 /** Resolve a setting def's choices from either `options` or the manifest `of`. */

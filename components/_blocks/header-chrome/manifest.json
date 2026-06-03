@@ -11,7 +11,9 @@
   "cspPatch": {},
   "settings": {
     "leftSlot": { "kind": "enum", "of": ["none", "menu", "help", "close", "back", "decorative-icon"], "default": "none" },
-    "rightSlot": { "kind": "enum", "of": ["none", "menu", "help", "close", "back", "decorative-icon"], "default": "none" }
+    "leftSlotTarget": { "kind": "page-ref", "default": "", "visibleWhen": { "leftSlot": ["menu", "help", "close"] } },
+    "rightSlot": { "kind": "enum", "of": ["none", "menu", "help", "close", "back", "decorative-icon"], "default": "none" },
+    "rightSlotTarget": { "kind": "page-ref", "default": "", "visibleWhen": { "rightSlot": ["menu", "help", "close"] } }
   },
   "capeBindings": {
     "leftIcon": "branding.icons.left | image | optional left slot override icon",

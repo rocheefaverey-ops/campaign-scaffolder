@@ -452,7 +452,7 @@ function renderBlock(block, ctx) {
       const centerProp = brand
         ? ` center={<BrandChip image={cape.brandChip?.image ?? cape.logo} size="${brand.size ?? 'md'}" position="${brand.position ?? 'center'}" />}`
         : '';
-      return `      <HeaderChrome leftSlot="${leftSlot}" rightSlot="${rightSlot}" onLeftClick={() => ${slotAction(leftSlot, ctx)}} onRightClick={() => ${slotAction(rightSlot, ctx)}}${centerProp} />`;
+      return `      <HeaderChrome leftSlot="${leftSlot}" rightSlot="${rightSlot}" onLeftClick={() => ${slotAction(leftSlot, ctx, s.leftSlotTarget)}} onRightClick={() => ${slotAction(rightSlot, ctx, s.rightSlotTarget)}}${centerProp} />`;
     }
     case 'brand-chip':
       return `      <BrandChip image={cape.brandChip?.image ?? cape.logo} size="${s.size ?? 'md'}" position="${s.position ?? 'center'}" />`;
@@ -557,8 +557,12 @@ function renderBlock(block, ctx) {
       return `      <Timer mode="${s.mode ?? 'countdown'}" durationSec={${Number(s.durationSec ?? 60)}} />`;
     case 'sponsor-footer-strip':
       return '      <SponsorFooterStrip text={cape.sponsorText ?? ""} logo={cape.sponsorLogo?.url ?? cape.sponsorLogo} />';
-    case 'menu-item-list':
-      return '      <MenuItemList items={cape.items ?? undefined} />';
+    case 'menu-item-list': {
+      const targets = s.targets && Object.keys(s.targets).length
+        ? ` targets={${JSON.stringify(s.targets)}}`
+        : '';
+      return `      <MenuItemList items={cape.items ?? undefined}${targets} />`;
+    }
     case 'pre-gate-modal':
       return `      <PreGateModal kind="${s.kind ?? 'age-18'}" title={cape.preGateTitle ?? ''} confirmLabel={cape.preGateConfirm ?? 'Continue'} persistAcrossSession={${s.persistAcrossSession !== false}} />`;
     default:
@@ -580,17 +584,21 @@ function resolvedSlot(slot, ctx = {}) {
   return helpRoute && helpRoute !== currentRoute ? 'help' : 'none';
 }
 
-function slotAction(slot, ctx = {}) {
-  switch (slot) {
-    case 'menu': return "router.navigate({ to: '/menu' as never })";
-    case 'back': return 'router.history.back()';
-    case 'close': return "router.navigate({ to: '/' as never })";
-    case 'help': {
-      const route = helpRouteFor(ctx);
-      return route ? `router.navigate({ to: ${jsString(route)} as never })` : 'undefined';
-    }
-    default: return 'undefined';
+const SLOT_DEFAULT_ROUTES = { menu: '/menu', close: '/' };
+
+function slotAction(slot, ctx = {}, customTarget) {
+  if (slot === 'back') return 'router.history.back()';
+  if (!['menu', 'help', 'close'].includes(slot)) return 'undefined';
+  let route;
+  if (customTarget) {
+    route = routeForExit(customTarget, ctx.routeMap);
+  } else if (slot === 'help') {
+    route = helpRouteFor(ctx);
+    if (!route) return 'undefined';
+  } else {
+    route = SLOT_DEFAULT_ROUTES[slot];
   }
+  return `router.navigate({ to: ${jsString(route)} as never })`;
 }
 
 function renderCtaButtons(settings, ctx = {}) {

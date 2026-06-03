@@ -102,6 +102,13 @@ export default function BlockCard({
           {settingKeys.map((key) => {
             const def = block?.settings?.[key];
             const value = config.settings[key] ?? settingDefault(def) ?? '';
+            // visibleWhen: hide setting unless sibling value matches.
+            if (def?.visibleWhen) {
+              const visible = Object.entries(def.visibleWhen).every(
+                ([siblingKey, allowed]) => (allowed as string[]).includes(String(config.settings[siblingKey] ?? settingDefault(block?.settings?.[siblingKey]) ?? '')),
+              );
+              if (!visible) return null;
+            }
             return (
               <BlockSettingControl
                 key={key}
@@ -109,6 +116,8 @@ export default function BlockCard({
                 def={def}
                 value={value}
                 pageOptions={pageOptions}
+                allSettings={config.settings}
+                allDefs={block?.settings ?? {}}
                 onChange={(next) => onSettingChange(key, next)}
               />
             );
@@ -124,16 +133,69 @@ function BlockSettingControl({
   def,
   value,
   pageOptions,
+  allSettings,
+  allDefs,
   onChange,
 }: {
   settingKey: string;
   def?: BlockSettingDef;
   value: BlockSetting;
   pageOptions: FlowPageOption[];
+  allSettings?: Record<string, BlockSetting>;
+  allDefs?: Record<string, BlockSettingDef>;
   onChange: (value: BlockSetting) => void;
 }) {
   const kind = controlKind(def, value);
   const label = settingLabel(settingKey);
+
+  if (kind === 'page-ref') {
+    const hasOption = pageOptions.some((o) => o.id === String(value));
+    return (
+      <label className="block-setting">
+        <span>{label}</span>
+        <select value={String(value ?? '')} onChange={(event) => onChange(event.target.value)}>
+          <option value="">Default</option>
+          {!hasOption && value && <option value={String(value)}>{String(value)} (not in flow)</option>}
+          {pageOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+        </select>
+      </label>
+    );
+  }
+
+  if (kind === 'item-target-map') {
+    // Show a per-item destination picker for each enabled menu item.
+    const siblingItems = allSettings?.items;
+    const enabledItems = Array.isArray(siblingItems) ? siblingItems as string[] : [];
+    const targets = (value && typeof value === 'object' && !Array.isArray(value))
+      ? value as Record<string, BlockSetting>
+      : {};
+    if (!enabledItems.length) return null;
+    const update = (id: string, target: string) => {
+      const next = { ...targets };
+      if (target) { next[id] = target; } else { delete next[id]; }
+      onChange(next as unknown as BlockSetting);
+    };
+    return (
+      <div className="block-setting block-setting--item-targets">
+        <span>{label}</span>
+        <div className="item-targets">
+          {enabledItems.map((id) => (
+            <label key={id} className="item-targets__row">
+              <span className="item-targets__label">{settingLabel(id)}</span>
+              <select
+                value={String(targets[id] ?? '')}
+                onChange={(e) => update(id, e.target.value)}
+                aria-label={`${settingLabel(id)} destination`}
+              >
+                <option value="">Default</option>
+                {pageOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+              </select>
+            </label>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (kind === 'cta-buttons') {
     return (
@@ -369,10 +431,12 @@ function JsonSetting({ value, onChange }: { value: BlockSetting; onChange: (valu
   );
 }
 
-function controlKind(def: BlockSettingDef | undefined, value: BlockSetting): 'boolean' | 'number' | 'select' | 'multiselect' | 'cta-buttons' | 'json' | 'text' {
+function controlKind(def: BlockSettingDef | undefined, value: BlockSetting): 'boolean' | 'number' | 'select' | 'multiselect' | 'cta-buttons' | 'page-ref' | 'item-target-map' | 'json' | 'text' {
   // Manifest vocabulary first: enum → dropdown, array-of-enum → chip multiselect.
   // array-of-objects → structured per-item editor (cta-group buttons). Must come
   // before the value-based array→json inference below.
+  if (def?.kind === 'page-ref') return 'page-ref';
+  if (def?.kind === 'item-target-map') return 'item-target-map';
   if (def?.kind === 'array-of-objects') return 'cta-buttons';
   if (def?.kind === 'array-of-enum') return 'multiselect';
   if (def?.kind === 'enum' || def?.kind === 'select' || def?.options?.length || def?.of?.length) return 'select';

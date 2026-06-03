@@ -3644,6 +3644,31 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   cursor: not-allowed;
 }
 
+/* item-target-map editor (menu item destinations) */
+.block-setting--item-targets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.item-targets {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.item-targets__row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 6px;
+}
+.item-targets__label {
+  font-size: 12px;
+  color: var(--color-text-soft);
+}
+.item-targets__row select {
+  width: 100%;
+}
+
 @media (max-width: 640px) {
   .block-list-editor__head {
     align-items: stretch;
