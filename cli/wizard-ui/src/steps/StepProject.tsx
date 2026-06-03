@@ -54,24 +54,6 @@ export default function StepProject({ config, setConfig }: StepProps) {
         </div>
 
         <div className="field">
-          <label htmlFor="brand">Brand (optional)</label>
-          <input
-            id="brand" type="text" placeholder="e.g. Hema, Heineken, Proximus"
-            value={config.brand}
-            onChange={(e) => setConfig({ ...config, brand: e.target.value })}
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="department">Department (optional)</label>
-          <input
-            id="department" type="text" placeholder="e.g. Marketing, Loyalty"
-            value={config.department}
-            onChange={(e) => setConfig({ ...config, department: e.target.value })}
-          />
-        </div>
-
-        <div className="field">
           <label htmlFor="timezone">Timezone</label>
           <select
             id="timezone"
@@ -90,6 +72,24 @@ export default function StepProject({ config, setConfig }: StepProps) {
             <option value="Europe/Warsaw">Europe/Warsaw</option>
             <option value="UTC">UTC</option>
           </select>
+        </div>
+
+        <div className="field">
+          <label htmlFor="brand">Brand (optional)</label>
+          <input
+            id="brand" type="text" placeholder="e.g. Hema, Heineken, Proximus"
+            value={config.brand}
+            onChange={(e) => setConfig({ ...config, brand: e.target.value })}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="department">Department (optional)</label>
+          <input
+            id="department" type="text" placeholder="e.g. Marketing, Loyalty"
+            value={config.department}
+            onChange={(e) => setConfig({ ...config, department: e.target.value })}
+          />
         </div>
 
         <div className="field project-grid__wide">

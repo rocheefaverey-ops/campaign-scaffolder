@@ -119,15 +119,44 @@ export default function StepGames({ config, setConfig }: StepProps) {
         })}
       </div>
 
-      {selectedGameId && (
-        <div style={{ marginTop: 24, padding: 16, background: 'var(--bg-secondary)', borderRadius: 8 }}>
-          <h4 style={{ margin: '0 0 8px' }}>Selected: {games.find(g => g.id === selectedGameId)?.name ?? selectedGameId}</h4>
-          <p className="step__hint" style={{ margin: 0 }}>
-            Game settings will be loaded from <code>games/{selectedGameId}/game.json</code> during scaffold.
-            This includes CDN configuration, DPR bounds, boot methods, and environment variables.
-          </p>
-        </div>
-      )}
+      {selectedGameId && (() => {
+        const game = games.find(g => g.id === selectedGameId);
+        return (
+          <div className="game-selected-card">
+            <div className="game-selected-card__head">
+              <strong>{game?.name ?? selectedGameId}</strong>
+              <code>{selectedGameId}</code>
+            </div>
+            <div className="game-selected-card__facts">
+              <div className="game-selected-card__fact">
+                <span>Engine</span>
+                <strong>{game?.engine ?? config.game}</strong>
+              </div>
+              {game?.cdn?.baseUrl && (
+                <div className="game-selected-card__fact">
+                  <span>CDN</span>
+                  <strong>{game.cdn.gameName || 'configured'}</strong>
+                </div>
+              )}
+              {game?.boot && (
+                <div className="game-selected-card__fact">
+                  <span>Boot</span>
+                  <strong>{game.boot.defaultScene ?? 'Game'}</strong>
+                </div>
+              )}
+              {game?.env && Object.keys(game.env).length > 0 && (
+                <div className="game-selected-card__fact">
+                  <span>Env vars</span>
+                  <strong>{Object.keys(game.env).length}</strong>
+                </div>
+              )}
+            </div>
+            <p className="step__hint">
+              Loaded from <code>games/{selectedGameId}/game.json</code> at scaffold time.
+            </p>
+          </div>
+        );
+      })()}
     </>
   );
 }

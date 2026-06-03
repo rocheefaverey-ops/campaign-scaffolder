@@ -166,6 +166,17 @@ function AppInner() {
 
   const back = () => { setValidationError(null); setStepIdx((i) => Math.max(i - 1, 0)); };
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'Enter' && !isLast) { e.preventDefault(); next(); }
+      if (e.key === 'Escape' && !isFirst) { e.preventDefault(); back(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   const jumpToStep = (i: number) => {
     if (i !== stepIdx && i <= maxReachedStep) { setValidationError(null); setStepIdx(i); }
   };
@@ -183,8 +194,7 @@ function AppInner() {
           }} />
           <button
             type="button"
-            className="btn btn--tertiary"
-            style={{ padding: '4px 12px', fontSize: 12 }}
+            className="btn btn--tertiary btn--sm"
             onClick={startFresh}
             title="Discard saved wizard progress and start a new campaign"
           >
@@ -203,20 +213,22 @@ function AppInner() {
         {restored && (
           <div className="banner" role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <span>Resumed your previous wizard progress. Use <strong>Start fresh</strong> in the header to discard it.</span>
-            <button type="button" className="btn btn--tertiary" style={{ padding: '2px 10px', fontSize: 12 }} onClick={() => setRestored(false)}>Dismiss</button>
+            <button type="button" className="btn btn--tertiary btn--sm" onClick={() => setRestored(false)}>Dismiss</button>
           </div>
         )}
-        <Current
-          config={config}
-          setConfig={setConfig}
-          goToStep={(id: string) => {
-            const i = STEPS.findIndex((s) => s.id === id);
-            if (i >= 0) {
-              setMaxReachedStep((m) => Math.max(m, i));
-              setStepIdx(i);
-            }
-          }}
-        />
+        <div key={stepIdx} className="app__step-content">
+          <Current
+            config={config}
+            setConfig={setConfig}
+            goToStep={(id: string) => {
+              const i = STEPS.findIndex((s) => s.id === id);
+              if (i >= 0) {
+                setMaxReachedStep((m) => Math.max(m, i));
+                setStepIdx(i);
+              }
+            }}
+          />
+        </div>
         {validationError && (
           <div className="banner banner--err" role="alert">
             {validationError}
@@ -246,13 +258,15 @@ function AppInner() {
               </button>
             );
             return i > 0
-              ? [<span key={`sep-${i}`} className="app__step-sep" aria-hidden="true" />, btn]
+              ? [<span key={`sep-${i}`} className={`app__step-sep${isDone || isCurrent ? ' is-done' : ''}`} aria-hidden="true" />, btn]
               : [btn];
           })}
         </nav>
 
-        {!isLast && (
+        {!isLast ? (
           <button className="btn btn--primary" onClick={next}>Next →</button>
+        ) : (
+          <span className="btn" style={{ visibility: 'hidden' }}>Next →</span>
         )}
       </footer>
     </div>
@@ -351,8 +365,7 @@ function OpenExistingButton({ onLoaded }: { onLoaded: (cfg: ScaffoldConfig) => v
     <>
       <button
         type="button"
-        className="btn btn--tertiary"
-        style={{ padding: '4px 12px', fontSize: 12 }}
+        className="btn btn--tertiary btn--sm"
         onClick={() => setOpen(true)}
       >
         ⇪ Open existing

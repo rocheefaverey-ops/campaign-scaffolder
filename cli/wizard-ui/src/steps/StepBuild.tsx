@@ -231,8 +231,7 @@ export default function StepBuild({ config, setConfig, goToStep }: StepProps) {
           {canTestRun && state.outputDir && (
             <button
               type="button"
-              className="btn btn--primary"
-              style={{ padding: '6px 12px', fontSize: 13 }}
+              className="btn btn--primary btn--sm"
               onClick={() => void testRun(state.outputDir!)}
             >
               Test run
@@ -496,8 +495,8 @@ function BuildPlan({ config, loaded, catalog }: { config: ScaffoldConfig; loaded
       <div className="build-plan__grid">
         <PlanSection title="Campaign">
           <PlanRows rows={[
-            ['Brand', config.brand || 'Not set'],
-            ['Department', config.department || 'Not set'],
+            ['Brand', config.brand || '—'],
+            ['Department', config.department || '—'],
             ['Game config', config.gameId || (config.game === 'none' ? 'No game engine' : `${config.game} defaults`)],
             ['Entry route', entryRoute(config.pages, config.flowEntry)],
           ]} />
