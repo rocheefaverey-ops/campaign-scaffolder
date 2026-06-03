@@ -220,6 +220,7 @@ export default function StepPages({ config, setConfig }: StepProps) {
                         key={instance.id}
                         instance={instance}
                         index={i}
+                        phase={group.phase}
                         isLast={i === inFlow.length - 1}
                         isEntry={entryId === instance.id}
                         inFlow={inFlow}
@@ -279,10 +280,22 @@ export default function StepPages({ config, setConfig }: StepProps) {
 function EmptyFlow({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="flow-empty">
-      <span className="flow-empty__icon" aria-hidden>+</span>
+      <div className="flow-empty__visual" aria-hidden>
+        <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+          <rect x="8" y="4" width="48" height="32" rx="6" stroke="currentColor" strokeWidth="2" strokeDasharray="4 3" opacity="0.25"/>
+          <rect x="14" y="28" width="36" height="32" rx="6" stroke="currentColor" strokeWidth="2" strokeDasharray="4 3" opacity="0.15"/>
+          <circle cx="32" cy="20" r="8" fill="var(--color-primary)" opacity="0.6"/>
+          <path d="M32 16v8M28 20h8" stroke="var(--color-text)" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      </div>
       <strong>No campaign journey yet</strong>
       <p>Start with a landing page, then add tutorial, game, result and reward pages in the order visitors should experience them.</p>
-      <button type="button" className="btn btn--secondary" onClick={onAdd}>Add landing page</button>
+      <button type="button" className="btn btn--secondary" onClick={onAdd}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{marginRight: 4}}>
+          <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+        Add landing page
+      </button>
       <span className="flow-empty__or">or use Add page below</span>
     </div>
   );
@@ -297,19 +310,30 @@ function FlowToolbar({ config, entryId, warnings }: { config: ScaffoldConfig; en
   return (
     <div className="flow-toolbar" aria-label="Campaign journey summary">
       <span className="flow-toolbar__stat">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{opacity: 0.5}}><rect x="2" y="2" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="9" y="2" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="2" y="9" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="9" y="9" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.5"/></svg>
         <strong>{config.pages.length}</strong> pages
       </span>
       <span className="flow-toolbar__stat">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{opacity: 0.5}}><path d="M3 8h7M7 5l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/></svg>
         Entry <code>{entryLabel}</code>
       </span>
       {regMode !== 'none' && (
         <span className={`flow-toolbar__chip flow-toolbar__chip--${regMode}`}>
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 100 12 6 6 0 000-12zM8 5v3l2 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           Register {regMode === 'gate' ? 'before result' : 'after result'}
         </span>
       )}
-      {hasMenu && <span className="flow-toolbar__chip">Menu enabled</span>}
+      {hasMenu && (
+        <span className="flow-toolbar__chip">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          Menu
+        </span>
+      )}
       {warnings.length > 0 && (
-        <span className="flow-toolbar__chip flow-toolbar__chip--warn">{warnings.length} warning{warnings.length === 1 ? '' : 's'}</span>
+        <span className="flow-toolbar__chip flow-toolbar__chip--warn">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M8 5v3M8 10h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M2.5 13.5h11L8 2.5l-5.5 11z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
+          {warnings.length} warning{warnings.length === 1 ? '' : 's'}
+        </span>
       )}
     </div>
   );
@@ -361,7 +385,9 @@ function AddPageMenu({ availablePages, typeCounts, onAdd }: AddPageMenuProps) {
         disabled={allAdded}
         title={allAdded ? 'Every page type is already in the flow.' : 'Add a page to the flow'}
       >
-        <span className="add-page__plus" aria-hidden>+</span>
+        <span className="add-page__plus" aria-hidden>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+        </span>
         <span>{allAdded ? 'All pages added' : 'Add page'}</span>
       </button>
 
@@ -422,15 +448,18 @@ function PageFocusEditor({ instance, index, total, config, setConfig, onClose, o
     <div className="page-focus">
       <header className="page-focus__bar">
         <button type="button" className="page-focus__back" onClick={onClose}>
-          ‹ Back to flow
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{marginRight: 4}}><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Back to flow
         </button>
         <span className="page-focus__count">Page {index + 1} of {total}</span>
         <div className="page-focus__nav">
           <button type="button" onClick={() => onNavigate(-1)} disabled={index <= 0} aria-label="Previous page">
-            ‹ Prev
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Prev
           </button>
           <button type="button" onClick={() => onNavigate(1)} disabled={index >= total - 1} aria-label="Next page">
-            Next ›
+            Next
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
         </div>
       </header>
@@ -456,6 +485,7 @@ function PageFocusEditor({ instance, index, total, config, setConfig, onClose, o
 interface FlowCardProps {
   instance:         PageInstance;
   index:            number;
+  phase:            string;
   isLast:           boolean;
   isEntry:          boolean;
   inFlow:           PageInstance[];
@@ -471,7 +501,7 @@ interface FlowCardProps {
 }
 
 function FlowCard({
-  instance, index, isLast, isEntry, inFlow, config,
+  instance, index, phase, isLast, isEntry, inFlow, config,
   onFocus, onMove, onSetEntry, flowRules, onChangeRule,
   onRemove, onChangeRoute, onBlurRoute,
 }: FlowCardProps) {
@@ -523,14 +553,24 @@ function FlowCard({
     <li
       ref={setNodeRef}
       style={style}
-      className={`flow-card${isDragging ? ' is-dragging' : ''}${isEntry ? ' is-entry' : ''}`}
+      className={`flow-card flow-card--${phase}${isDragging ? ' is-dragging' : ''}${isEntry ? ' is-entry' : ''}`}
     >
       <div className="flow-card__rail">
-        <div className="flow-card__handle" {...attributes} {...listeners} aria-label="Drag handle">::</div>
+        <div className="flow-card__handle" {...attributes} {...listeners} aria-label="Drag handle">
+          <svg width="12" height="18" viewBox="0 0 12 18" fill="currentColor" aria-hidden>
+            <circle cx="3" cy="3" r="1.5"/><circle cx="9" cy="3" r="1.5"/>
+            <circle cx="3" cy="9" r="1.5"/><circle cx="9" cy="9" r="1.5"/>
+            <circle cx="3" cy="15" r="1.5"/><circle cx="9" cy="15" r="1.5"/>
+          </svg>
+        </div>
         <div className="flow-card__index">{index + 1}</div>
         <div className="flow-card__nudge">
-          <button type="button" className="flow-card__nudge-btn" onClick={() => onMove(-1)} disabled={index <= 0} aria-label={`Move ${title} earlier`}>^</button>
-          <button type="button" className="flow-card__nudge-btn" onClick={() => onMove(1)} disabled={isLast} aria-label={`Move ${title} later`}>v</button>
+          <button type="button" className="flow-card__nudge-btn" onClick={() => onMove(-1)} disabled={index <= 0} aria-label={`Move ${title} earlier`}>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 6.5L5 3.5L8 6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <button type="button" className="flow-card__nudge-btn" onClick={() => onMove(1)} disabled={isLast} aria-label={`Move ${title} later`}>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
         </div>
       </div>
 
@@ -538,29 +578,42 @@ function FlowCard({
         <div className="flow-card__row">
           <span className="flow-card__type-icon" aria-hidden>{pageIcon(instance.type)}</span>
           <strong>{title}</strong>
-          {isEntry && <span className="flow-card__pill flow-card__pill--entry">Entry</span>}
-          {isDuplicate && <span className="flow-card__pill flow-card__pill--warn">Duplicate route</span>}
+          {isEntry && <span className="flow-card__pill flow-card__pill--entry">
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" style={{marginRight: 2}}><circle cx="4" cy="4" r="3"/></svg>
+            Entry
+          </span>}
+          {isDuplicate && <span className="flow-card__pill flow-card__pill--warn">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" style={{marginRight: 1}}><path d="M8 5v3M8 10h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M2.5 13.5h11L8 2.5l-5.5 11z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
+            Duplicate route
+          </span>}
         </div>
-        <div className="page-card__hint">{meta.hint}</div>
-        <span className="flow-card__route">{instance.route}</span>
+        <div className="flow-card__meta">
+          <span className="flow-card__hint">{meta.hint}</span>
+          <span className="flow-card__route">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" style={{opacity: 0.45, flexShrink: 0}}><path d="M6 12H4a4 4 0 010-8h2M10 4h2a4 4 0 010 8h-2M5 8h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            {instance.route}
+          </span>
+        </div>
         <ExitSummary connections={connections} />
       </div>
 
       <div className="flow-card__actions">
         {!isEntry && (
           <button type="button" className="flow-card__action-btn" onClick={onSetEntry} title="Use this page as the campaign entry route">
-            <span aria-hidden>*</span>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8h7M7 5l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/></svg>
             <span className="flow-card__action-label">Start here</span>
           </button>
         )}
         {hasSettings && (
           <button type="button" className="flow-card__settings-btn" onClick={onFocus} title="Edit this page's options and blocks">
-            <span aria-hidden>...</span>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M11.5 2.5l2 2-8 8H3.5v-2l8-8z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>
             <span className="flow-card__settings-btn-label">Edit page</span>
-            <span className="flow-card__chev" aria-hidden>&gt;</span>
+            <svg className="flow-card__chev" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden><path d="M3.5 2L7 5L3.5 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
         )}
-        <button type="button" className="flow-card__remove" onClick={onRemove} aria-label={`Remove ${title}`}>x</button>
+        <button type="button" className="flow-card__remove" onClick={onRemove} aria-label={`Remove ${title}`}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+        </button>
       </div>
 
       {ruleOptions.length > 1 && otherInstances.length > 0 && (
@@ -655,7 +708,12 @@ function FlowCard({
         )}
       </div>
 
-      {!isLast && <div className="flow-card__arrow" aria-hidden>v</div>}
+      {!isLast && (
+        <div className="flow-card__connector" aria-hidden>
+          <svg width="2" height="20" viewBox="0 0 2 20"><line x1="1" y1="0" x2="1" y2="20" stroke="var(--color-line-strong)" strokeWidth="2" strokeDasharray="3 3"/></svg>
+          <svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1L5 5L9 1" stroke="var(--color-line-strong)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
+        </div>
+      )}
     </li>
   );
 }
@@ -674,7 +732,9 @@ function ExitSummary({ connections }: { connections: PageConnection[] }) {
       {connections.map((connection) => (
         <li key={`${connection.key}-${connection.targetLabel}`} className={`flow-card__exit-chip flow-card__exit-chip--${connection.status}`}>
           <span className="flow-card__exit-chip-key">{connection.key}</span>
-          <span className="flow-card__exit-chip-arrow" aria-hidden>-&gt;</span>
+          <svg className="flow-card__exit-chip-arrow" width="12" height="8" viewBox="0 0 12 8" fill="none" aria-hidden>
+            <path d="M1 4h8.5M7 1.5L9.5 4 7 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
           <span className="flow-card__exit-chip-target">{connection.targetLabel}</span>
         </li>
       ))}

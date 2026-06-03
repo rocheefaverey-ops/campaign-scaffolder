@@ -358,6 +358,7 @@ function PageRenderer({ config, instance, navigate, navTo, onMenu, showAudio }: 
     case 'result':        return <ResultPreview       config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
     case 'leaderboard':   return <LeaderboardPreview  config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
     case 'voucher':       return <VoucherPreview      config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
+    case 'menu':          return <MenuPagePreview     config={config} navTo={navTo} />;
     default:              return <PlaceholderPreview  instance={instance} />;
   }
 }
@@ -1224,6 +1225,70 @@ function VoucherPreview({ config, instance, navigate, navTo, onMenu, showAudio }
             complianceKind={blockSetting(config, instance, 'compliance-badge', 'kind') as string | undefined}
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────── Menu (page-tab preview — shows items + routes) ──────────────
+
+function MenuPagePreview({ config, navTo }: { config: ScaffoldConfig; navTo: NavToFn }) {
+  const visible = MENU_ITEMS.filter(item => config.menuItemsEnabled?.[item.id] ?? item.defaultEnabled);
+  const disabled = MENU_ITEMS.filter(item => !(config.menuItemsEnabled?.[item.id] ?? item.defaultEnabled));
+
+  const resolveTarget = (target: string): string | null => {
+    const page = config.pages.find(p => p.route === target || `/${p.id}` === target);
+    return page ? page.route : null;
+  };
+
+  return (
+    <div className="pp pp--menu-page">
+      <div className="pp-shell">
+        <div className="pp-header pp-header--menu">
+          <div className="pp-menu-spacer" aria-hidden />
+          <img src="/logo-livewall-wordmark.svg" alt="logo" className="pp-wordmark pp-wordmark--center" />
+          <span className="pp-close" aria-hidden>×</span>
+        </div>
+
+        <div className="pp-menu-items">
+          {visible.length === 0 && (
+            <p className="pp-body" style={{ textAlign: 'center', color: 'var(--color-text-soft)', padding: '24px 0' }}>
+              No menu items enabled.<br />Toggle items on in the block editor.
+            </p>
+          )}
+          {visible.map(item => {
+            const variant = config.menuButtonVariants?.[item.id] ?? item.kind;
+            const resolved = resolveTarget(item.target);
+            const isMissing = !resolved && item.target !== '/';
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`pp-menu-item pp-menu-item--${variant}`}
+                onClick={() => {
+                  const page = config.pages.find(p => p.route === item.target || `/${p.id}` === item.target);
+                  if (page) navTo(page.id);
+                }}
+              >
+                <span className="pp-menu-item__label">{item.label}</span>
+                <span className={`pp-menu-item__route${isMissing ? ' is-missing' : ''}`}>
+                  {isMissing ? `${item.target} (not in flow)` : item.target}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {disabled.length > 0 && (
+          <div className="pp-menu-disabled">
+            <span className="pp-menu-disabled__label">Disabled</span>
+            {disabled.map(item => (
+              <span key={item.id} className="pp-menu-disabled__item">{item.label}</span>
+            ))}
+          </div>
+        )}
+
+        <p className="pp-menu-footer">Powered by Livewall</p>
       </div>
     </div>
   );

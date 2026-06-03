@@ -1711,7 +1711,7 @@ function writeTanstackRouteTree(frontendDir, pages = [], routeMap = {}) {
   writeFileSync(join(frontendDir, 'src', 'routeTree.gen.ts'), content, 'utf8');
 }
 
-async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], modules = [], gtmId = '', tsPageElementSelections = {}, selectedGame = null, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowRules = {}, pageSettings = {}, pageTypes = {}, routeMap = {}, menuItemsEnabled = {}, blocksConfig = null, _wizardMeta = null }) {
+async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], modules = [], gtmId = '', tsPageElementSelections = {}, selectedGame = null, unityCdnUrl = '', capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowButtonVariants = {}, flowRules = {}, pageSettings = {}, pageTypes = {}, routeMap = {}, menuItemsEnabled = {}, menuButtonVariants = {}, blocksConfig = null, _wizardMeta = null }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -2297,6 +2297,11 @@ export function useGameNavigation() {
   }
 
   // ── Write final .scaffolded with everything that was done ────────────────────
+  const _tsPackages        = collectPackages(modules);
+  const _tsEnvVarNames     = collectEnvVars(modules).map(e => e.varName);
+  const _tsCspPatches      = collectCspPatches(modules).map(p => ({ module: p.moduleId, patch: p.cspPatch }));
+  const _tsOptionalModules = modules.filter(id => !GAME_ENGINES.includes(id));
+
   const scaffoldedConfig = {
     // Identity
     name,
@@ -2306,23 +2311,40 @@ export function useGameNavigation() {
     market,
     capeAutoPublished: capeAutoPublished || undefined,
     capePublishedUrl: capePublishedUrl || undefined,
-    // Unity game
+    // Engine & game
+    game:         'unity',
     selectedGame: selectedGame ? { id: selectedGame.id ?? selectedGame.name, name: selectedGame.name, description: selectedGame.description } : undefined,
     unityCdnUrl: unityBaseUrl || undefined,
-    // Pages & element selections
+    // Flow
     pages,
     pageTypes: Object.keys(pageTypes).length > 0 ? pageTypes : undefined,
     routeMap: Object.keys(routeMap).length > 0 ? routeMap : undefined,
-    tsPageElementSelections,
-    blocksConfig: blocksConfig && Object.keys(blocksConfig).length > 0 ? blocksConfig : undefined,
-    pageSettings: Object.keys(pageSettings ?? {}).length > 0 ? pageSettings : undefined,
+    flow:         flowTokens,
+    flowExits:    Object.keys(flowExits).length > 0 ? flowExits : undefined,
     flowEntry: flowEntry || undefined,
     flowEnabledExits: Object.keys(flowEnabledExits ?? {}).length > 0 ? flowEnabledExits : undefined,
+    flowButtonVariants: Object.keys(flowButtonVariants ?? {}).length > 0 ? flowButtonVariants : undefined,
     flowRules: Object.keys(flowRules ?? {}).length > 0 ? flowRules : undefined,
+    pageSettings: Object.keys(pageSettings ?? {}).length > 0 ? pageSettings : undefined,
     menuItemsEnabled: Object.keys(menuItemsEnabled ?? {}).length > 0 ? menuItemsEnabled : undefined,
-    wizard: _wizardMeta ?? undefined,
+    menuButtonVariants: Object.keys(menuButtonVariants ?? {}).length > 0 ? menuButtonVariants : undefined,
+    // Page element selections (page builder output)
+    tsPageElementSelections,
+    blocksConfig: blocksConfig && Object.keys(blocksConfig).length > 0 ? blocksConfig : undefined,
+    // Modules (full resolved list + optional-only list)
+    modules,
+    optionalModules: _tsOptionalModules.length > 0 ? _tsOptionalModules : undefined,
     // Tooling
     gtmId: gtmId || undefined,
+    // What was installed / patched
+    packagesInstalled: (_tsPackages.prod.length || _tsPackages.dev.length)
+      ? { prod: _tsPackages.prod, dev: _tsPackages.dev }
+      : undefined,
+    envVarsAdded:  _tsEnvVarNames.length > 0 ? _tsEnvVarNames : undefined,
+    cspPatches:    _tsCspPatches.length  > 0 ? _tsCspPatches  : undefined,
+    // Wizard-only metadata — preserved here so the web wizard can re-load
+    // an existing scaffold and pre-fill every step.
+    wizard: _wizardMeta ?? undefined,
     // Update tracking
     ...(isUpdate && updateType ? { updateType } : {}),
     // Timestamps
@@ -2331,6 +2353,11 @@ export function useGameNavigation() {
   };
   writeFileSync(join(outputDir, '.scaffolded'), JSON.stringify(scaffoldedConfig, null, 2), 'utf8');
   ok('.scaffolded config written');
+
+  if (capeId && capeId !== '0') {
+    if (await fetchAndSaveCapeData(outputDir, { capeId, market, capePublishedUrl, capeAutoPublished }))
+      ok('cape-data.json written (CAPE CDN snapshot)');
+  }
 
   // Emit cape-format.json so the post-scaffold checklist's "push the
   // generated format" step has something to reference. Previously only the
@@ -2359,7 +2386,7 @@ export function useGameNavigation() {
   printPostScaffoldMessage({ projectName: name, capeId, market, modules: [], outputDir: _tsFinalFrontendDir, stack: 'tanstack', capeAutoPublished, capePublishedUrl });
 }
 
-async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowButtonVariants = {}, flowRules = {}, menuItemsEnabled = {}, menuButtonVariants = {}, pageTypes = {}, _wizardMeta = null, routeMap = {}, blocksConfig = null }) {
+async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages, regMode, modules, gtmId, iframe, outputDir, pageElementSelections = {}, selectedGame = null, capeAutoPublished = false, capePublishedUrl = '', isUpdate = false, updateType = null, _displayDir = null, _skipGitInit = false, skipInstall = false, flowExits = {}, flowEntry = '', flowEnabledExits = {}, flowButtonVariants = {}, flowRules = {}, pageSettings = {}, menuItemsEnabled = {}, menuButtonVariants = {}, pageTypes = {}, _wizardMeta = null, routeMap = {}, blocksConfig = null }) {
   const step = (n, msg) => console.log(`\n  ${c.cyan(`[${n}]`)} ${c.bold(msg)}`);
   const ok   = (msg)    => console.log(`      ${c.green('✔')} ${msg}`);
   const warn = (msg)    => console.log(`      ${c.yellow('⚠')} ${msg}`);
@@ -2857,7 +2884,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     flowEnabledExits: Object.keys(flowEnabledExits).length > 0 ? flowEnabledExits : undefined,
     flowButtonVariants: Object.keys(flowButtonVariants).length > 0 ? flowButtonVariants : undefined,
     flowRules:    Object.keys(flowRules).length > 0 ? flowRules : undefined,
-    pageSettings: _wizardMeta?.pageSettings ?? undefined,
+    pageSettings: Object.keys(pageSettings ?? {}).length > 0 ? pageSettings : undefined,
     menuItemsEnabled: Object.keys(menuItemsEnabled).length > 0 ? menuItemsEnabled : undefined,
     menuButtonVariants: Object.keys(menuButtonVariants).length > 0 ? menuButtonVariants : undefined,
     // Page element selections (page builder output)
@@ -2887,6 +2914,11 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
   };
   writeFileSync(join(outputDir, '.scaffolded'), JSON.stringify(scaffoldedConfig, null, 2), 'utf8');
   ok('.scaffolded config written');
+
+  if (capeId && capeId !== '0') {
+    if (await fetchAndSaveCapeData(outputDir, { capeId, market, capePublishedUrl, capeAutoPublished }))
+      ok('cape-data.json written (CAPE CDN snapshot)');
+  }
 
   // Generate complete CAPE format (with all modules + pages) and write to disk.
   // Always written — for new campaigns the initial push during creation lacked module fields;
@@ -2918,6 +2950,37 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
   console.log('');
   const _nextFinalFrontendDir = _displayDir ? join(_displayDir, 'frontend') : frontendDir;
   printPostScaffoldMessage({ projectName: name, capeId, market, modules: _optionalModules, outputDir: _nextFinalFrontendDir, stack: 'next', capeAutoPublished, capePublishedUrl });
+}
+
+// ─── CAPE CDN snapshot ────────────────────────────────────────────────────────
+
+const CAPE_CDN_BASE = 'https://storage-acceptance.bycape.io/account-60/fixed';
+
+async function fetchAndSaveCapeData(outputDir, { capeId, market, capePublishedUrl, capeAutoPublished }) {
+  if (!capeId || capeId === '0') return;
+  const url = capePublishedUrl || `${CAPE_CDN_BASE}/${capeId}_${market.toUpperCase()}.json`;
+  const outPath = join(outputDir, 'cape-data.json');
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const data = await res.json();
+      writeFileSync(outPath, JSON.stringify(data, null, 2), 'utf8');
+      return true;
+    } catch (e) {
+      if (attempt < 3) await new Promise(r => setTimeout(r, 2000));
+      else {
+        console.log(`      ${c.yellow('⚠')} cape-data.json fetch failed: ${e.message}`);
+        console.log(`      ${c.dim(`  URL: ${url}`)}`);
+        if (capeAutoPublished) {
+          console.log(`      ${c.dim('  CDN may not have propagated yet. Run later:')}`);
+          console.log(`      ${c.dim(`  curl -o cape-data.json "${url}"`)}`);
+        }
+        return false;
+      }
+    }
+  }
 }
 
 // ─── Debug file ───────────────────────────────────────────────────────────────
