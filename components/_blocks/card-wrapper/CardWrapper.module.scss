@@ -1,17 +1,32 @@
 .wrap {
-  width: min(32rem, calc(100% - 2rem));
-  margin: 1rem auto;
+  width: 100%;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
+
 .wrap--card {
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.92);
-  color: #111;
-  padding: 1rem 0;
+  border-radius: 1.5rem;
+  background: var(--surface-strong, rgba(255, 255, 255, 0.96));
+  color: var(--text-primary, #111);
+  padding: 1.25rem 1.25rem;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(12px);
 }
+
+.wrap--with-margin {
+  width: min(32rem, calc(100% - 2rem));
+}
+
 .wrap--full-bleed {
   width: 100%;
-  padding: 1rem 0;
+  padding: 1.25rem 0;
 }
-.wrap--edge-to-edge { width: 100%; border-radius: 0; }
+
+.wrap--edge-to-edge {
+  width: 100%;
+  border-radius: 0;
+}

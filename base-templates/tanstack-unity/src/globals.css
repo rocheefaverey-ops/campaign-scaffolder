@@ -142,8 +142,10 @@ img {
   user-select: none;
 }
 
+/* Button reset — background is intentionally omitted so block SCSS module
+   classes (.btn--primary etc.) can set it without cascade-layer conflicts.
+   Browsers default buttons to transparent, so omitting it is safe. */
 button {
-  background: none;
   border: none;
   cursor: pointer;
   outline: none;

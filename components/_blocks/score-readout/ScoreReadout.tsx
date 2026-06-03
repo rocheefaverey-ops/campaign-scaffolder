@@ -9,10 +9,12 @@ type Props = {
 
 export function ScoreReadout({ score = 0, label = 'Score', highScore, showHighScore = false }: Props) {
   return (
-    <div className={styles.readout}>
-      <span>{label}</span>
-      <strong>{score}</strong>
-      {showHighScore && highScore !== undefined && <small>Best: {highScore}</small>}
+    <div className={styles.plate}>
+      <span className={styles.label}>{label}</span>
+      <strong className={styles.value}>{score}</strong>
+      {showHighScore && highScore !== undefined && (
+        <span className={styles.best}>Best {highScore}</span>
+      )}
     </div>
   );
 }

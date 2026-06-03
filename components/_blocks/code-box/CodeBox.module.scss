@@ -1,15 +1,47 @@
+/* Code box — tappable voucher code display. Matches pp-voucher__code from
+   the wizard preview: lime background, monospace, generous letter-spacing. */
 .box {
-  margin: 1rem auto;
-  width: min(22rem, calc(100% - 2rem));
-  border: 1px dashed currentColor;
-  border-radius: 0.75rem;
-  background: color-mix(in srgb, currentColor 8%, transparent);
+  margin: 0.5rem auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.30);
+  border-radius: 1rem;
   color: inherit;
-  padding: 1rem;
-  display: grid;
-  gap: 0.35rem;
-  text-align: center;
   cursor: pointer;
+  transition: background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
-.label, .hint { font-size: 0.75rem; opacity: 0.72; }
-.box strong { font-size: 1.5rem; letter-spacing: 0.08em; }
+
+.box:hover { background: rgba(255, 255, 255, 0.24); }
+.box:active { transform: scale(0.98); }
+
+.box strong {
+  display: inline-block;
+  background: var(--color-primary, #d1ff00);
+  color: var(--text-primary, #0e0e0e);
+  padding: 0.5rem 1.15rem;
+  border-radius: 0.65rem;
+  font-family: var(--display-font-family, inherit);
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.18em;
+  text-shadow: none;
+}
+
+.label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.65;
+}
+
+.hint {
+  font-size: 0.7rem;
+  opacity: 0.55;
+}

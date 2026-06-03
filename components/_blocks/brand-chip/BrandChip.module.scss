@@ -1,10 +1,26 @@
+/* Brand chip — logo image with position and size variants.
+   Drop-shadow gives the logo readability on both hero and light backgrounds. */
 .chip {
   display: flex;
   padding: 0.25rem 0;
-  img { display: block; height: 100%; width: auto; }
+  animation: fadeIn 0.35s ease both;
 }
+
+.chip img {
+  display: block;
+  height: 100%;
+  width: auto;
+  filter: drop-shadow(0 2px 6px rgba(14, 14, 14, 0.35));
+}
+
 .chip--left   { justify-content: flex-start; }
 .chip--center { justify-content: center; }
 .chip--right  { justify-content: flex-end; }
+
 .chip--sm img { height: 1.8rem; }
-.chip--md img { height: 3rem; max-width: min(62vw, 220px); object-fit: contain; }
+.chip--md img { height: 2.75rem; max-width: min(62vw, 220px); object-fit: contain; }
+
+/* On card/form pages the dark drop-shadow is too heavy — lighten it. */
+:global(.campaign-block-page--card) .chip img {
+  filter: drop-shadow(0 1px 3px rgba(14, 14, 14, 0.12));
+}

@@ -1,19 +1,63 @@
+/* Rank list — leaderboard rows. Matches pp-lb from the wizard preview:
+   semi-transparent white rows on hero, lime highlight for "(you)" row,
+   monospace scores, scrollable with thin scrollbar. */
 .list {
-  width: min(28rem, calc(100% - 2rem));
-  margin: 0.75rem auto;
+  width: 100%;
+  margin: 0.25rem auto;
   padding: 0;
   list-style: none;
-  display: grid;
-  gap: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 38vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
+
 .list li {
   display: grid;
-  grid-template-columns: 2.5rem 1fr auto;
+  grid-template-columns: 1.75rem 1fr auto;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 0.8rem;
-  border-radius: 0.6rem;
-  background: color-mix(in srgb, currentColor 8%, transparent);
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 0.8rem;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(14, 14, 14, 0.42);
 }
-.list em { font-style: normal; font-weight: 700; }
-.empty { text-align: center; opacity: 0.75; }
+
+/* Rank number */
+.list span {
+  font-weight: 700;
+  opacity: 0.78;
+}
+
+/* Player name */
+.list strong {
+  font-weight: 600;
+}
+
+/* Score */
+.list em {
+  font-style: normal;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* "You" row — highlighted in lime like the personal-best row */
+.you {
+  background: var(--color-primary, #d1ff00);
+  color: var(--text-primary, #0e0e0e);
+  text-shadow: none;
+}
+
+.empty {
+  text-align: center;
+  opacity: 0.65;
+  padding: 2rem 1rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+}

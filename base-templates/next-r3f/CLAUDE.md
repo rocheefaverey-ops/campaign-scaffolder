@@ -1,6 +1,6 @@
-# Golden Template — base-template
+# Next.js + React Three Fiber Campaign Template
 
-Core Next.js 16 project. **Contains only mandatory code.** Optional module code lives in `../modules/`.
+Core Next.js 16 project with React Three Fiber (R3F) 3D engine integration. **Contains only mandatory code.** Optional module code lives in `../modules/`.
 
 ## Stack
 

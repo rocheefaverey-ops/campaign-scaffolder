@@ -13,6 +13,7 @@ campaign-scaffolder/
 │   ├── next-memory/   # Next.js + pure React (no engine)
 │   ├── next-none/     # Next.js CAPE-only (no game)
 │   └── tanstack-unity/# TanStack Start + Unity baked in
+├── components/_blocks/# Shared block components (reusable across templates)
 ├── modules/           # Optional module library — CLI copies per selection
 │   ├── leaderboard/   # Score table (tabs, pagination, personal best)
 │   ├── registration/  # Player registration form (fields + opt-ins)
@@ -24,9 +25,14 @@ campaign-scaffolder/
 │   ├── video/         # Intro / loading / ad video routes
 │   └── memory/        # Card memory mini-game (next-memory template)
 ├── games/             # Per-game manifests (engine, CDN, boot, env)
+├── tools/
+│   └── lwg-cli-cape/  # CAPE CLI — manage campaigns, formats, publishing
 └── cli/
     ├── scaffold.js          # main scaffolder (next + tanstack)
     ├── cape-format-builder.js  # generates CAPE schema per campaign
+    ├── cape-client.js       # CAPE API client (create, push, publish, seed)
+    ├── flow-bridge.js       # derives legacy flow maps from block state
+    ├── block-defaults.js    # default block configs per page type
     ├── wizard.js            # boots wizard server + UI
     ├── wizard-server/       # Fastify API for the wizard
     └── wizard-ui/           # React + Vite wizard (dist/ is the prod build)
@@ -201,49 +207,147 @@ The wizard's **block editor** is the primary editing surface. CTA buttons (`cta-
 
 Both **Next** and **TanStack** are block-driven. Next uses `buildBlockDrivenPage`; TanStack uses `buildTsBlockDrivenPage` / `buildTsBlockDrivenLoader` in `cli/tanstack-block-page-builder.js`. The wizard block list, CTA/menu derivation, and page types should stay aligned across both stacks. The only shipped TanStack template is `tanstack-unity`; adding TanStack R3F/Phaser/Memory/None requires new base templates, not just generator changes.
 
+## CAPE CLI (`tools/lwg-cli-cape/`)
+
+Standalone CLI for managing campaigns on the CAPE platform. Replaces manual clicking in the CAPE editor. Can be used as a terminal tool, an MCP server, or via the `/cape` slash command in Claude Code.
+
+### Setup
+```bash
+cd tools/lwg-cli-cape
+cp .env.example .env   # fill in CAPE_EMAIL and CAPE_PASSWORD
+npm install && npm run setup
+cape login
+```
+
+### Recommended workflow: new campaign
+```bash
+# 1. Scaffold the project (generates format + frontend code)
+node cli/scaffold.js --name=my-campaign --cape-id=12345 --market=NL --stack=tanstack --yes
+
+# 2. Fetch the campaign data locally for inspection/editing
+cape fetch 12345
+
+# 3. Edit workspace/campaign-12345.json as needed
+
+# 4. Push changes back
+cape push workspace/campaign-12345.json 12345
+
+# 5. ALWAYS fetch before publishing (CAPE can publish stale data otherwise)
+cape fetch 12345
+cape publish 12345
+```
+
+### Recommended workflow: update existing campaign format
+```bash
+# 1. Fetch current state
+cape fetch <campaignId>
+
+# 2. Edit the workspace JSON locally
+
+# 3. Push format changes (interfaceSetup)
+cape push-format workspace/campaign-<id>.json <campaignId>
+
+# 4. Push campaign data (content values)
+cape push workspace/campaign-<id>.json <campaignId>
+
+# 5. Verify + publish
+cape fetch <campaignId>
+cape publish <campaignId>
+```
+
+### Key commands
+| Command | Purpose |
+|---------|---------|
+| `cape fetch <id>` | Download campaign → `workspace/campaign-<id>.json` |
+| `cape push <file> <id>` | Upload campaign data |
+| `cape push-format <file> <id>` | Push interfaceSetup (format structure) |
+| `cape publish <id>` | Publish to acceptance (~30s, polls automatically) |
+| `cape get-format <id>` | Inspect format structure |
+| `cape create-campaign <formatPath> <title> <market>` | Create new campaign from format |
+| `cape populate-defaults <id>` | Fill empty campaign with format defaults |
+| `cape validate <formatId>` | Run guards against format |
+| `cape create-copy-doc <id>` | Generate styled XLSX for copywriters |
+| `cape upload-file <path>` | Upload asset to CAPE media |
+| `cape rehost <url> <filename>` | Download external URL, re-host on CAPE |
+| `cape log-learning "## Title" "body"` | Log finding to LEARNINGS.md |
+
+### Critical rules (will cause silent data loss if violated)
+- **Never push multiple times without `fetch` in between** — CAPE silently drops data without the correct `versionNr`
+- **Never `fetch` between local edits and `push-format`** — fetch overwrites the local file
+- **Never use `id=0` in format saves** — creates orphaned format not linked to campaign
+- **Always send the full `interfaceSetup`** — never push a single page in isolation
+
+### Guards system
+`push-format` auto-validates against 25+ known CAPE bugs (e.g. slider defaultValue must be number, `select` options must be objects not arrays, `color` requires `picker: "picker"`). Use `--force` only when the format has pre-existing violations you can't fix.
+
+### CAPE field type gotchas
+| Type | Rule |
+|------|------|
+| `text` | Campaign data must be `{"value":"...", "updated":true, "copy":true}` — not a plain string |
+| `textMultiLanguage` | Data: `{multilanguage:true, EN:{value:"..."}, NL:{value:"..."}}` |
+| `select` / `radioList` | Options must be `{"val":"label"}` objects — never arrays |
+| `checkboxList` | No `defaultValue` in format; set via campaign data push |
+| `subSection` | Use `title`, not `label` — `label` renders `[object Object]` |
+| `assetSelector` | No defaultValue support; set via campaign data push |
+
+### push-format strips string defaultValues
+Large payloads cause CAPE to silently drop pages. `push-format` automatically strips string `defaultValue`s. After pushing a format, `populate-defaults` only works for `number`, `toggle`, `checkboxList`, `languageSelector`, `dateRange`. Text/color/select fields must be set via campaign data push.
+
+## CAPE Format Generation Pipeline
+
+The scaffolder generates CAPE formats dynamically from wizard selections. The pipeline:
+
+```
+Wizard selections (pages, blocks, modules)
+  → cli/cape-format-builder.js   → interfaceSetup (pages/tabs/blocks/items)
+  → cli/cape-client.js           → POST to CAPE API (create, push-format, seed assets)
+  → cli/flow-bridge.js           → derive legacy flow maps from block state
+```
+
+### How blocks become CAPE fields
+Each block component declares `capeBindings` in its manifest — semantic metadata like field type, language support, and description. The format builder maps these:
+- `i18n-string` / `markdown` → `textMultiLanguage`
+- `image` / `asset` → `asset` / `assetVideo` / `assetLogo`
+- `boolean` → `switch`
+- `number` / `select` → direct CAPE equivalents
+
+### CAPE data model
+```
+Campaign (ID)
+  └── Format (ID, versioned — CAPE creates a new ID on every save)
+        └── interfaceSetup
+              └── pages[]
+                    └── tabs[]
+                          └── blocks[]
+                                └── items[]  ← fields (type, model, label, defaultValue)
+```
+- **Format** = template structure (field types, ordering, constraints)
+- **Campaign Data** = actual values (texts, colours, images)
+- Model paths: `settings.*` and `general.*` are campaign-global; `copy.{pageId}.*` and `files.{pageId}.*` are page-scoped
+
+### Critical contract
+Every string, image, or color the frontend reads via CAPE (`getCapeText()`, `getCapeImage()`, `getCapeProperty()`) **must** have a matching field in `cape-format-builder.js`. If you add a block binding without wiring its CAPE field, the CAPE editor won't show the field and the frontend will render a fallback.
+
+### Adding a new CAPE-tunable property
+1. Add the field in `cape-format-builder.js` so CAPE exposes it
+2. Add the loader call (e.g. `getCapeProperty()` in `ResultLoader.ts`) so the frontend reads it
+3. Wire the renderer so the new value affects the UI
+4. Run `pnpm test` — the drift check catches mismatches between `KNOWN_PAGE_TYPES` and wizard config
+
 ## Architecture Decisions
 
-**Why manifest.json?**
-- Single source of truth for module metadata (files, packages, env vars, CSP)
-- Enables CLI to compose modules declaratively without hardcoding paths
-- Makes module dependencies explicit via `implies` chains
-
-**Why token replacement?**
-- Avoids template engines or build-time config files
-- Works across all text files (JS, CSS, env, etc.) consistently
-- Simple to understand and debug; no hidden transformations
-
-**Why DesignTokenInjector is built-in?**
-- CAPE branding is non-negotiable for all campaigns
-- Prevents opt-out mistakes that break visual identity
-- Centralizes color/spacing logic for consistency
-
-**Why agency-default fonts live in CAPE seed, not globals.css?**
-- The Livewall display font is *agency branding*; campaigns can override it via `branding.displayFontFamily`.
-- Hardcoding it in `globals.css` as the fallback would silently mis-brand unbranded campaigns. Keeping it as the CAPE *seed default* makes it explicit and overridable through the normal CMS flow, while CSS fallbacks stay neutral.
+- **manifest.json** — single source of truth for module metadata; makes module composition declarative
+- **Token replacement** — simple `{{TOKEN}}` substitution across all text files; no template engine needed
+- **DesignTokenInjector built-in** — CAPE branding is non-negotiable; prevents opt-out mistakes
+- **Agency fonts in CAPE seed, not globals.css** — the Livewall display font is agency branding, overridable via `branding.displayFontFamily`; CSS fallbacks stay neutral
+- **Block-driven pages** — blocks are the single source of truth; legacy flow/menu maps are derived at build time via `flow-bridge.js`
 
 ## Contribution Guidelines
 
-### Adding a feature to base-template or a module
 1. Make changes in the source directory
-2. Run tests: `npm run ts-compile` in affected directory
-3. Test a full scaffold: `node cli/scaffold.js ... --yes` and verify the output
-4. Commit with clear message: "feat: ...", "fix: ...", "docs: ..."
-
-### Creating a new module (checklist)
-- [ ] `manifest.json` is valid JSON (test with `node -e "require('./modules/{name}/manifest.json')"`)
-- [ ] All paths in `files` exist and target correct destinations
-- [ ] Token replacements `{{PROJECT_NAME}}`, `{{CAPE_ID}}`, `{{MARKET}}` are placed correctly
-- [ ] Implied modules exist in `modules/`
-- [ ] CSP patches are specific and non-conflicting
-- [ ] README or inline comments explain module purpose and setup
-- [ ] Tested with `node cli/scaffold.js --module={name} --yes`
-
-### Code style
-- Use TypeScript in base-template and modules
-- Follow existing naming: camelCase for JS, kebab-case for filenames
-- Keep components small and focused
-- Document non-obvious dependencies in comments
+2. Run `pnpm test` + `pnpm run ts-compile` in affected base template
+3. Test a full scaffold: `node cli/scaffold.js ... --yes` and verify output
+4. TypeScript in base-templates and modules; camelCase for JS, kebab-case for filenames
 
 ## Troubleshooting
 

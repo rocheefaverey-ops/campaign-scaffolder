@@ -507,6 +507,20 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   background: color-mix(in srgb, var(--color-error) 18%, transparent);
   color: var(--color-error);
 }
+.flow-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-error) 26%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-error) 8%, #fff);
+}
+.flow-warnings span {
+  color: var(--color-error);
+  font-size: 12px;
+  line-height: 1.35;
+}
 
 /* Phase divider — non-sortable row between phase groups in the flow list */
 .flow-phase {
@@ -873,6 +887,37 @@ p.step__hint   { color: var(--color-text-soft); font-size: 14px; line-height: 1.
   display: flex; flex-direction: column;
   gap: 10px;
   margin-top: 2px;
+}
+.flow-card__advanced {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.flow-card__advanced-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  background: rgba(14,14,14,0.025);
+}
+.flow-card__route-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: min(260px, 100%);
+}
+.flow-card__route-edit span,
+.flow-card__advanced-warning {
+  color: var(--color-text-soft);
+  font-size: 11px;
+  font-weight: 600;
+}
+.flow-card__advanced-warning {
+  color: var(--color-error);
 }
 .flow-card__behavior-trigger {
   font: inherit; cursor: pointer;

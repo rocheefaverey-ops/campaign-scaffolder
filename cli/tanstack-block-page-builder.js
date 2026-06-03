@@ -20,7 +20,6 @@ const DEFAULT_BLOCK_ROUTES = {
   voucher: '/voucher',
   end: '/end',
   menu: '/menu',
-  'howto-play': '/howto-play',
 };
 
 function componentNameOf(blockName) {
@@ -88,6 +87,13 @@ function settingsOf(block) {
   return block?.settings ?? {};
 }
 
+function tutorialStepCount(blocks = []) {
+  const stepIndicator = blocks.find((b) => b.name === 'step-indicator');
+  const rawCount = Number(settingsOf(stepIndicator).count ?? 3);
+  if (!Number.isFinite(rawCount)) return 3;
+  return Math.min(6, Math.max(1, Math.floor(rawCount)));
+}
+
 function pageLayoutOf(pageId, pageType, hasCard) {
   if (['video', 'intro-video', 'loading-video', 'ad-video'].includes(pageId) || pageType === 'video') {
     return { pageClass: 'campaign-block-page--video', shellClass: 'campaign-block-shell--center' };
@@ -105,16 +111,19 @@ function titleFallbackFor(pageId, options = {}) {
   const projectName = options.projectName || 'Livewall';
   if (pageId === 'landing') return `Welcome to ${projectName}`;
   if (pageId === 'loading') return projectName;
-  if (pageId === 'result') return 'Result';
+  if (pageId === 'result') return 'Your score';
   if (pageId === 'register') return 'Register';
   if (pageId === 'tutorial') return 'How to play';
-  return 'Title';
+  if (pageId === 'leaderboard') return 'Leaderboard';
+  if (pageId === 'voucher') return 'Your voucher';
+  if (pageId === 'end') return 'Thank you';
+  return pageId.charAt(0).toUpperCase() + pageId.slice(1);
 }
 
 function ctaFallbackFor(pageId, index = 0) {
   if (pageId === 'landing') return 'Play now';
-  if (pageId === 'register') return 'Submit';
-  if (pageId === 'result') return index === 0 ? 'Play again' : 'Continue';
+  if (pageId === 'register') return 'Register';
+  if (pageId === 'result') return 'Continue';
   return 'Continue';
 }
 
@@ -269,8 +278,12 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
   // video with the default gradient overlay — turn off the shade so the
   // Livewall loading loop reads clearly inside the phone-frame.
   const shadeProp = fullBleedVideoBlock ? ' shade={false}' : '';
+  // When a full-bleed VideoPlayer IS the visual, omit the Background source
+  // so it defaults to solid black — otherwise Background renders its own
+  // background video underneath, competing with the mediaSlot video.
+  const sourceProp = fullBleedVideoBlock ? '' : ` source={${backgroundSourceExpr}}`;
   const wrapStart = background
-    ? `    <Background source={${backgroundSourceExpr}} className="${layout.pageClass}" shellClassName="${layout.shellClass}"${shadeProp}${mediaSlotProp}>`
+    ? `    <Background${sourceProp} className="${layout.pageClass}" shellClassName="${layout.shellClass}"${shadeProp}${mediaSlotProp}>`
     : `    <main className="campaign-block-page ${layout.pageClass} ${layout.shellClass}">`;
   const wrapEnd = background ? '    </Background>' : '    </main>';
 
@@ -349,11 +362,11 @@ export function buildTsBlockDrivenLoader(pageId, _pageType, _blocks) {
     }
   }
 
-  // Onboarding-style pages (tutorial / howto-play) drive a multi-step flow.
+  // Onboarding-style pages drive a multi-step tutorial flow.
   // Pull per-step copy + imagery so the page can swap title/body/art per step,
   // mirroring the legacy hand-written tutorial.tsx.
   if (pageType === 'onboarding') {
-    const STEP_COUNT = 5;
+    const STEP_COUNT = tutorialStepCount(_blocks);
     for (let n = 1; n <= STEP_COUNT; n += 1) {
       const titleBinding  = { key: `step${n}Title`, path: `tutorial.step${n}Title`, type: 'i18n-string' };
       const bodyBinding   = { key: `step${n}Body`,  path: `tutorial.step${n}Body`,  type: 'i18n-string' };
@@ -394,6 +407,30 @@ export function buildTsBlockDrivenLoader(pageId, _pageType, _blocks) {
     ].join('\n');
   }
 
+  if (pageType === 'leaderboard') {
+    return [
+      `import { loadPageCape } from '~/lib/cape.ts';`,
+      `import { getLeaderboardRequest } from '~/server/api/endpoints/Leaderboard.ts';`,
+      '',
+      `export async function ${loaderName(pageId)}(language: string) {`,
+      `  const cape = await loadPageCape(${jsString(pageId)}, language, ${jsString(bindings)});`,
+      `  const leaderboard = await getLeaderboardRequest({ data: { type: 'total', offset: 0, limit: 10 } });`,
+      `  const entries = leaderboard.data?.entries ?? [];`,
+      `  const personalBest = leaderboard.data?.personalBest;`,
+      `  cape.rankings = entries.map((entry: any) => ({`,
+      `    rank: entry.rank,`,
+      `    name: entry.name,`,
+      `    score: entry.score,`,
+      `    you: Boolean(entry.you ?? entry.isYou ?? entry.isCurrentPlayer),`,
+      `  }));`,
+      `  cape.personalRank = personalBest?.rank;`,
+      `  cape.personalBest = personalBest?.score;`,
+      '  return { cape };',
+      '}',
+      '',
+    ].join('\n');
+  }
+
   return [
     `import { loadPageCape } from '~/lib/cape.ts';`,
     '',
@@ -420,9 +457,12 @@ function renderBlock(block, ctx) {
     case 'brand-chip':
       return `      <BrandChip image={cape.brandChip?.image ?? cape.logo} size="${s.size ?? 'md'}" position="${s.position ?? 'center'}" />`;
     case 'title-block': {
+      const fallbackTitle = jsString(titleFallbackFor(ctx.pageId, ctx));
       const titleExpr = ctx.stepFlow
         ? `currentStep.title || cape.title || ${jsString(titleFallbackFor(ctx.pageId, ctx))}`
-        : `cape.title || ${jsString(titleFallbackFor(ctx.pageId, ctx))}`;
+        : ctx.pageId === 'leaderboard'
+          ? `(cape.title && cape.title !== 'Title' ? cape.title : ${fallbackTitle})`
+          : `cape.title || ${fallbackTitle}`;
       const kickerExpr = ctx.stepFlow ? ' kicker={cape.kicker}' : (s.showKicker ? ' kicker={cape.kicker}' : '');
       const subtitleExpr = ctx.stepFlow
         ? ' subtitle={currentStep.description || cape.subtitle}'
@@ -464,11 +504,11 @@ function renderBlock(block, ctx) {
     case 'compliance-badge':
       return `      <ComplianceBadge label={cape.complianceLabel ?? ''} kind="${s.kind ?? '18+'}" />`;
     case 'rank-list':
-      return "      <RankList rows={cape.rankings ?? []} emptyLabel={cape.emptyState ?? 'No scores yet.'} />";
+      return `      <RankList rows={(cape.rankings ?? []).slice(0, ${Number(s.rows ?? 10)})} emptyLabel={cape.emptyState ?? 'No scores yet.'} />`;
     case 'leaderboard-tabs':
       return `      <LeaderboardTabs tabs={${jsString(s.tabs ?? ['all', 'daily', 'weekly'])}} defaultTab="${s.defaultTab ?? 'all'}" />`;
     case 'personal-best-row':
-      return "      <PersonalBestRow label={cape.youLabel ?? 'You'} rank={cape.personalRank ?? 0} score={cape.personalBest ?? 0} />";
+      return "      <PersonalBestRow label={cape.youLabel ?? 'You'} rank={cape.personalRank} score={cape.personalBest} />";
     case 'top-n-highlight':
       return `      <TopNHighlight label={cape.topNLabel ?? ''} count={${Number(s.count ?? 3)}} />`;
     case 'step-indicator': {
@@ -494,7 +534,7 @@ function renderBlock(block, ctx) {
       // wait-for-engine = loading-video. CAPE seldom has a campaign-specific clip,
       // so fall back to the bundled Livewall intro loop instead of a blank frame.
       const fallbackSrc = (s.onEnd ?? 'auto-advance') === 'wait-for-engine'
-        ? "'/assets/livewall-intro-loadingvid.mp4'"
+        ? "'/assets/livewall-loading.mp4'"
         : "''";
       const bleedProp = ctx.fullBleedVideo ? ' fullBleed={true}' : '';
       return (s.onEnd ?? 'auto-advance') === 'auto-advance'
@@ -529,7 +569,6 @@ function renderBlock(block, ctx) {
 function helpRouteFor(ctx = {}) {
   const routeMap = ctx.routeMap ?? {};
   const pages = ctx.pages ?? [];
-  if (routeMap['howto-play'] || pages.includes('howto-play')) return routeForExit('howto-play', routeMap);
   if (routeMap.tutorial || pages.includes('tutorial')) return routeForExit('tutorial', routeMap);
   return null;
 }

@@ -35,6 +35,23 @@ const collectModels = (node, models = new Set()) => {
   return models;
 };
 
+const findItemByModel = (node, model) => {
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const found = findItemByModel(item, model);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (!node || typeof node !== 'object') return null;
+  if (node.model === model) return node;
+  for (const value of Object.values(node)) {
+    const found = findItemByModel(value, model);
+    if (found) return found;
+  }
+  return null;
+};
+
 // Capture warnings so an unexpected `console.warn` from the builder fails the test.
 const origWarn = console.warn;
 console.warn = (...args) => { warnings.push(args.join(' ')); };
@@ -127,6 +144,80 @@ const blockDrivenMenuTabs = blockDrivenMenuFlow.interfaceSetup.pages.find((p) =>
 const menuTabCount = blockDrivenMenuTabs.filter((t) => t.path === 'menu').length;
 if (menuTabCount !== 1) {
   failures.push(`Block-driven menu test: expected exactly one menu tab, got ${menuTabCount}.`);
+}
+
+const blockDrivenTutorialFlow = buildNextCapeFormat({
+  instances: [{ id: 'tutorial', type: 'tutorial' }],
+  blocksConfig: {
+    tutorial: {
+      blocks: [
+        { name: 'background', settings: {} },
+        { name: 'title-block', settings: { showSubtitle: true } },
+        { name: 'step-indicator', settings: { count: 2, style: 'dots' } },
+        { name: 'nav-controls', settings: { nextExit: 'game' } },
+      ],
+    },
+  },
+});
+const blockDrivenTutorialModels = collectModels(blockDrivenTutorialFlow.interfaceSetup);
+for (const expectedModel of [
+  'copy.tutorial.step1Title',
+  'copy.tutorial.step2Body',
+  'files.tutorial.step2Image',
+  'copy.tutorial.ctaNext',
+  'copy.tutorial.cta',
+]) {
+  if (!blockDrivenTutorialModels.has(expectedModel)) {
+    failures.push(`Block-driven tutorial test: expected model "${expectedModel}" missing.`);
+  }
+}
+for (const unexpectedModel of [
+  'copy.tutorial.step3Title',
+  'copy.tutorial.step3Body',
+  'files.tutorial.step3Image',
+]) {
+  if (blockDrivenTutorialModels.has(unexpectedModel)) {
+    failures.push(`Block-driven tutorial test: unexpected model "${unexpectedModel}" present.`);
+  }
+}
+const tutorialStepOne = findItemByModel(blockDrivenTutorialFlow.interfaceSetup, 'copy.tutorial.step1Title');
+const tutorialStepBody = findItemByModel(blockDrivenTutorialFlow.interfaceSetup, 'copy.tutorial.step1Body');
+const tutorialCtaNext = findItemByModel(blockDrivenTutorialFlow.interfaceSetup, 'copy.tutorial.ctaNext');
+if (tutorialStepOne?.defaultValue?.value !== 'Aim your shot') {
+  failures.push(`Block-driven tutorial seed copy: expected step 1 title "Aim your shot", got "${tutorialStepOne?.defaultValue?.value}".`);
+}
+if (!String(tutorialStepBody?.defaultValue?.value || '').includes('Line up')) {
+  failures.push(`Block-driven tutorial seed copy: expected useful step 1 body copy, got "${tutorialStepBody?.defaultValue?.value}".`);
+}
+if (tutorialCtaNext?.defaultValue?.value !== 'Continue') {
+  failures.push(`Block-driven tutorial seed copy: expected continue CTA "Continue", got "${tutorialCtaNext?.defaultValue?.value}".`);
+}
+
+const blockDrivenLeaderboardFlow = buildNextCapeFormat({
+  instances: [{ id: 'leaderboard', type: 'leaderboard' }],
+  blocksConfig: {
+    leaderboard: {
+      blocks: [
+        { name: 'background', settings: {} },
+        { name: 'title-block', settings: { showKicker: true, showSubtitle: true } },
+        { name: 'rank-list', settings: { rows: 10 } },
+        { name: 'personal-best-row', settings: {} },
+        { name: 'cta-group', settings: { buttons: [{ variant: 'primary', exit: 'landing' }] } },
+      ],
+    },
+  },
+});
+const leaderboardHeadline = findItemByModel(blockDrivenLeaderboardFlow.interfaceSetup, 'copy.leaderboard.headline');
+const leaderboardSubline = findItemByModel(blockDrivenLeaderboardFlow.interfaceSetup, 'copy.leaderboard.subline');
+const leaderboardEmpty = findItemByModel(blockDrivenLeaderboardFlow.interfaceSetup, 'copy.leaderboard.emptyState');
+if (leaderboardHeadline?.defaultValue?.value !== 'Leaderboard') {
+  failures.push(`Block-driven leaderboard seed copy: expected headline "Leaderboard", got "${leaderboardHeadline?.defaultValue?.value}".`);
+}
+if (!String(leaderboardSubline?.defaultValue?.value || '').includes('score stacks up')) {
+  failures.push(`Block-driven leaderboard seed copy: expected useful subline, got "${leaderboardSubline?.defaultValue?.value}".`);
+}
+if (!String(leaderboardEmpty?.defaultValue?.value || '').includes('No scores yet')) {
+  failures.push(`Block-driven leaderboard seed copy: expected empty-state copy, got "${leaderboardEmpty?.defaultValue?.value}".`);
 }
 
 const tanStackFlow = buildTanStackCapeFormat({

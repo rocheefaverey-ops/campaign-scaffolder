@@ -686,6 +686,13 @@ function blockListFromConfig(config) {
   return [];
 }
 
+function tutorialStepCount(blocks = []) {
+  const stepIndicator = blocks.find((b) => b.name === 'step-indicator');
+  const rawCount = Number(stepIndicator?.settings?.count ?? 3);
+  if (!Number.isFinite(rawCount)) return 3;
+  return Math.min(6, Math.max(1, Math.floor(rawCount)));
+}
+
 function fieldKeyFromPath(path) {
   return `block-${path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase()}`;
 }
@@ -724,38 +731,93 @@ function compatModelForBinding(binding, { pageId, pageType }) {
 function defaultValueForBinding(binding, context = {}) {
   const pageId = context.pageId ?? '';
   const projectName = context.projectName || 'Livewall';
+  const displayName = projectName
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (m) => m.toUpperCase()) || 'Livewall';
   const leaf = binding.path.split('.').filter(Boolean).at(-1) ?? binding.key;
+  const stepMatch = leaf.match(/^step(\d+)(Title|Body)$/);
+  if (stepMatch) {
+    const step = Number(stepMatch[1]);
+    const kind = stepMatch[2];
+    const titles = ['Aim your shot', 'Take your chance', 'Climb the leaderboard', 'Claim your reward', 'Play again'];
+    const bodies = [
+      'Line up your move and get ready before the timer runs down.',
+      'React quickly, keep control, and score as many points as you can.',
+      'Every point counts. Push for a better score and move up the ranking.',
+      'Register your details to save your score and unlock your reward.',
+      'Come back for another run and try to beat your best score.',
+    ];
+    const index = Math.max(0, step - 1);
+    return kind === 'Title' ? (titles[index] ?? `Step ${step}`) : (bodies[index] ?? `Complete step ${step} to continue.`);
+  }
   if (leaf === 'title') {
-    if (pageId === 'landing') return `Welcome to ${projectName}`;
+    if (pageId === 'landing') return `Ready to play ${displayName}?`;
     if (pageId === 'tutorial') return 'How to play';
-    if (pageId === 'register') return 'Register';
+    if (pageId === 'register') return 'Save your score';
     if (pageId === 'result') return 'Your score';
-    if (pageId === 'loading') return projectName;
-    return 'Title';
+    if (pageId === 'leaderboard') return 'Leaderboard';
+    if (pageId === 'voucher') return 'Your voucher';
+    if (pageId === 'end') return 'Thank you';
+    if (pageId === 'loading') return `Loading ${displayName}`;
+    return displayName;
   }
   if (leaf === 'subtitle') {
-    if (pageId === 'landing') return 'Are you ready to play?';
-    if (pageId === 'tutorial') return 'Follow the steps before you start.';
-    if (pageId === 'register') return 'Enter your details to continue.';
-    if (pageId === 'result') return 'Well played.';
+    if (pageId === 'landing') return 'Jump in, set your score, and see how far you can get.';
+    if (pageId === 'tutorial') return 'Three quick tips before you start.';
+    if (pageId === 'register') return 'Leave your details so we can save your score.';
+    if (pageId === 'result') return 'Check your result and continue to the next step.';
+    if (pageId === 'leaderboard') return 'See how your score stacks up against other players.';
+    if (pageId === 'voucher') return 'Show this screen to claim your reward.';
+    if (pageId === 'end') return `Thanks for playing ${displayName}.`;
     return '';
   }
   if (leaf === 'kicker') {
-    if (pageId === 'result') return 'Result';
-    if (pageId === 'tutorial') return 'Tutorial';
+    if (pageId === 'landing') return displayName;
+    if (pageId === 'result') return 'Final score';
+    if (pageId === 'tutorial') return 'How to play';
+    if (pageId === 'register') return 'Register';
+    if (pageId === 'leaderboard') return 'Top scores';
+    if (pageId === 'voucher') return 'Reward';
+    if (pageId === 'end') return 'Finished';
     return '';
   }
   if (leaf === 'cta') {
     if (pageId === 'landing') return 'Play now';
     if (pageId === 'register') return 'Submit';
-    if (pageId === 'result') return 'Play again';
+    if (pageId === 'result') return 'Continue';
+    if (pageId === 'leaderboard') return 'Play again';
+    if (pageId === 'voucher') return 'View leaderboard';
     return 'Continue';
   }
-  if (leaf === 'nextLabel' || leaf === 'ctaLabel') return 'Continue';
+  if (leaf === 'lastLabel') return 'Start game';
+  if (leaf === 'nextLabel' || leaf === 'ctaLabel' || leaf === 'ctaNext') return 'Continue';
   if (leaf === 'prevLabel') return 'Back';
   if (leaf === 'loadingLabel' || leaf === 'fallbackLabel') return 'Loading';
-  if (leaf === 'tagline') return 'Loading game...';
-  if (leaf === 'body') return '';
+  if (leaf === 'tagline') return `Loading ${displayName}...`;
+  if (leaf === 'scoreLabel') return 'Score';
+  if (leaf === 'emptyState') return 'No scores yet. Be the first to set one.';
+  if (leaf === 'youLabel') return 'You';
+  if (leaf === 'topNLabel') return 'Top players';
+  if (leaf === 'codeLabel') return 'Voucher code';
+  if (leaf === 'codeCopiedConfirmation') return 'Copied';
+  if (leaf === 'qrInstructions') return 'Scan this QR code at the counter.';
+  if (leaf === 'statusLabel') return 'Registered';
+  if (leaf === 'complianceLabel') return '18+';
+  if (leaf === 'skipLabel') return 'Skip';
+  if (leaf === 'sponsorText') return 'Powered by Livewall';
+  if (leaf === 'preGateTitle') return 'Before you continue';
+  if (leaf === 'preGateConfirm') return 'Continue';
+  if (leaf === 'pauseTitle') return 'Paused';
+  if (leaf === 'body') {
+    if (pageId === 'tutorial') return 'Swipe or drag to aim, then release to take your shot.';
+    if (pageId === 'result') return 'Every point counts. Register to save your score and continue.';
+    if (pageId === 'register') return 'We only use your details for this campaign.';
+    if (pageId === 'voucher') return 'Keep this screen open and show the code when asked.';
+    if (pageId === 'end') return 'You can close this screen or start again from the menu.';
+    return '';
+  }
   return '';
 }
 
@@ -816,6 +878,26 @@ export function emitBlockDrivenFields(pageType, blocks, pageId = pageType, optio
 function nextBlockDrivenTab(instanceId, pageType, blocks, options = {}) {
   const title = instanceTitle(pageType[0].toUpperCase() + pageType.slice(1), pageType, instanceId);
   const fields = emitBlockDrivenFields(pageType, blocks, instanceId, options);
+  if (pageType === 'tutorial' || pageType === 'onboarding') {
+    const seen = new Set(fields.map((field) => field.blockBindingPath ?? field.name));
+    const extraBindings = [
+      { key: 'nextLabel', path: 'tutorial.ctaNext', type: 'i18n-string', description: 'Continue button' },
+      { key: 'lastLabel', path: 'tutorial.cta', type: 'i18n-string', description: 'Final button' },
+      { key: 'kicker', path: 'tutorial.kicker', type: 'i18n-string', description: 'Kicker' },
+    ];
+    for (let n = 1; n <= tutorialStepCount(blocks); n += 1) {
+      extraBindings.push(
+        { key: `step${n}Title`, path: `tutorial.step${n}Title`, type: 'i18n-string', description: `Step ${n} title` },
+        { key: `step${n}Body`, path: `tutorial.step${n}Body`, type: 'i18n-string', description: `Step ${n} body` },
+        { key: `step${n}Image`, path: `tutorial.step${n}Image`, type: 'image', description: `Step ${n} image` },
+      );
+    }
+    for (const binding of extraBindings) {
+      if (seen.has(binding.path)) continue;
+      seen.add(binding.path);
+      fields.push(bindingToField(binding, { pageType, pageId: instanceId, projectName: options.projectName }));
+    }
+  }
   return tab(tabKey('next-block', pageType, instanceId), title, instanceId, [
     block(blockKey('next-block', pageType, instanceId, 'fields'), 'Block content', fields),
   ], true);
@@ -826,7 +908,7 @@ const VIDEO_PAGE_IDS = new Set(['video', 'intro-video', 'loading-video', 'ad-vid
 export const KNOWN_PAGE_TYPES = new Set([
   'intro-video', 'loading-video', 'ad-video',
   'loading', 'landing', 'tutorial', 'result',
-  'leaderboard', 'register', 'voucher', 'game', 'end', 'menu', 'howto-play',
+  'leaderboard', 'register', 'voucher', 'game', 'end', 'menu',
 ]);
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -919,9 +1001,6 @@ export function buildNextCapeFormat({
         // game UI is engine-driven — intentionally no CAPE tab
         break;
       case 'end':
-        pageTabs.push(nextBlockDrivenTab(inst.id, type, [], { projectName }));
-        break;
-      case 'howto-play':
         pageTabs.push(nextBlockDrivenTab(inst.id, type, [], { projectName }));
         break;
       case 'menu':

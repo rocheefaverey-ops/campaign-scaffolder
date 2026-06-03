@@ -6,7 +6,7 @@
  * default route map used by scaffold.js for routeMap construction.
  */
 
-export const TS_ALL_PAGES = ['loading', 'landing', 'tutorial', 'game', 'register', 'result', 'leaderboard', 'voucher', 'end', 'intro-video', 'loading-video', 'ad-video', 'howto-play', 'menu'];
+export const TS_ALL_PAGES = ['loading', 'landing', 'tutorial', 'game', 'register', 'result', 'leaderboard', 'voucher', 'end', 'intro-video', 'loading-video', 'ad-video', 'menu'];
 
 export const TS_PAGE_ROUTES = {
   loading:         '/loading',
@@ -21,6 +21,5 @@ export const TS_PAGE_ROUTES = {
   'intro-video':   '/intro-video',
   'loading-video': '/loading-video',
   'ad-video':      '/ad-video',
-  'howto-play':    '/howto-play',
   menu:            '/menu',
 };

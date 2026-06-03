@@ -78,7 +78,7 @@ describe('buildTsBlockDrivenPage - loading-video', () => {
       pages: ['landing', 'loading-video', 'game'],
       routeMap: { 'loading-video': '/loading-video', game: '/game' },
     });
-    assert.match(route, /cape\.video \?\? '\/assets\/livewall-intro-loadingvid\.mp4'/);
+    assert.match(route, /cape\.video \?\? '\/assets\/livewall-loading\.mp4'/);
   });
 });
 
@@ -146,10 +146,22 @@ describe('buildTsBlockDrivenLoader - tutorial steps', () => {
     assert.match(loader, /"key":"step1Title","path":"tutorial\.step1Title"/);
     assert.match(loader, /"key":"step1Body","path":"tutorial\.step1Body"/);
     assert.match(loader, /"key":"step1Image","path":"tutorial\.step1Image"/);
-    assert.match(loader, /"key":"step5Image","path":"tutorial\.step5Image"/);
+    assert.match(loader, /"key":"step3Image","path":"tutorial\.step3Image"/);
+    assert.doesNotMatch(loader, /step4/);
+    assert.doesNotMatch(loader, /step5/);
+    assert.match(loader, /Array\.from\(\{ length: 3 \}/);
     assert.match(loader, /"key":"nextLabel","path":"tutorial\.ctaNext"/);
     assert.match(loader, /"key":"lastLabel","path":"tutorial\.cta"/);
     assert.match(loader, /return \{ cape, steps \}/);
+  });
+
+  it('honors a custom step-indicator count', () => {
+    const loader = buildTsBlockDrivenLoader('tutorial', 'tutorial', [
+      { name: 'step-indicator', settings: { count: 2, style: 'dots' } },
+    ]);
+    assert.match(loader, /"key":"step2Image","path":"tutorial\.step2Image"/);
+    assert.doesNotMatch(loader, /step3/);
+    assert.match(loader, /Array\.from\(\{ length: 2 \}/);
   });
 
   it('does not emit step bindings for non-onboarding pages', () => {
@@ -217,5 +229,40 @@ describe('buildTsBlockDrivenPage - block coverage', () => {
     assert.match(route, /router\.navigate/);
     assert.match(route, /durationSec=\{45\}/);
     assert.match(route, /defaultTab="all"/);
+  });
+
+  it('honors numeric display limits from block settings', () => {
+    const route = buildTsBlockDrivenPage('leaderboard', 'leaderboard', [
+      { name: 'title-block', settings: { showKicker: true, showSubtitle: true } },
+      { name: 'rank-list', settings: { rows: 4 } },
+      { name: 'personal-best-row', settings: {} },
+      { name: 'stats-table', settings: { count: 2 } },
+      { name: 'top-n-highlight', settings: { count: 5 } },
+    ], {});
+
+    assert.match(route, /cape\.title && cape\.title !== 'Title' \? cape\.title : "Leaderboard"/);
+    assert.match(route, /rows=\{\(cape\.rankings \?\? \[\]\)\.slice\(0, 4\)\}/);
+    assert.match(route, /rank=\{cape\.personalRank\} score=\{cape\.personalBest\}/);
+    assert.doesNotMatch(route, /personalRank \?\? 0/);
+    assert.doesNotMatch(route, /personalBest \?\? 0/);
+    assert.match(route, /<StatsTable rows=\{cape\.stats \?\? \[\]\} count=\{2\}/);
+    assert.match(route, /<TopNHighlight label=\{cape\.topNLabel \?\? ''\} count=\{5\}/);
+  });
+});
+
+describe('buildTsBlockDrivenLoader - leaderboard data', () => {
+  it('loads API leaderboard rows into the cape data consumed by leaderboard blocks', () => {
+    const loader = buildTsBlockDrivenLoader('leaderboard', 'leaderboard', [
+      { name: 'title-block', settings: { showKicker: true, showSubtitle: true } },
+      { name: 'rank-list', settings: { rows: 10 } },
+      { name: 'personal-best-row', settings: {} },
+    ]);
+
+    assert.match(loader, /import \{ getLeaderboardRequest \} from '~\/server\/api\/endpoints\/Leaderboard\.ts'/);
+    assert.match(loader, /getLeaderboardRequest\(\{ data: \{ type: 'total', offset: 0, limit: 10 \} \}\)/);
+    assert.match(loader, /cape\.rankings = entries\.map/);
+    assert.match(loader, /you: Boolean\(entry\.you \?\? entry\.isYou \?\? entry\.isCurrentPlayer\)/);
+    assert.match(loader, /cape\.personalRank = personalBest\?\.rank/);
+    assert.match(loader, /cape\.personalBest = personalBest\?\.score/);
   });
 });

@@ -2052,6 +2052,29 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
     warn('env.dist not found — create .env manually');
   }
 
+  // 3a. Seed local game fixtures. These are intentionally project-local data,
+  // not CAPE fields, so the real API can replace them later without changing
+  // campaign content.
+  if (selectedGame?.id) {
+    const leaderboardFixtureSrc = join(SCAFFOLDER_ROOT, 'games', selectedGame.id, 'leaderboard.json');
+    if (existsSync(leaderboardFixtureSrc)) {
+      const fixturesDir = join(frontendDir, 'src', 'server', 'api', 'fixtures');
+      const leaderboardFixtureDest = join(fixturesDir, 'LeaderboardFixture.ts');
+      try {
+        const fixture = JSON.parse(readFileSync(leaderboardFixtureSrc, 'utf8'));
+        mkdirSync(fixturesDir, { recursive: true });
+        writeFileSync(
+          leaderboardFixtureDest,
+          `export const leaderboardFixture = ${JSON.stringify(fixture, null, 2)};\n`,
+          'utf8',
+        );
+        ok(`Leaderboard fixture seeded (${selectedGame.id})`);
+      } catch (e) {
+        warn(`Could not seed leaderboard fixture for ${selectedGame.id}: ${e.message}`);
+      }
+    }
+  }
+
   // 3b. Remove excluded pages + generate page builder output
   const normalizedPages = pages;
   const normalizedPagesForRoutes = [...new Set([...normalizedPages, 'menu'])];
@@ -2069,7 +2092,6 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
     'intro-video',
     'loading-video',
     'ad-video',
-    'howto-play',
   ];
   const CLEANUP_TS = [...BUILDABLE_TS, 'game'];
   const routeFileFor = (pageId) => `${pageId}.tsx`;
@@ -3428,7 +3450,7 @@ function writeChecklistFile(outputDir, cfg) {
     const menuRows = [
       ['home', 'Home', '/landing'],
       ['resume', 'Resume game', routeMap.game],
-      ['howToPlay', 'How to play', '/onboarding'],
+      ['howToPlay', 'How to play', '/tutorial'],
       ['leaderboard', 'Leaderboard', '/leaderboard'],
       ['voucher', 'My voucher', '/voucher'],
       ['terms', 'Terms', 'general.legal.termsUrl'],

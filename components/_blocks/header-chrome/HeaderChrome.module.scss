@@ -23,13 +23,19 @@
   justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
+  flex-shrink: 0;
   border-radius: 50%;
   border: 0;
   background: var(--chrome-bg, rgba(14, 14, 14, 0.42));
   color: #fff;
   cursor: pointer;
   backdrop-filter: blur(10px);
+  transition: background 0.15s ease, transform 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
 }
+
+.slot:hover { background: var(--chrome-bg-hover, rgba(14, 14, 14, 0.58)); }
+.slot:active { transform: scale(0.92); }
 
 .slot svg {
   width: 1.35rem;
@@ -37,19 +43,25 @@
 }
 
 .textIcon {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 850;
   line-height: 1;
+  font-family: system-ui, sans-serif;
 }
 
+/* Close button gets a slightly distinct treatment */
+.slot--close .textIcon { font-size: 1.3rem; }
+
 .dot {
-  width: 0.7rem;
-  height: 0.7rem;
+  width: 0.55rem;
+  height: 0.55rem;
   border-radius: 50%;
-  background: currentColor;
+  background: var(--color-primary, #d1ff00);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary, #d1ff00) 60%, transparent);
 }
 
 .slotPlaceholder {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
 }

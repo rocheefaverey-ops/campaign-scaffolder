@@ -1,13 +1,25 @@
+/* Personal best row — lime highlight at the bottom of the leaderboard.
+   Matches pp-lb__personal from the wizard preview. */
 .row {
-  width: min(28rem, calc(100% - 2rem));
-  margin: 0.75rem auto;
+  width: 100%;
+  margin: 0.35rem auto 0;
   display: grid;
-  grid-template-columns: 2.5rem 1fr auto;
-  gap: 0.75rem;
+  grid-template-columns: 1.75rem 1fr auto;
+  gap: 0.6rem;
   align-items: center;
-  padding: 0.75rem 0.9rem;
-  border-radius: 0.7rem;
-  background: currentColor;
-  color: var(--bg, #fff);
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--color-primary, #d1ff00);
+  color: var(--text-primary, #0e0e0e);
+  font-size: 0.8rem;
+  text-shadow: none;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-primary, #d1ff00) 35%, transparent);
 }
-.row em { font-style: normal; font-weight: 700; }
+
+.row span { font-weight: 700; }
+.row strong { font-weight: 600; }
+.row em {
+  font-style: normal;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

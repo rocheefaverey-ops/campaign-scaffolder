@@ -86,7 +86,7 @@ export const DEFAULT_PAGE_BLOCKS = {
     'score-illustration': block(false, {}),
     'stats-table': block(false, { count: 3, rows: [{ label: 'Score', value: 'score' }, { label: 'Rank', value: 'rank' }, { label: 'Best', value: 'highScore' }] }),
     'status-chip': block(false, { kind: 'registered' }),
-    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'voucher' }, { variant: 'secondary', exit: 'game' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'game' }] }),
     'compliance-badge': block(false, { kind: '18+' }),
     'footer-link-list': block(false, {}),
   }),
@@ -151,7 +151,6 @@ export const DEFAULT_PAGE_BLOCKS = {
 };
 
 DEFAULT_PAGE_BLOCKS.tutorial = DEFAULT_PAGE_BLOCKS.onboarding;
-DEFAULT_PAGE_BLOCKS['howto-play'] = DEFAULT_PAGE_BLOCKS.onboarding;
 DEFAULT_PAGE_BLOCKS['intro-video'] = DEFAULT_PAGE_BLOCKS.video;
 DEFAULT_PAGE_BLOCKS['ad-video'] = DEFAULT_PAGE_BLOCKS.video;
 

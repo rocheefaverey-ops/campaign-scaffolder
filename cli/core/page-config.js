@@ -1,6 +1,6 @@
 export const GAME_ENGINES = ['unity', 'r3f', 'phaser', 'memory', 'video', 'pure-react'];
 
-export const ALL_PAGES = ['loading', 'landing', 'intro-video', 'tutorial', 'howto-play', 'loading-video', 'game', 'result', 'ad-video', 'register', 'leaderboard', 'voucher', 'end', 'menu'];
+export const ALL_PAGES = ['loading', 'landing', 'intro-video', 'tutorial', 'loading-video', 'game', 'result', 'ad-video', 'register', 'leaderboard', 'voucher', 'end', 'menu'];
 export const VIDEO_PAGE_IDS = new Set(['video', 'intro-video', 'loading-video', 'ad-video']);
 export const EXPLICIT_VIDEO_PAGES = ['intro-video', 'loading-video', 'ad-video'];
 
@@ -32,7 +32,6 @@ export const PAGE_ROUTES = {
   'loading-video': '/loading-video',
   'ad-video': '/ad-video',
   tutorial: '/tutorial',
-  'howto-play': '/howto-play',
   register: '/register',
   game: '/gameplay',
   result: '/result',

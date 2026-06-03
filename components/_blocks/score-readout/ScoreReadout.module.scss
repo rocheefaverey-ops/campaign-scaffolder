@@ -1,8 +1,50 @@
-.readout {
-  display: grid;
-  place-items: center;
-  gap: 0.2rem;
-  padding: 1rem;
+/* Score readout — glass plate with labeled score + optional high-score pill.
+   Matches the wizard preview's pp-score-plate treatment. */
+.plate {
+  margin-top: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04)),
+    color-mix(in srgb, var(--color-primary, #d1ff00) 8%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(14, 14, 14, 0.4);
+  animation: scoreReveal 0.5s 0.15s ease both;
 }
-.readout span, .readout small { opacity: 0.75; }
-.readout strong { font-size: clamp(2.25rem, 14vw, 5rem); line-height: 1; }
+
+.label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.value {
+  font-size: clamp(1.75rem, 10vw, 3rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.025em;
+}
+
+.best {
+  margin-top: 0.3rem;
+  align-self: flex-start;
+  background: var(--color-primary, #d1ff00);
+  color: var(--text-primary, #0e0e0e);
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-shadow: none;
+}
+
+@keyframes scoreReveal {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}

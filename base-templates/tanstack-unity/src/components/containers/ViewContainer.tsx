@@ -16,10 +16,12 @@ export function ViewContainer({ children }: IDefaultProps) {
   const b = branding as Record<string, unknown> | null;
   const logoUrl = desktop?.logoUrl
                || b?.logoUrl as string | undefined
-               || b?.['general.header.logo'] as string | undefined;
+               || b?.['general.header.logo'] as string | undefined
+               || '/assets/livewall-animated-logo.webp';
   const bgUrl   = desktop?.backgroundUrl
                || b?.backgroundUrl as string | undefined
-               || b?.['desktop.backgroundIllustration'] as string | undefined;
+               || b?.['desktop.backgroundIllustration'] as string | undefined
+               || '/assets/livewall-background-desktop.mp4';
   const hasVideoBg = !!bgUrl && /\.(mp4|webm|mov)$/i.test(bgUrl);
 
   const description = copy.desktop.description?.trim() || 'Scan the QR code to play on your mobile device';

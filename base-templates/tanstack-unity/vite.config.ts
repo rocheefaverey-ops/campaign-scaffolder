@@ -36,12 +36,12 @@ const config = defineConfig(() => {
               return source;
             }
 
-            const isComponentModule = f.includes('/src/components/') && f.endsWith('.module.scss');
-            const layerOpen = isComponentModule ? '@layer components {\n' : '';
-            const layerClose = isComponentModule ? '\n}' : '';
-
-            // Keep shared variables available while making component modules easier to override from routes.
-            return `@use "~/assets/styles/main.scss" as *;\n@layer reset, components;\n${layerOpen}${source}${layerClose}`;
+            // Shared SCSS variables are available in every module.
+            // No @layer wrapping — CSS modules already scope by hashed class
+            // names, and wrapping in @layer components causes Tailwind 4's
+            // @layer base preflight to beat component styles (base is declared
+            // after components when layers collide).
+            return `@use "~/assets/styles/main.scss" as *;\n${source}`;
           },
         },
       },

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildBlockDrivenLanding, buildBlockDrivenLoading, buildBlockDrivenVideo } from '../page-builder.js';
+import { buildBlockDrivenLanding, buildBlockDrivenLoading, buildBlockDrivenPage, buildBlockDrivenVideo } from '../page-builder.js';
 
 describe('buildBlockDrivenLanding', () => {
   const minimalBlocks = [
@@ -101,5 +101,32 @@ describe('buildBlockDrivenLanding', () => {
     ]);
     assert.doesNotMatch(out, /onEnded=\{\(\) => router\.push/);
     assert.doesNotMatch(out, /useRouter/);
+  });
+
+  it('uses the current loading video fallback asset', () => {
+    const out = buildBlockDrivenVideo([
+      { name: 'background', settings: { kind: 'solid' } },
+      { name: 'header-chrome', settings: { leftSlot: 'none', rightSlot: 'none' } },
+      { name: 'video-player', settings: { muted: true, loop: true, onEnd: 'wait-for-engine' } },
+      { name: 'fallback-indicator', settings: {} },
+    ]);
+    assert.match(out, /cape\.video \?\? '\/assets\/livewall-loading\.mp4'/);
+    assert.doesNotMatch(out, /livewall-intro-loadingvid/);
+  });
+
+  it('does not leak generic leaderboard placeholders', () => {
+    const out = buildBlockDrivenPage('leaderboard', 'leaderboard', [
+      { name: 'background', settings: { kind: 'image' } },
+      { name: 'title-block', settings: { showKicker: true, showSubtitle: true } },
+      { name: 'rank-list', settings: { rows: 4 } },
+      { name: 'personal-best-row', settings: {} },
+    ]);
+
+    assert.match(out, /cape\.title && cape\.title !== 'Title' \? cape\.title : "Leaderboard"/);
+    assert.match(out, /rows=\{\(cape\.rankings \?\? \[\]\)\.slice\(0, 4\)\}/);
+    assert.match(out, /rank=\{cape\.personalRank\} score=\{cape\.personalBest\}/);
+    assert.doesNotMatch(out, /title=\{cape\.title \?\? 'Title'\}/);
+    assert.doesNotMatch(out, /personalRank \?\? 0/);
+    assert.doesNotMatch(out, /personalBest \?\? 0/);
   });
 });

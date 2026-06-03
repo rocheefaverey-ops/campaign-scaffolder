@@ -75,6 +75,19 @@ function settingsOf(block) {
   return block?.settings ?? {};
 }
 
+function titleFallbackFor(pageId, options = {}) {
+  const projectName = options.projectName || 'Livewall';
+  if (pageId === 'landing') return `Welcome to ${projectName}`;
+  if (pageId === 'loading') return projectName;
+  if (pageId === 'result') return 'Your score';
+  if (pageId === 'register') return 'Register';
+  if (pageId === 'tutorial' || pageId === 'onboarding') return 'How to play';
+  if (pageId === 'leaderboard') return 'Leaderboard';
+  if (pageId === 'voucher') return 'Your voucher';
+  if (pageId === 'end') return 'Thank you';
+  return String(pageId || 'Campaign').charAt(0).toUpperCase() + String(pageId || 'Campaign').slice(1);
+}
+
 /**
  * Move the block named `target` so it renders immediately after the block named
  * `anchor`. Used when a block exposes a "position relative to another" setting
@@ -200,7 +213,7 @@ export function buildBlockDrivenPage(pageId, pageType, blocks, options = {}) {
   const videoPlayerBlock = innerBlocks.find((b) => b.name === 'video-player');
   const fullBleedVideoBlock = isVideoPage ? videoPlayerBlock : null;
 
-  const ctx = { pageId, pageType: type, routeMap: options.routeMap ?? {}, brandInHeader, stepFlow };
+  const ctx = { pageId, pageType: type, routeMap: options.routeMap ?? {}, brandInHeader, stepFlow, projectName: options.projectName };
   const visibleOrderedBlocks = fullBleedVideoBlock
     ? orderedBlocks.filter((b) => b !== fullBleedVideoBlock)
     : orderedBlocks;
@@ -302,8 +315,13 @@ function renderBlock(block, ctx) {
     }
     case 'brand-chip':
       return `      <BrandChip image={cape.brandChip?.image ?? cape.logo} size="${s.size ?? 'md'}" position="${s.position ?? 'center'}" />`;
-    case 'title-block':
-      return `      <TitleBlock${s.showKicker ? ' kicker={cape.kicker}' : ''} title={cape.title ?? 'Title'}${s.showSubtitle ? ' subtitle={cape.subtitle}' : ''} />`;
+    case 'title-block': {
+      const fallbackTitle = jsString(titleFallbackFor(ctx.pageId, ctx));
+      const titleExpr = ctx.pageId === 'leaderboard'
+        ? `(cape.title && cape.title !== 'Title' ? cape.title : ${fallbackTitle})`
+        : `cape.title ?? ${fallbackTitle}`;
+      return `      <TitleBlock${s.showKicker ? ' kicker={cape.kicker}' : ''} title={${titleExpr}}${s.showSubtitle ? ' subtitle={cape.subtitle}' : ''} />`;
+    }
     case 'body-copy':
       return '      <BodyCopy text={cape.body ?? cape.subline ?? ""} />';
     case 'cta-group':
@@ -335,7 +353,7 @@ function renderBlock(block, ctx) {
     case 'compliance-badge':
       return `      <ComplianceBadge label={cape.complianceLabel} kind="${s.kind ?? '18+'}" />`;
     case 'rank-list':
-      return "      <RankList rows={cape.rankings ?? []} emptyLabel={cape.emptyState ?? 'No scores yet.'} />";
+      return `      <RankList rows={(cape.rankings ?? []).slice(0, ${Number(s.rows ?? 10)})} emptyLabel={cape.emptyState ?? 'No scores yet.'} />`;
     case 'leaderboard-tabs':
       return `      <LeaderboardTabs tabs={${jsString(s.tabs ?? ['all', 'daily', 'weekly'])}} defaultTab="${s.defaultTab ?? 'all'}" />`;
     case 'personal-best-row':
@@ -364,7 +382,7 @@ function renderBlock(block, ctx) {
       // wait-for-engine = loading-video. CAPE seldom has a campaign-specific clip,
       // so fall back to the bundled Livewall intro loop instead of a blank frame.
       const fallbackSrc = (s.onEnd ?? 'auto-advance') === 'wait-for-engine'
-        ? " ?? '/assets/livewall-intro-loadingvid.mp4'"
+        ? " ?? '/assets/livewall-loading.mp4'"
         : '';
       const bleedProp = ctx.fullBleedVideo ? ' fullBleed={true}' : '';
       return (s.onEnd ?? 'auto-advance') === 'auto-advance'

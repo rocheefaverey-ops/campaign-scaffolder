@@ -42,75 +42,57 @@ const CAPE_FILE_TYPES = {
 // To refresh: upload via uploadAsset() and replace the url + uuid below.
 const _FAVICON      = { url: 'https://storage-acceptance.bycape.io/account-60/upload/1152b463-134b-4862-8326-b6e287e12013_favicon.svg',                  extension: 'svg',  title: 'favicon',               fileName: 'favicon.svg',                size: 258,      type: 'image' };
 const _MARK         = { url: 'https://storage-acceptance.bycape.io/account-60/upload/1269b875-9033-4f15-82a1-057f0a763eaf_logo-livewall-mark.svg',       extension: 'svg',  title: 'logo-livewall-mark',    fileName: 'logo-livewall-mark.svg',     size: 264,      type: 'image' };
-const _LOGO_ZWART   = { url: 'https://storage-acceptance.bycape.io/account-60/upload/53b25b87-abc6-41a8-8b1b-ea2fa6737cd5_livewall-logo-zwart.webp',     extension: 'webp', title: 'livewall-logo-zwart',   fileName: 'livewall-logo-zwart.webp',   size: 692558,   type: 'image' };
+const _LOGO_ZWART   = { url: 'https://storage-acceptance.bycape.io/account-60/upload/e812b138-93c6-4ee7-b844-4ef22a361245_livewall-animated-logo.webp',  extension: 'webp', title: 'livewall-animated-logo', fileName: 'livewall-animated-logo.webp', size: 692558,  type: 'image' };
 const _HERO_MOB     = { url: 'https://storage-acceptance.bycape.io/account-60/upload/a8f3f0e6-de67-4ffb-aa90-c2cd9217492c_hero-mobile.png',              extension: 'png',  title: 'hero-mobile',           fileName: 'hero-mobile.png',            size: 4940471,  type: 'image' };
-const _AMBIENT_BG   = { url: 'https://storage-acceptance.bycape.io/account-60/upload/8f1ef5bb-5f40-4af5-a006-50de236e6bff_ambient-bg.mp4',              extension: 'mp4',  title: 'ambient-bg',            fileName: 'ambient-bg.mp4',             size: 1244781,  type: 'video' };
-const _HEADER_VIDEO = { url: 'https://storage-acceptance.bycape.io/account-60/upload/8c9d3de1-bc42-4a8f-bc5f-e204a6cd1dc7_header-video.mp4',            extension: 'mp4',  title: 'header-video',          fileName: 'header-video.mp4',           size: 14254076, type: 'video' };
-const _VIDEO        = { url: 'https://storage-acceptance.bycape.io/account-60/upload/af4c37b4-6782-4948-9a86-e5adecb1664e_intro-livewall.mp4',          extension: 'mp4',  title: 'intro-livewall',        fileName: 'intro-livewall.mp4',         size: 7390553,  type: 'video' };
-const _BACKGROUND_VIDEO  = { url: 'https://storage-acceptance.bycape.io/account-60/upload/6eefdf4f-c446-4e3b-9134-c902f4842293_background-loop.mp4',             extension: 'mp4',  title: 'background-loop',       fileName: 'background-loop.mp4',        size: 4659357,  type: 'video' };
-// _LOADING_VIDEO: dedicated Livewall loading-screen video. The corresponding file
-// is bundled at base-templates/*/public/assets/livewall-intro-loadingvid.mp4 so
-// the dev/no-CAPE fallback also works.
-const _LOADING_VIDEO = { url: 'https://storage-acceptance.bycape.io/account-60/upload/a771bf44-8f4e-4527-883a-1bcb0eaafc3a_livewall-intro-loadingvid.mp4', extension: 'mp4', title: 'livewall-intro-loadingvid', fileName: 'livewall-intro-loadingvid.mp4', size: 7390553, type: 'video' };
+// Mobile background loop — the default hero background for all campaign pages.
+// Bundled at public/assets/livewall-background-mobile.mp4 as the offline fallback.
+const _BG_MOBILE    = { url: 'https://storage-acceptance.bycape.io/account-60/upload/00c20e83-9ca3-4e2f-9d19-5b7c412962a3_livewall-background-mobile.mp4', extension: 'mp4', title: 'livewall-background-mobile', fileName: 'livewall-background-mobile.mp4', size: 4659357, type: 'video' };
+// Desktop background loop — plays behind the phone frame + QR panel.
+const _BG_DESKTOP   = { url: 'https://storage-acceptance.bycape.io/account-60/upload/4618fd07-5ce3-472d-a3ba-c223f63489d6_livewall-background-desktop.mp4', extension: 'mp4', title: 'livewall-background-desktop', fileName: 'livewall-background-desktop.mp4', size: 14254076, type: 'video' };
+// Loading screen video — plays on loading-video page while Unity boots.
+// Bundled at public/assets/livewall-loading.mp4 as the offline fallback.
+const _LOADING_VIDEO = { url: 'https://storage-acceptance.bycape.io/account-60/upload/a0bf64d2-12cd-4765-858f-d67116467c39_livewall-loading.mp4', extension: 'mp4', title: 'livewall-loading', fileName: 'livewall-loading.mp4', size: 7390553, type: 'video' };
+// Intro video — the "watch before you play" video (intro-video / ad-video pages).
+const _INTRO_VIDEO  = { url: 'https://storage-acceptance.bycape.io/account-60/upload/af4c37b4-6782-4948-9a86-e5adecb1664e_intro-livewall.mp4',          extension: 'mp4',  title: 'intro-livewall',        fileName: 'intro-livewall.mp4',         size: 7390553,  type: 'video' };
 
 const TEMPLATE_ASSET_SEEDS = [
-  // ── Global brand ──────────────────────────────────────────────────────────
+  // ── Global brand (always in format) ───────────────────────────────────────
   { capeFile: _FAVICON,      fields: ['settings.branding.favicon', 'general.header.menuBtnBg', 'general.header.menuIcon'] },
   { capeFile: _MARK,         fields: ['general.header.logo'] },
   { capeFile: _LOGO_ZWART,   fields: ['desktop.logo'] },
-  { capeFile: _HEADER_VIDEO, fields: ['desktop.backgroundIllustration'] },
+  { capeFile: _BG_DESKTOP,   fields: ['desktop.backgroundIllustration'] },
 
-  // ── Landing page ──────────────────────────────────────────────────────────
-  { capeFile: _AMBIENT_BG,   fields: ['general.landing.background'] },
-  { capeFile: _BACKGROUND_VIDEO, fields: ['files.landing.backgroundImage', 'files.landing.heroImage'] },
-  { capeFile: _LOGO_ZWART,   fields: ['general.landing.logo'] },
-  { capeFile: _VIDEO,        fields: ['files.landing.heroVideo'] },
+  // ── Landing (legacy tab: files.landing.* for backgrounds) ─────────────────
+  { capeFile: _BG_MOBILE,    fields: ['files.landing.backgroundImage', 'files.landing.heroImage'] },
 
-  // ── Onboarding page (up to 5 steps) ──────────────────────────────────────
-  { capeFile: _AMBIENT_BG,   fields: ['general.onboarding.background'] },
-  { capeFile: _BACKGROUND_VIDEO,   fields: [
-    'general.onboarding.heroImage',
-    'files.onboarding.step1Image', 'files.onboarding.step2Image',
-    'files.onboarding.step3Image', 'files.onboarding.step4Image',
-    'files.onboarding.step5Image',
-  ]},
-  { capeFile: _LOGO_ZWART,   fields: ['general.onboarding.logo'] },
+  // ── Tutorial / onboarding (legacy tab: general.tutorial.* for backgrounds)
+  { capeFile: _BG_MOBILE,    fields: ['general.tutorial.background'] },
+  { capeFile: _LOGO_ZWART,   fields: ['general.tutorial.logo'] },
 
-  // ── Result page ───────────────────────────────────────────────────────────
-  { capeFile: _AMBIENT_BG,   fields: ['general.result.background'] },
-  { capeFile: _BACKGROUND_VIDEO,   fields: ['files.result.winImage', 'files.result.loseImage'] },
+  // ── Result (legacy tab: general.result.* for backgrounds) ─────────────────
+  { capeFile: _BG_MOBILE,    fields: ['general.result.background'] },
   { capeFile: _LOGO_ZWART,   fields: ['general.result.logo'] },
 
-  // ── Voucher page ──────────────────────────────────────────────────────────
-  { capeFile: _BACKGROUND_VIDEO,   fields: ['files.voucher.voucherImage'] },
+  // ── Loading (Desktop & Loading tab) ───────────────────────────────────────
+  { capeFile: _LOADING_VIDEO, fields: ['general.loading.background'] },
+  { capeFile: _LOGO_ZWART,    fields: ['general.loading.logo'] },
 
-  // ── Video pages — default 'video' instance + named variants ───────────────
-  // instanceId 'video'         → modelId 'video'
-  // instanceId 'intro-video'   → modelId 'introVideo'
-  // instanceId 'loading-video' → modelId 'loadingVideo'
-  // instanceId 'ad-video'      → modelId 'adVideo'
-  // Note: the 'loadingVideo' fallback slot on each video instance and the
-  // entire loading-video instance are intentionally NOT seeded with _VIDEO
-  // (intro-livewall.mp4) — they need the dedicated livewall-intro-loadingvid.mp4
-  // file. Once that asset is uploaded to CAPE storage, replace _LOADING_VIDEO
-  // above and add a seed entry for it here.
-  { capeFile: _VIDEO,        fields: [
-    'general.video.introVideo',
-    'general.introVideo.introVideo',
-    'general.adVideo.introVideo',
+  // ── Block-driven pages (register, voucher, leaderboard, menu, end) ────────
+  // When these pages use block-driven tabs, compatModelForBinding maps
+  // background → files.{modelId}.backgroundImage. Seed the runtime-fallback
+  // path so they have a background even without explicit CAPE editor setup.
+  { capeFile: _BG_MOBILE,    fields: [
+    'files.register.backgroundImage',
+    'files.voucher.backgroundImage',
+    'files.leaderboard.backgroundImage',
+    'files.menu.backgroundImage',
+    'files.end.backgroundImage',
   ]},
-  ...(_LOADING_VIDEO ? [{ capeFile: _LOADING_VIDEO, fields: [
-    'files.video.loadingVideo',
-    'files.introVideo.loadingVideo',
-    'general.loadingVideo.introVideo', 'files.loadingVideo.loadingVideo',
-    'files.adVideo.loadingVideo',
-  ]}] : []),
-  { capeFile: _LOGO_ZWART,   fields: [
-    'general.video.logo',
-    'general.introVideo.logo',
-    'general.loadingVideo.logo',
-    'general.adVideo.logo',
-  ]},
+
+  // ── Video pages (all variants share the same field pattern) ───────────────
+  { capeFile: _INTRO_VIDEO,  fields: ['general.video.introVideo', 'general.introVideo.introVideo', 'general.adVideo.introVideo'] },
+  { capeFile: _LOADING_VIDEO, fields: ['files.video.loadingVideo', 'files.loadingVideo.loadingVideo', 'general.loadingVideo.introVideo'] },
+  { capeFile: _LOGO_ZWART,   fields: ['general.loadingVideo.logo'] },
 ];
 
 /** Base format all new scaffolded campaigns are created from. */
@@ -367,6 +349,22 @@ export async function populateDefaults(tokens, campaignId, interfaceSetup) {
   const campaignData = JSON.parse(JSON.stringify(currentData));
   let populated = 0;
 
+  const isEmptyValue = (value) => {
+    if (value === undefined || value === null || value === '') return true;
+    if (Array.isArray(value)) return value.length === 0;
+    if (value && typeof value === 'object') {
+      if (value.multilanguage === true) {
+        const languageValues = Object.entries(value)
+          .filter(([key]) => key !== 'multilanguage')
+          .map(([, entry]) => entry && typeof entry === 'object' && 'value' in entry ? entry.value : entry);
+        return languageValues.length === 0 || languageValues.every(isEmptyValue);
+      }
+      if ('value' in value) return isEmptyValue(value.value);
+      return Object.keys(value).length === 0;
+    }
+    return false;
+  };
+
   const setPath = (obj, path, value, force = false) => {
     const parts = path.split('.');
     let cur = obj;
@@ -376,7 +374,7 @@ export async function populateDefaults(tokens, campaignId, interfaceSetup) {
     }
     const last     = parts[parts.length - 1];
     const existing = cur[last];
-    const isEmpty  = existing === undefined || existing === null || existing === '';
+    const isEmpty  = isEmptyValue(existing);
     if (isEmpty || force) { cur[last] = value; return true; }
     return false;
   };
@@ -507,9 +505,10 @@ export async function uploadAsset(tokens, filePath) {
  * @param {string} campaignId
  * @param {object} [opts]
  * @param {boolean} [opts.force=false]  overwrite fields that already have a value
- * @returns {{ seeded: number, warnings: string[] }}
+ * @param {boolean} [opts.clean=false]  remove asset fields not in TEMPLATE_ASSET_SEEDS
+ * @returns {{ seeded: number, cleaned: number, warnings: string[] }}
  */
-export async function seedTemplateAssets(tokens, campaignId, { force = false } = {}) {
+export async function seedTemplateAssets(tokens, campaignId, { force = false, clean = false } = {}) {
   // 1. Fetch current campaign data
   const { ok, data } = await getCampaign(campaignId, tokens);
   if (!ok || !data?.data) throw new Error(`Failed to fetch campaign ${campaignId}`);
@@ -518,9 +517,11 @@ export async function seedTemplateAssets(tokens, campaignId, { force = false } =
   const campaignData = JSON.parse(JSON.stringify(fullData.data || {}));
 
   // 2. Set fields using pre-uploaded stable template asset URLs (no upload needed)
+  const seedPaths = new Set();
   let seeded = 0;
   for (const seed of TEMPLATE_ASSET_SEEDS) {
     for (const fieldPath of seed.fields) {
+      seedPaths.add(fieldPath);
       const parts = fieldPath.split('.');
       let cur = campaignData;
       for (let i = 0; i < parts.length - 1; i++) {
@@ -539,14 +540,74 @@ export async function seedTemplateAssets(tokens, campaignId, { force = false } =
     }
   }
 
-  // 3. Save
+  // 3. Optionally remove asset fields that aren't in the current seed list
+  let cleaned = 0;
+  if (clean) {
+    const isAssetValue = (v) => Array.isArray(v) && v.length > 0 && v[0] && typeof v[0].url === 'string';
+    const walkClean = (obj, prefix) => {
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+      for (const key of Object.keys(obj)) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (isAssetValue(obj[key]) && !seedPaths.has(path)) {
+          delete obj[key];
+          cleaned++;
+        } else {
+          walkClean(obj[key], path);
+        }
+      }
+    };
+    for (const section of ['general', 'files']) {
+      walkClean(campaignData[section], section);
+    }
+  }
+
+  // 4. Save
   const versionNr  = String(fullData.versionNr || fullData.version || '1');
   const saveResult = await apiPost('/editor/save', { id: campaignId, data: campaignData, versionNr }, tokens);
   if (saveResult.data?.success === 0) {
     throw new Error(`seedTemplateAssets save failed: ${saveResult.data?.error || 'unknown'}`);
   }
 
-  return { seeded, warnings: [] };
+  return { seeded, cleaned, warnings: [] };
+}
+
+/**
+ * Wipe all asset fields from campaign data, then re-seed from scratch.
+ * Use this to remove stale fields left over from earlier seed versions.
+ */
+export async function rebuildCampaignAssets(tokens, campaignId) {
+  const { ok, data } = await getCampaign(campaignId, tokens);
+  if (!ok || !data?.data) throw new Error(`Failed to fetch campaign ${campaignId}`);
+
+  const fullData = data.data;
+  const oldData = fullData.data || {};
+
+  const isAsset = (v) =>
+    (Array.isArray(v) && v.length > 0 && v[0] && typeof v[0].url === 'string') ||
+    (v && typeof v === 'object' && !Array.isArray(v) && typeof v.url === 'string');
+
+  let stripped = 0;
+  function deepClean(obj) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+    const out = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (isAsset(v)) { stripped++; continue; }
+      const cleaned = deepClean(v);
+      if (cleaned !== undefined && cleaned !== null &&
+          !(typeof cleaned === 'object' && !Array.isArray(cleaned) && Object.keys(cleaned).length === 0)) {
+        out[k] = cleaned;
+      }
+    }
+    return out;
+  }
+  const cleanData = deepClean(oldData);
+
+  const versionNr = String(fullData.versionNr || fullData.version || '1');
+  const saveResult = await apiPost('/editor/save', { id: campaignId, data: cleanData, versionNr }, tokens);
+  if (saveResult.data?.success === 0) throw new Error(`Rebuild save failed: ${saveResult.data?.error || 'unknown'}`);
+
+  const seedResult = await seedTemplateAssets(tokens, campaignId, { force: true });
+  return { stripped, seeded: seedResult.seeded };
 }
 
 /**
@@ -556,7 +617,7 @@ export async function seedTemplateAssets(tokens, campaignId, { force = false } =
  * @param {string} campaignId
  */
 export async function deleteCampaign(tokens, campaignId) {
-  const { ok, data } = await apiPost('/campaigns/delete', { id: campaignId }, tokens);
+  const { ok, data } = await apiPost('/editor/remove', { id: campaignId }, tokens);
   if (!ok || data?.success === 0) {
     throw new Error(`Campaign delete failed: ${data?.error || JSON.stringify(data)}`);
   }

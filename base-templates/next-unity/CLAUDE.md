@@ -1,6 +1,6 @@
-# Golden Template — base-template
+# Next.js + Unity WebGL Campaign Template
 
-Core Next.js 16 project. **Contains only mandatory code.** Optional module code lives in `../modules/`.
+Core Next.js 16 project with Unity WebGL game engine integration. **Contains only mandatory code.** Optional module code lives in `../modules/`.
 
 ## Stack
 
