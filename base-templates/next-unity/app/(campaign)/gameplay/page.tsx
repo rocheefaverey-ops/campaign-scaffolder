@@ -115,7 +115,7 @@ export default function GameplayPage() {
     booted.current = true;
 
     const maybeStartGame = () => {
-      const startObject = process.env.NEXT_PUBLIC_UNITY_START_OBJECT ?? '';
+      const startObject = process.env.NEXT_PUBLIC_UNITY_START_OBJECT ?? 'GameService';
       const startMethod = process.env.NEXT_PUBLIC_UNITY_START_METHOD ?? 'StartGame';
       if (!startObject) return;
       started.current = true;
