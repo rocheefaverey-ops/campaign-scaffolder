@@ -142,8 +142,10 @@ img {
   user-select: none;
 }
 
+/* Button reset — background is intentionally omitted so block SCSS module
+   classes (.btn--primary etc.) can set it without cascade-layer conflicts.
+   Browsers default buttons to transparent, so omitting it is safe. */
 button {
-  background: none;
   border: none;
   cursor: pointer;
   outline: none;
@@ -290,6 +292,7 @@ img {
   position: relative;
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
   border: 2px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-ink);
 }
 
 .desktop-wrapper__app-shell {
@@ -297,6 +300,7 @@ img {
   height: 100%;
   overflow: hidden;
   position: relative;
+  background: var(--surface-ink);
 }
 
 @media (max-width: 1040px) {
@@ -817,14 +821,13 @@ input[type='radio'] {
 .campaign-hero-logo {
   height: 44px;
   width: auto;
-  max-width: 60vw;
+  max-width: min(60vw, 220px);
   object-fit: contain;
 }
 
-/* Pin the headline/body to the lower third — logo top, content above CTA. */
 .campaign-hero-content {
   margin-top: auto;
-  padding-bottom: 0.5rem;
+  padding-bottom: 0;
 }
 
 /* Text-on-image — switch from dark-on-light to light-on-dark with subtle
@@ -1200,15 +1203,528 @@ input[type='radio'] {
   background: rgba(255,255,255,0.62);
 }
 
-.campaign-close {
+.campaign-block-page--leaderboard .campaign-stack {
+  gap: 0.55rem;
+}
+
+.campaign-block-page--leaderboard .campaign-actions {
+  gap: 0.5rem;
+}
+
+/* Re-applies StyledButton's visual fill against the unlayered button reset
+   (button { background: none }) which would otherwise win the cascade
+   against the layered .styledButton declarations. CSS variables keep CAPE
+   branding in charge of the actual colors. One rule per variant so the
+   attribute selector matches the CSS-module hashed class name. */
+.campaign-actions [class*="styledButton"] {
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.campaign-actions [class*="variantPrimary"] {
+  background: var(--color-primary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lime);
+}
+
+.campaign-actions [class*="variantSecondary"],
+.campaign-actions [class*="alternate"] {
+  background: var(--surface-ink);
+  color: var(--text-inverse);
+  box-shadow: 0 10px 24px rgba(14, 14, 14, 0.22);
+}
+
+.campaign-actions [class*="variantTertiary"] {
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1.5px var(--text-primary);
+}
+
+.campaign-actions [class*="variantDark"] {
+  background: #0E0E0E;
+  color: var(--text-inverse);
+  box-shadow: 0 12px 28px rgba(14, 14, 14, 0.32);
+}
+
+.campaign-actions [class*="variantDanger"] {
+  background: var(--color-statusRed, #E82727);
+  color: var(--text-inverse);
+  box-shadow: 0 12px 28px rgba(232, 39, 39, 0.28);
+}
+
+.campaign-screen--hero .campaign-actions [class*="styledButton"] {
+  min-height: 56px;
+  font-size: 0.95rem;
+  letter-spacing: 0.015em;
+}
+
+.campaign-screen--menu {
+  background: var(--campaign-ambient);
+}
+
+.campaign-screen--video {
+  background: var(--surface-ink);
+}
+
+.campaign-screen--video::before {
+  display: none;
+}
+
+.campaign-video-fill,
+.campaign-video-placeholder,
+.campaign-video-loader {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.campaign-video-fill {
+  object-fit: cover;
+  background: #000;
+}
+
+.campaign-video-placeholder,
+.campaign-video-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  color: #fff;
+}
+
+.campaign-video-loader {
+  flex-direction: column;
+  gap: 1rem;
+  font-weight: 800;
+}
+
+.campaign-video-logo {
+  position: absolute;
+  top: 1.25rem;
+  left: 50%;
+  z-index: 2;
+  max-width: min(48vw, 170px);
+  max-height: 54px;
+  object-fit: contain;
+  transform: translateX(-50%);
+}
+
+.campaign-video-skip {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 3;
+  min-width: 96px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  background: var(--color-primary);
+  color: var(--surface-ink);
+  font: inherit;
+  font-weight: 900;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.24);
+}
+
+.campaign-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 4px solid rgba(255,255,255,0.24);
+  border-top-color: var(--color-primary);
+  animation: spin 0.8s linear infinite;
+}
+
+.campaign-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2rem;
+  pointer-events: none;
+}
+
+.campaign-loading-logo {
+  animation: pulse 2.5s ease-in-out infinite;
+}
+
+.campaign-loading-logo img {
+  width: clamp(80px, 22vw, 140px);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.4));
+}
+
+.campaign-loading-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  width: min(14rem, 60vw);
+}
+
+.campaign-loading-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
+
+.campaign-loading-bar {
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.campaign-loading-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-primary, #d1ff00);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary, #d1ff00) 60%, transparent);
+  transition: width 0.3s ease;
+}
+
+.campaign-loading-skip {
+  pointer-events: auto;
+  min-width: 96px;
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 0.6rem 1.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  animation: fadeInUp 0.4s ease both;
+}
+
+.campaign-loading-skip:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.campaign-game-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #050505;
+  color: #fff;
+}
+
+.campaign-game-fallback__media,
+.campaign-game-fallback__shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.campaign-game-fallback__media {
+  object-fit: cover;
+}
+
+.campaign-game-fallback__shade {
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.28), rgba(0,0,0,0.72)),
+    radial-gradient(ellipse 90% 52% at 50% 102%, color-mix(in srgb, var(--color-primary, #d1ff00) 22%, transparent), transparent 72%);
+}
+
+.campaign-game-fallback__panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(20rem, calc(100% - 2.5rem));
+  padding: 1.4rem;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px;
+  background: rgba(10,10,10,0.68);
+  backdrop-filter: blur(16px);
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.36);
+}
+
+.campaign-game-fallback__logo {
+  width: 86px;
+  height: auto;
+  margin-bottom: 1rem;
+}
+
+.campaign-game-fallback__eyebrow,
+.campaign-game-fallback__title,
+.campaign-game-fallback__copy {
+  margin: 0;
+}
+
+.campaign-game-fallback__eyebrow {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-primary, #d1ff00);
+}
+
+.campaign-game-fallback__title {
+  margin-top: 0.35rem;
+  font-size: 1.75rem;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.campaign-game-fallback__copy {
+  margin-top: 0.8rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: rgba(255,255,255,0.76);
+}
+
+.campaign-game-fallback__primary,
+.campaign-game-fallback__secondary {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.campaign-game-fallback__primary {
+  margin-top: 1.25rem;
+  border: 0;
+  background: var(--color-primary, #d1ff00);
+  color: var(--text-primary, #0e0e0e);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--color-primary, #d1ff00) 36%, transparent);
+}
+
+.campaign-game-fallback__secondary {
+  margin-top: 0.6rem;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+.campaign-menu-spacer {
+  width: 36px;
+  height: 36px;
+}
+
+.campaign-menu-logo {
+  height: 40px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+}
+
+.campaign-menu-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.35rem;
+}
+
+.campaign-menu-footer {
+  align-items: center;
+  opacity: 0.56;
+}
+
+.campaign-menu-footer .divider {
+  width: 80px;
+  margin: 0;
+}
+
+.campaign-hero-page-logo {
+  height: 72px;
+  width: auto;
+  max-width: 70vw;
+  object-fit: contain;
+  margin-bottom: 0.5rem;
+}
+
+.campaign-hero-content {
+  margin-top: auto;
+  padding-bottom: 0;
+}
+
+.campaign-screen--hero .campaign-shell {
+  position: relative;
+  z-index: 2;
+}
+
+.lb-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: rgba(26, 26, 26, 0.06);
+}
+
+.lb-tab {
+  min-height: 40px;
+  padding: 0 0.5rem;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.lb-tab.is-active {
+  color: var(--text-inverse);
+  background: var(--surface-ink);
+  box-shadow: var(--shadow-card);
+}
+
+.lb-podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.lb-podium__item {
+  min-width: 0;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.lb-podium__rank,
+.lb-podium__score,
+.lb-personal__label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lb-podium__name {
+  display: block;
+  overflow: hidden;
+  margin-top: 0.25rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-podium__score {
+  margin-top: 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-list {
+  display: flex;
+  min-height: 0;
+  max-height: 100%;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  padding-right: 0.125rem;
+}
+
+.lb-row {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.lb-row:nth-child(-n + 3) {
+  border-color: color-mix(in srgb, var(--color-primary) 42%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 14%, white);
+}
+
+.lb-row.is-you,
+.lb-personal {
+  background: var(--color-primary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lime);
+}
+
+.lb-row__rank {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 999px;
-  border: 1px solid var(--line-soft);
-  background: rgba(255, 255, 255, 0.8);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-card);
+  min-height: 36px;
+  border-radius: 8px;
+  background: rgba(26, 26, 26, 0.06);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-row.is-you .lb-row__rank,
+.lb-row:nth-child(-n + 3) .lb-row__rank {
+  background: var(--surface-ink);
+  color: var(--text-inverse);
+}
+
+.lb-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+.lb-row__score {
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-row--empty {
+  display: block;
+  padding: 1.5rem 1rem;
+  color: var(--text-secondary);
+  text-align: center;
+  font-weight: 700;
+}
+
+.lb-personal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  padding: 0.8rem 0.875rem;
+  border-radius: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-personal__label {
+  color: rgba(26, 26, 26, 0.62);
 }

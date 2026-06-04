@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useContext, useEffect, useRef, useTransition } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState, useTransition } from 'react';
 import { UnityContext } from '@components/_modules/unity/UnityGame';
 import { useCapeData } from '@hooks/useCapeData';
 import { useGameContext } from '@hooks/useGameContext';
@@ -8,7 +8,7 @@ import { useSafeNavigation } from '@hooks/useSafeNavigation';
 import { buildUnityTranslations } from '@lib/game-bridge/cape-translations';
 import { UnityNavigationType, UnityTrackingType } from '@lib/game-bridge/game-bridge.types';
 import { getCapeText } from '@utils/getCapeData';
-import type { IUnityNavigation, IUnityTracking, IGameResult } from '@lib/game-bridge/game-bridge.types';
+import type { IGameResult, IUnityNavigation, IUnityTracking } from '@lib/game-bridge/game-bridge.types';
 
 export default function GameplayPage() {
   const ctx = useContext(UnityContext);
@@ -16,14 +16,12 @@ export default function GameplayPage() {
   const { capeData } = useCapeData();
   const { isMuted, onboardingCompleted, setScore, setOnboardingCompleted } = useGameContext();
   const [, startTransition] = useTransition();
+  const [showFallback, setShowFallback] = useState(false);
   const targetScene = getCapeText(capeData, 'settings.game.sceneKey', 'Racing');
 
   const booted = useRef(false);
   const started = useRef(false);
   const ended = useRef(false);
-
-  // ── end ───────────────────────────────────────────────────────────────────
-  // Ref pattern: stable listener, always calls the latest handler.
 
   const endHandlerRef = useRef<((data: unknown) => void) | undefined>(undefined);
   endHandlerRef.current = (data: unknown) => {
@@ -32,7 +30,6 @@ export default function GameplayPage() {
     try {
       const result = JSON.parse(String(data ?? '')) as IGameResult;
       setScore(result.score ?? 0);
-      // TODO: call your end-session server action here before navigating
     } catch {
       setScore(0);
     }
@@ -43,9 +40,6 @@ export default function GameplayPage() {
   const stableEndListener = useRef<(data: unknown) => void>(
     (data) => endHandlerRef.current?.(data)
   );
-
-  // ── navigation ────────────────────────────────────────────────────────────
-  // Block mid-game navigation from Unity (e.g. menu button) while playing.
 
   const navigationHandlerRef = useRef<((data: unknown) => void) | undefined>(undefined);
   navigationHandlerRef.current = (data: unknown) => {
@@ -59,12 +53,9 @@ export default function GameplayPage() {
         case UnityNavigationType.EXTERNAL_URL:
           if (payload.target) window.open(payload.target, '_blank', 'noopener,noreferrer');
           break;
-        case UnityNavigationType.TERMS: {
-          // TODO: replace with CAPE terms file URL if your campaign has one
-          // e.g. const termsUrl = getCapeFile(capeData, 'files.terms');
+        case UnityNavigationType.TERMS:
           window.open('/terms', '_blank', 'noopener,noreferrer');
           break;
-        }
       }
     } catch {
       // ignore invalid payload
@@ -74,9 +65,6 @@ export default function GameplayPage() {
   const stableNavigationListener = useRef<(data: unknown) => void>(
     (data) => navigationHandlerRef.current?.(data)
   );
-
-  // ── tracking ──────────────────────────────────────────────────────────────
-  // Pushes Unity analytics events into the GTM dataLayer.
 
   const trackingListener = useCallback((data: unknown) => {
     try {
@@ -93,20 +81,14 @@ export default function GameplayPage() {
     }
   }, []);
 
-  // ── start ─────────────────────────────────────────────────────────────────
-
   const startListener = useCallback(() => {
     started.current = true;
-    // TODO: push a GTM game-start event here if needed
   }, []);
-
-  // ── onTutorialPlayed ──────────────────────────────────────────────────────
 
   const tutorialPlayedListener = useCallback(() => {
     setOnboardingCompleted(true);
   }, [setOnboardingCompleted]);
 
-  // ── Register all listeners as soon as ctx exists ───────────────────────────
   useEffect(() => {
     if (!ctx) return;
     const { addEventListener, removeEventListener } = ctx;
@@ -128,18 +110,24 @@ export default function GameplayPage() {
     };
   }, [ctx, trackingListener, startListener, tutorialPlayedListener]);
 
-  // ── Boot Unity once ctx is available ──────────────────────────────────────
   useEffect(() => {
     if (!ctx || booted.current) return;
     booted.current = true;
 
+    const maybeStartGame = () => {
+      const startObject = process.env.NEXT_PUBLIC_UNITY_START_OBJECT ?? '';
+      const startMethod = process.env.NEXT_PUBLIC_UNITY_START_METHOD ?? 'StartGame';
+      if (!startObject) return;
+      started.current = true;
+      ctx.sendMessage(startObject, startMethod);
+    };
+
     const wasPreloadedFromVideo = sessionStorage.getItem('unity-started-from-video') === 'true';
 
     if (wasPreloadedFromVideo) {
-      started.current = true;
       sessionStorage.removeItem('unity-started-from-video');
       ctx.setUnityVisible(true);
-      ctx.startGame(true);
+      maybeStartGame();
       return;
     }
 
@@ -151,46 +139,92 @@ export default function GameplayPage() {
     ctx.setData({ translations, playTutorial: !onboardingCompleted });
 
     startTransition(async () => {
-      if (process.env.NEXT_PUBLIC_UNITY_BOOT_SEQUENCE === 'single-message') {
-        const bootObject = process.env.NEXT_PUBLIC_UNITY_BOOT_OBJECT ?? 'Manager';
-        const bootMethod = process.env.NEXT_PUBLIC_UNITY_BOOT_METHOD ?? 'LoadScene';
+      try {
+        if (process.env.NEXT_PUBLIC_UNITY_BOOT_SEQUENCE === 'single-message') {
+          const bootObject = process.env.NEXT_PUBLIC_UNITY_BOOT_OBJECT ?? 'Manager';
+          const bootMethod = process.env.NEXT_PUBLIC_UNITY_BOOT_METHOD ?? 'LoadScene';
+          await ctx.initializeUnity(true, false);
+          const showOnReady = () => {
+            ctx.removeEventListener('ready', showOnReady);
+            ctx.setUnityVisible(true);
+            maybeStartGame();
+          };
+          ctx.addEventListener('ready', showOnReady);
+          ctx.sendMessage(bootObject, bootMethod, JSON.stringify({
+            environment: process.env.NEXT_PUBLIC_ENV ?? 'production',
+            muted: isMuted,
+            translations,
+            files: {},
+            lives: 3,
+          }));
+          return;
+        }
+
+        ctx.setTargetScene(targetScene);
         await ctx.initializeUnity(true, false);
-        // Show canvas only when Unity fires 'ready' — ready fires after LoadScene
-        // is processed, not before. Showing the canvas first would flash a blank WebGL surface.
-        const showOnReady = () => {
-          ctx.removeEventListener('ready', showOnReady);
-          ctx.setUnityVisible(true);
-        };
-        ctx.addEventListener('ready', showOnReady);
-        ctx.sendMessage(bootObject, bootMethod, JSON.stringify({
-          environment: process.env.NEXT_PUBLIC_ENV ?? 'production',
-          muted: isMuted,
-          translations: {},
-          files: {},
-          lives: 3,
-        }));
-        return;
+        ctx.sendSetScene();
+        await new Promise<void>((resolve) => setTimeout(resolve, 1000));
+        ctx.sendMessage('WebService', 'LoadScene');
+        await Promise.race([
+          ctx.waitForSceneLoad(),
+          new Promise<void>((resolve) => setTimeout(resolve, 8000)),
+        ]);
+        ctx.setUnityVisible(true);
+        maybeStartGame();
+      } catch (error) {
+        console.warn('[gameplay] Unity boot failed.', error);
+        ctx.setUnityVisible(false);
+        setShowFallback(true);
       }
-
-      ctx.setTargetScene(targetScene);
-      await ctx.initializeUnity(true);
-      // sendSetScene uses skipPreload:true — works for builds that don't fire
-      // addressableLoaded. For builds that do, use preloadScene() instead.
-      ctx.sendSetScene();
-      await ctx.loadScene(true);
-      ctx.setUnityVisible(true);
-      // TODO: call your create-session server action here before starting
-      ctx.startGame();
     });
+  }, [capeData, ctx, isMuted, onboardingCompleted, startTransition, targetScene]);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx]);
+  useEffect(() => {
+    if (ctx?.isUnityVisible) return;
+    const timeout = setTimeout(() => setShowFallback(true), 14000);
+    return () => clearTimeout(timeout);
+  }, [ctx?.isUnityVisible]);
 
-  // ── Sync mute from GameContext into Unity ──────────────────────────────────
   useEffect(() => {
     ctx?.setMuted(isMuted);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMuted]);
+  }, [ctx, isMuted]);
 
-  return <div className="pointer-events-none h-full w-full" />;
+  const simulateEnd = () => {
+    setScore(Math.floor(Math.random() * 200000));
+    navigate('/result', 'replace');
+  };
+
+  return (
+    <>
+      <div className="pointer-events-none h-full w-full" />
+      {showFallback && !ctx?.isUnityVisible && (
+        <div className="campaign-game-fallback">
+          <video
+            className="campaign-game-fallback__media"
+            src="/assets/livewall-background-mobile.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+          <div className="campaign-game-fallback__shade" aria-hidden />
+          <div className="campaign-game-fallback__panel">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/assets/livewall-animated-logo.webp" alt="" className="campaign-game-fallback__logo" />
+            <p className="campaign-game-fallback__eyebrow">Demo mode</p>
+            <h1 className="campaign-game-fallback__title">Game preview</h1>
+            <p className="campaign-game-fallback__copy">
+              Unity did not finish booting in this browser session. Continue the campaign flow with a simulated score.
+            </p>
+            <button type="button" onClick={simulateEnd} className="campaign-game-fallback__primary">
+              Simulate game end
+            </button>
+            <button type="button" onClick={() => navigate('/menu', 'replace')} className="campaign-game-fallback__secondary">
+              Open menu
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
