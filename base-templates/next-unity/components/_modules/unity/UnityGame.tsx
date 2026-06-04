@@ -4,9 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type { IUnityApplication, IUnityConfig, IUnityFullData, IUnitySceneLoad, IUnitySetData, UnityEventCallback } from './IUnity';
-import { useCapeData } from '@hooks/useCapeData';
 import { useSyncedState } from '@hooks/useSyncedState';
-import { getCapeImage, getCapeText } from '@utils/getCapeData';
 import { uLog } from './UnityLogger';
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -82,15 +80,8 @@ interface UnityGameProps {
 
 export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGameProps) {
   const pathname = usePathname();
-  const { capeData } = useCapeData();
   const gameRoute = '{{GAME_ROUTE}}';
   const isGameplayRoute = pathname === (gameRoute.startsWith('{{') ? '/gameplay' : gameRoute);
-  const loadingTitle = getCapeText(capeData, 'loading.title', 'Loading...');
-  const loadingDescription =
-    getCapeText(capeData, 'loading.description1', '') ||
-    getCapeText(capeData, 'loading.description2', '') ||
-    getCapeText(capeData, 'loading.description3', '');
-  const loadingLogo = getCapeImage(capeData, 'general.loading.logo');
   // Ensure unityEventMap exists immediately — before any child effects run
   if (typeof window !== 'undefined' && !window.unityEventMap) {
     window.unityEventMap = new Map();
@@ -578,28 +569,6 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
   return (
     <>
       <UnityContext value={ctxValue}>{children}</UnityContext>
-
-      {isGameplayRoute && showLoader && !isUnityVisible && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center overflow-hidden bg-[#050505] text-white">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_36%,rgba(255,255,255,0.12),transparent_26rem),linear-gradient(180deg,#050505_0%,#101010_100%)]" />
-          <div className="relative z-10 flex flex-col items-center px-8 text-center">
-            {loadingLogo && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={loadingLogo} alt="Logo" className="mb-6 max-h-[120px] w-[min(42vw,180px)] object-contain" />
-            )}
-            <div
-              className="size-10 animate-spin rounded-full border-[3px]"
-              style={{ borderColor: 'rgba(255,255,255,0.15)', borderTopColor: 'var(--color-primary)' }}
-            />
-            {loadingTitle && (
-              <p className="mt-4 text-sm font-semibold uppercase tracking-widest text-white">{loadingTitle}</p>
-            )}
-            {loadingDescription && (
-              <p className="mt-2 max-w-[240px] text-xs leading-relaxed text-white/70">{loadingDescription}</p>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Unity canvas — always mounted + sized so WebGL context is never 0×0 */}
       <div
