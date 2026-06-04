@@ -53,7 +53,9 @@ export function GameProvider({ children, platform }: GameProviderProps) {
       alreadyRegistered: stored?.alreadyRegistered ?? false,
       onboardingCompleted: stored?.onboardingCompleted ?? false,
       hasPlayed: stored?.hasPlayed ?? false,
+      score: stored?.score ?? 0,
       highscore: stored?.highscore ?? 0,
+      rank: stored?.rank ?? null,
       isMuted: stored?.isMuted ?? false,
     };
   });
@@ -67,7 +69,9 @@ export function GameProvider({ children, platform }: GameProviderProps) {
       alreadyRegistered: state.alreadyRegistered,
       onboardingCompleted: state.onboardingCompleted,
       hasPlayed: state.hasPlayed,
+      score: state.score,
       highscore: state.highscore,
+      rank: state.rank,
       isMuted: state.isMuted,
     });
   }, [
@@ -77,7 +81,9 @@ export function GameProvider({ children, platform }: GameProviderProps) {
     state.alreadyRegistered,
     state.onboardingCompleted,
     state.hasPlayed,
+    state.score,
     state.highscore,
+    state.rank,
     state.isMuted,
   ]);
 
@@ -100,7 +106,7 @@ export function GameProvider({ children, platform }: GameProviderProps) {
       setUserName: (v: string) => set('userName', v),
       setAlreadyRegistered: (v: boolean) => set('alreadyRegistered', v),
       setSessionId: (v: string | null) => set('sessionId', v),
-      setScore: (v: number) => set('score', v),
+      setScore: (v: number) => setState((prev) => ({ ...prev, score: v, highscore: Math.max(prev.highscore ?? 0, v) })),
       setHighscore: (v: number) => set('highscore', v),
       setRank: (v: number | null) => set('rank', v),
       setLoading: (v: boolean) => set('loading', v),

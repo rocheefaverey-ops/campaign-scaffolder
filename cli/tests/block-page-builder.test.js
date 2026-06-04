@@ -130,6 +130,20 @@ describe('buildBlockDrivenLanding', () => {
     assert.doesNotMatch(out, /personalBest \?\? 0/);
   });
 
+  it('reads result score from GameContext', () => {
+    const out = buildBlockDrivenPage('result', 'result', [
+      { name: 'background', settings: { kind: 'image' } },
+      { name: 'title-block', settings: { showKicker: false, showSubtitle: true } },
+      { name: 'score-readout', settings: { showHighScore: true } },
+      { name: 'cta-group', settings: { buttons: [{ variant: 'primary', exit: 'landing' }] } },
+    ]);
+
+    assert.match(out, /import \{ useGameContext \} from '@hooks\/useGameContext';/);
+    assert.match(out, /const \{ score, highscore \} = useGameContext\(\);/);
+    assert.match(out, /<ScoreReadout score=\{score \?\? cape\.score \?\? 0\}/);
+    assert.match(out, /highScore=\{highscore \|\| cape\.highScore\}/);
+  });
+
   it('marks registration locally and skips the register page after submit', () => {
     const out = buildBlockDrivenPage('register', 'register', [
       { name: 'background', settings: { kind: 'image' } },

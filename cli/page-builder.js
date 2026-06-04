@@ -288,8 +288,9 @@ export function buildBlockDrivenPage(pageId, pageType, blocks, options = {}) {
   const videoPlayerBlock = innerBlocks.find((b) => b.name === 'video-player');
   const fullBleedVideoBlock = isVideoPage ? videoPlayerBlock : null;
   const tracksRegistrationStatus = type === 'result' && selectedPages.includes('register');
+  const usesGameScore = type === 'result' && innerBlocks.some((b) => b.name === 'score-readout');
 
-  const ctx = { pageId, pageType: type, routeMap: options.routeMap ?? {}, pages: selectedPages, flowRules, brandInHeader, stepFlow, projectName: options.projectName, needsOnboardingGate, needsRegisterGate };
+  const ctx = { pageId, pageType: type, routeMap: options.routeMap ?? {}, pages: selectedPages, flowRules, brandInHeader, stepFlow, projectName: options.projectName, needsOnboardingGate, needsRegisterGate, usesGameScore };
   const visibleOrderedBlocks = fullBleedVideoBlock
     ? orderedBlocks.filter((b) => b !== fullBleedVideoBlock)
     : orderedBlocks;
@@ -362,6 +363,7 @@ export function buildBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     usesRouter ? "import { useRouter } from 'next/navigation';" : null,
     reactHooks.length ? `import { ${reactHooks.join(', ')} } from 'react';` : null,
     "import { useCape } from '@/lib/cape';",
+    usesGameScore ? "import { useGameContext } from '@hooks/useGameContext';" : null,
     importLines,
     needsOnboardingGate ? `const ONBOARDING_KEY = ${jsString(onboardingKey)};` : null,
     needsOnboardingGate ? "const isOnboardingDone = () =>\n  typeof window !== 'undefined' && window.localStorage.getItem(ONBOARDING_KEY) === '1';" : null,
@@ -373,6 +375,7 @@ export function buildBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     `export default function ${pageComponentName(pageId, pageType)}() {`,
     `  const cape = useCape(${jsString(pageId)});`,
     usesRouter ? '  const router = useRouter();' : null,
+    usesGameScore ? '  const { score, highscore } = useGameContext();' : null,
     tracksRegistrationStatus ? '  const [hasRegistered, setHasRegistered] = useState(false);' : null,
     tracksRegistrationStatus ? '  useEffect(() => {\n    setHasRegistered(isRegistered());\n  }, []);' : null,
     stepFlow ? '  const [stepIndex, setStepIndex] = useState(0);' : null,
@@ -476,7 +479,9 @@ function renderBlock(block, ctx) {
     case 'channel-tabs':
       return `      <ChannelTabs tabs={${jsString(s.tabs ?? ['webshop', 'in-store'])}} defaultTab="${s.defaultTab ?? 'webshop'}" />`;
     case 'score-readout':
-      return `      <ScoreReadout score={cape.score ?? 0} label={cape.scoreLabel ?? 'Score'} highScore={cape.highScore} showHighScore={${Boolean(s.showHighScore)}} />`;
+      return ctx.usesGameScore
+        ? `      <ScoreReadout score={score ?? cape.score ?? 0} label={cape.scoreLabel ?? 'Score'} highScore={highscore || cape.highScore} showHighScore={${Boolean(s.showHighScore)}} />`
+        : `      <ScoreReadout score={cape.score ?? 0} label={cape.scoreLabel ?? 'Score'} highScore={cape.highScore} showHighScore={${Boolean(s.showHighScore)}} />`;
     case 'score-illustration':
       return '      <ScoreIllustration image={cape.scoreImage?.url ?? cape.scoreImage} />';
     case 'stats-table':

@@ -10,6 +10,13 @@ import { UnityNavigationType, UnityTrackingType } from '@lib/game-bridge/game-br
 import { getCapeText } from '@utils/getCapeData';
 import type { IGameResult, IUnityNavigation, IUnityTracking } from '@lib/game-bridge/game-bridge.types';
 
+function readScore(payload: IGameResult): number {
+  const record = payload as Record<string, unknown>;
+  const value = record.score ?? record.highScore ?? record.highscore ?? record.points ?? 0;
+  const score = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(score) ? score : 0;
+}
+
 export default function GameplayPage() {
   const ctx = useContext(UnityContext);
   const navigate = useSafeNavigation();
@@ -29,7 +36,7 @@ export default function GameplayPage() {
     ended.current = true;
     try {
       const result = JSON.parse(String(data ?? '')) as IGameResult;
-      setScore(result.score ?? 0);
+      setScore(readScore(result));
     } catch {
       setScore(0);
     }
