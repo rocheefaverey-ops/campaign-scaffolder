@@ -31,6 +31,16 @@ describe('buildTsBlockDrivenPage - landing', () => {
     assert.match(loader, /"key":"title","path":"landing\.title","type":"i18n-string"/);
     assert.match(loader, /"key":"cta","path":"landing\.cta","type":"array"/);
   });
+
+  it('routes game CTAs through loading-video when present', () => {
+    const route = buildTsBlockDrivenPage('landing', 'landing', blocks, {
+      pages: ['landing', 'loading-video', 'game'],
+      routeMap: { 'loading-video': '/loading-video', game: '/game' },
+    });
+
+    assert.match(route, /router\.navigate\(\{ to: '\/loading-video' as never \}\)/);
+    assert.doesNotMatch(route, /router\.navigate\(\{ to: '\/game' as never \}\)/);
+  });
 });
 
 describe('buildTsBlockDrivenPage - loading', () => {
@@ -135,6 +145,15 @@ describe('buildTsBlockDrivenPage - tutorial step flow', () => {
     assert.match(route, /nextLabel=\{isLastStep \? \(cape\.lastLabel \?\? 'Start'\) : \(cape\.nextLabel \?\? 'Continue'\)\}/);
     assert.match(route, /isLastStep \? router\.navigate\(\{ to: ["']\/game["'] as never \}\) : setStepIndex/);
     assert.match(route, /<StepIndicator count=\{totalSteps\} current=\{safeStepIndex\}/);
+  });
+
+  it('routes final tutorial step through loading-video when present', () => {
+    const route = buildTsBlockDrivenPage('tutorial', 'tutorial', blocks, {
+      pages: ['landing', 'tutorial', 'loading-video', 'game'],
+      routeMap: { tutorial: '/tutorial', 'loading-video': '/loading-video', game: '/game' },
+    });
+
+    assert.match(route, /isLastStep \? router\.navigate\(\{ to: ["']\/loading-video["'] as never \}\) : setStepIndex/);
   });
 
   it('does not wire step state when nav-controls is absent', () => {

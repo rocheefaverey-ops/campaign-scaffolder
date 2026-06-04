@@ -83,6 +83,17 @@ function routeForMenuTarget(target, ctx = {}) {
   return '#';
 }
 
+function routeForPlayableExit(exit, ctx = {}) {
+  const pageId = ctx.pageId;
+  const pages = ctx.pages ?? [];
+  const routeMap = ctx.routeMap ?? {};
+  const normalizedExit = String(exit ?? 'game').replace(/_/g, '-');
+  const shouldUseLoadingVideo = pageId !== 'loading-video'
+    && pages.includes('loading-video')
+    && (normalizedExit === 'game' || normalizedExit === 'gameplay');
+  return routeForExit(shouldUseLoadingVideo ? 'loading-video' : normalizedExit, routeMap);
+}
+
 function menuTargetsFor(settings = {}, ctx = {}) {
   const fallback = {
     home: 'landing',
@@ -608,11 +619,11 @@ function renderBlock(block, ctx) {
     }
     case 'nav-controls': {
       if (ctx.stepFlow) {
-        const lastRoute = jsString(routeForExit(ctx.stepFlow.nextExit, ctx.routeMap));
+        const lastRoute = jsString(routeForPlayableExit(ctx.stepFlow.nextExit, ctx));
         const showPrev = ctx.stepFlow.showPrev ? 'safeStepIndex > 0' : 'false';
         return `      <NavControls showPrev={${showPrev}} nextLabel={isLastStep ? (cape.lastLabel ?? 'Start') : (cape.nextLabel ?? 'Continue')} onPrev={() => setStepIndex((i) => Math.max(0, i - 1))} onNext={() => isLastStep ? router.navigate({ to: ${lastRoute} as never }) : setStepIndex((i) => i + 1)} />`;
       }
-      return `      <NavControls showPrev={${Boolean(s.showPrev)}} nextLabel={cape.nextLabel ?? 'Continue'} onNext={() => router.navigate({ to: ${jsString(routeForExit(s.nextExit ?? 'game', ctx.routeMap))} as never })} />`;
+      return `      <NavControls showPrev={${Boolean(s.showPrev)}} nextLabel={cape.nextLabel ?? 'Continue'} onNext={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.nextExit ?? 'game', ctx))} as never })} />`;
     }
     case 'field-set':
       return `      <FieldSet fields={${jsString(s.fields ?? ['firstName', 'lastName', 'email'])}} />`;
@@ -626,13 +637,13 @@ function renderBlock(block, ctx) {
         : "''";
       const bleedProp = ctx.fullBleedVideo ? ' fullBleed={true}' : '';
       return (s.onEnd ?? 'auto-advance') === 'auto-advance'
-        ? `      <VideoPlayer src={cape.video?.url ?? cape.video ?? ${fallbackSrc}} muted={${s.muted !== false}} loop={${Boolean(s.loop)}}${bleedProp} onEnded={() => router.navigate({ to: ${jsString(routeForExit(s.exit ?? 'game', ctx.routeMap))} as never })} />`
+        ? `      <VideoPlayer src={cape.video?.url ?? cape.video ?? ${fallbackSrc}} muted={${s.muted !== false}} loop={${Boolean(s.loop)}}${bleedProp} onEnded={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.exit ?? 'game', ctx))} as never })} />`
         : `      <VideoPlayer src={cape.video?.url ?? cape.video ?? ${fallbackSrc}} muted={${s.muted !== false}} loop={${Boolean(s.loop)}}${bleedProp} />`;
     }
     case 'skip-control':
-      return `      <SkipControl label={cape.skipLabel ?? 'Skip'} availableAfterMs={${Number(s.availableAfterMs ?? 0)}} onSkip={() => router.navigate({ to: ${jsString(routeForExit(s.exit ?? 'game', ctx.routeMap))} as never })} />`;
+      return `      <SkipControl label={cape.skipLabel ?? 'Skip'} availableAfterMs={${Number(s.availableAfterMs ?? 0)}} onSkip={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.exit ?? 'game', ctx))} as never })} />`;
     case 'reveal-cta':
-      return `      <RevealCta label={cape.ctaLabel ?? 'Continue'} variant="${s.variant ?? 'primary'}" onClick={() => router.navigate({ to: ${jsString(routeForExit(s.exit ?? 'game', ctx.routeMap))} as never })} />`;
+      return `      <RevealCta label={cape.ctaLabel ?? 'Continue'} variant="${s.variant ?? 'primary'}" onClick={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.exit ?? 'game', ctx))} as never })} />`;
     case 'fallback-indicator':
       return "      <FallbackIndicator label={cape.fallbackLabel ?? 'Loading'} />";
     case 'audio-toggle':
@@ -694,7 +705,7 @@ function renderCtaButtons(settings, ctx = {}) {
     : [{ variant: 'primary', exit: 'game' }];
   const cap = Math.min(4, settings.count ? Number(settings.count) : list.length);
   const entries = list.slice(0, Math.max(1, cap)).map((b, i) => {
-    const route = routeForExit(b.exit ?? 'game', routeMap);
+    const route = routeForPlayableExit(b.exit ?? 'game', ctx);
     const click = ctx.pageId === 'register'
       ? `() => { markRegistered(); router.navigate({ to: '${route}' as never }); }`
       : `() => router.navigate({ to: '${route}' as never })`;
@@ -703,7 +714,7 @@ function renderCtaButtons(settings, ctx = {}) {
 
   if (ctx.pageType === 'result' && (ctx.pages ?? []).includes('register')) {
     const homeRoute = routeForExit('landing', routeMap);
-    const gameRoute = routeForExit('game', routeMap);
+    const gameRoute = routeForPlayableExit('game', ctx);
     return `hasRegistered ? [{ label: 'Home', variant: 'secondary', onClick: () => router.navigate({ to: '${homeRoute}' as never }) }, { label: 'Play again', variant: 'primary', onClick: () => router.navigate({ to: '${gameRoute}' as never }) }] : [${entries.join(', ')}]`;
   }
 
