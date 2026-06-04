@@ -106,11 +106,14 @@ export default function VideoPage() {
 
   const handleContinue = useCallback(() => {
     if (isLoadingVideo && unity) {
-      sessionStorage.setItem('unity-started-from-video', 'true');
-      unity.setUnityVisible(true);
+      if (gameReady) {
+        sessionStorage.setItem('unity-started-from-video', 'true');
+      } else {
+        sessionStorage.removeItem('unity-started-from-video');
+      }
     }
     navigate(nextRoute);
-  }, [isLoadingVideo, navigate, nextRoute, unity]);
+  }, [gameReady, isLoadingVideo, navigate, nextRoute, unity]);
 
   if (!videoSrc) return null;
 

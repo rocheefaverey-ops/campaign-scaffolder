@@ -126,8 +126,13 @@ export default function GameplayPage() {
 
     if (wasPreloadedFromVideo) {
       sessionStorage.removeItem('unity-started-from-video');
-      ctx.setUnityVisible(true);
-      maybeStartGame();
+      if (process.env.NEXT_PUBLIC_UNITY_START_OBJECT) {
+        ctx.setUnityVisible(true);
+        maybeStartGame();
+      } else {
+        ctx.setUnityVisible(false);
+        setShowFallback(true);
+      }
       return;
     }
 
