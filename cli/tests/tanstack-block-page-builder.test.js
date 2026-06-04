@@ -314,21 +314,25 @@ describe('buildTsBlockDrivenPage - block coverage', () => {
     assert.match(route, /markRegistered\(\); router\.navigate\(\{ to: '\/voucher' as never \}\)/);
   });
 
-  it('shows landing and play-again result actions after registration', () => {
+  it('shows leaderboard and play-again result actions after registration', () => {
     const route = buildTsBlockDrivenPage('result', 'result', [
       { name: 'background', settings: { kind: 'image' } },
       { name: 'score-readout', settings: { showHighScore: true } },
-      { name: 'cta-group', settings: { buttons: [{ variant: 'primary', exit: 'register' }] } },
+      { name: 'cta-group', settings: { buttons: [
+        { variant: 'primary', exit: 'register' },
+        { variant: 'tertiary', exit: 'leaderboard' },
+      ] } },
     ], {
       capeId: '63633',
-      pages: ['result', 'register', 'landing', 'game'],
-      routeMap: { register: '/register', landing: '/landing', game: '/game' },
+      pages: ['result', 'register', 'landing', 'loading-video', 'game', 'leaderboard'],
+      routeMap: { register: '/register', landing: '/landing', 'loading-video': '/loading-video', game: '/game', leaderboard: '/leaderboard' },
     });
 
     assert.match(route, /const \[hasRegistered, setHasRegistered\] = useState\(false\)/);
-    assert.match(route, /hasRegistered \? \[\{ label: 'Home'/);
+    assert.match(route, /hasRegistered \? \[\{ label: "Home"/);
     assert.match(route, /router\.navigate\(\{ to: '\/landing' as never \}\)/);
-    assert.match(route, /router\.navigate\(\{ to: '\/game' as never \}\)/);
+    assert.match(route, /\{ label: "Leaderboard", variant: 'tertiary', onClick: \(\) => router\.navigate\(\{ to: '\/leaderboard' as never \}\) \}/);
+    assert.match(route, /\{ label: "Play again", variant: 'primary', onClick: \(\) => router\.navigate\(\{ to: '\/loading-video' as never \}\) \}/);
     assert.match(route, /: \[\{ label: cape\.cta\?\.\[0\]\?\.label/);
   });
 

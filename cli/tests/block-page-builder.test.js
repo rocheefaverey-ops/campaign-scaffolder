@@ -161,6 +161,26 @@ describe('buildBlockDrivenLanding', () => {
     assert.match(out, /onClick: \(\) => finishRegister\(\)/);
   });
 
+  it('shows leaderboard result action after registration is completed', () => {
+    const out = buildBlockDrivenPage('result', 'result', [
+      { name: 'background', settings: { kind: 'image' } },
+      { name: 'title-block', settings: { showKicker: false, showSubtitle: true } },
+      { name: 'score-readout', settings: { showHighScore: true } },
+      { name: 'cta-group', settings: { buttons: [
+        { variant: 'primary', exit: 'register' },
+        { variant: 'tertiary', exit: 'leaderboard' },
+      ] } },
+    ], {
+      capeId: '63633',
+      pages: ['landing', 'result', 'register', 'leaderboard', 'game'],
+      routeMap: { landing: '/landing', register: '/register', leaderboard: '/leaderboard', game: '/gameplay' },
+    });
+
+    assert.match(out, /hasRegistered \? \[\{ label: "Home"/);
+    assert.match(out, /\{ label: "Leaderboard", variant: 'tertiary', onClick: \(\) => router\.push\("\/leaderboard"\) \}/);
+    assert.match(out, /\{ label: "Play again", variant: 'primary', onClick: \(\) => router\.push\("\/gameplay"\) \}/);
+  });
+
   it('does not skip register when the flow rule says always show', () => {
     const out = buildBlockDrivenPage('register', 'register', [
       { name: 'background', settings: { kind: 'image' } },

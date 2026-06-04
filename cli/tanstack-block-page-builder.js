@@ -713,10 +713,41 @@ function renderCtaButtons(settings, ctx = {}) {
   });
 
   if (ctx.pageType === 'result' && (ctx.pages ?? []).includes('register')) {
-    const homeRoute = routeForExit('landing', routeMap);
-    const gameRoute = routeForPlayableExit('game', ctx);
-    return `hasRegistered ? [{ label: 'Home', variant: 'secondary', onClick: () => router.navigate({ to: '${homeRoute}' as never }) }, { label: 'Play again', variant: 'primary', onClick: () => router.navigate({ to: '${gameRoute}' as never }) }] : [${entries.join(', ')}]`;
+    return `hasRegistered ? ${renderRegisteredResultButtons(list, ctx)} : [${entries.join(', ')}]`;
   }
 
   return `[${entries.join(', ')}]`;
+}
+
+function renderRegisteredResultButtons(buttons, ctx = {}) {
+  const pages = ctx.pages ?? [];
+  const routeMap = ctx.routeMap ?? {};
+  const out = [];
+  const seen = new Set();
+  const add = (exit, label, variant = 'secondary') => {
+    if (!exit || seen.has(exit)) return;
+    seen.add(exit);
+    const route = exit === 'game' || exit === 'gameplay'
+      ? routeForPlayableExit(exit, ctx)
+      : routeForExit(exit, routeMap);
+    out.push(`{ label: ${jsString(label)}, variant: '${variant}', onClick: () => router.navigate({ to: '${route}' as never }) }`);
+  };
+
+  if (pages.includes('landing')) add('landing', 'Home', 'secondary');
+
+  for (const button of buttons ?? []) {
+    const exit = String(button?.exit ?? '');
+    if (!exit || exit === 'register') continue;
+    const label = exit === 'game' || exit === 'gameplay'
+      ? 'Play again'
+      : exit === 'leaderboard'
+        ? 'Leaderboard'
+        : ctaFallbackFor(ctx.pageId ?? '', out.length);
+    add(exit, label, button?.variant ?? 'secondary');
+  }
+
+  if (pages.includes('leaderboard')) add('leaderboard', 'Leaderboard', 'tertiary');
+  if (pages.includes('game')) add('game', 'Play again', 'primary');
+
+  return `[${out.join(', ')}]`;
 }
