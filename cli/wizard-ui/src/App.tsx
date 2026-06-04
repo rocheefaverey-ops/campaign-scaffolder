@@ -107,7 +107,28 @@ function AppInner() {
   // away any accidental stack trace. Cleared on step change.
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  useEffect(() => { ping().then(setServerUp); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    let attempts = 0;
+    let timer: number | undefined;
+
+    const check = async () => {
+      const ok = await ping();
+      if (cancelled) return;
+      setServerUp(ok);
+      if (!ok && attempts < 20) {
+        attempts += 1;
+        timer = window.setTimeout(check, 1000);
+      }
+    };
+
+    void check();
+
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, []);
 
   // Persist wizard progress so a crash, refresh, or accidental close doesn't
   // wipe everything the user just entered. Restored on next mount; cleared
