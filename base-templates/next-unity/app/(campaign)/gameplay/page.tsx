@@ -126,13 +126,9 @@ export default function GameplayPage() {
 
     if (wasPreloadedFromVideo) {
       sessionStorage.removeItem('unity-started-from-video');
-      if (process.env.NEXT_PUBLIC_UNITY_START_OBJECT) {
-        ctx.setUnityVisible(true);
-        maybeStartGame();
-      } else {
-        ctx.setUnityVisible(false);
-        setShowFallback(true);
-      }
+      setShowFallback(false);
+      ctx.setUnityVisible(true);
+      maybeStartGame();
       return;
     }
 
@@ -179,6 +175,8 @@ export default function GameplayPage() {
       } catch (error) {
         console.warn('[gameplay] Unity boot failed.', error);
         ctx.setUnityVisible(false);
+        ctx.setMuted(true);
+        ctx.sendMessage('PauseService', 'PauseGame', 1);
         setShowFallback(true);
       }
     });
@@ -193,6 +191,12 @@ export default function GameplayPage() {
   useEffect(() => {
     ctx?.setMuted(isMuted);
   }, [ctx, isMuted]);
+
+  useEffect(() => {
+    if (!showFallback || !ctx) return;
+    ctx.setMuted(true);
+    ctx.sendMessage('PauseService', 'PauseGame', 1);
+  }, [ctx, showFallback]);
 
   const simulateEnd = () => {
     setScore(Math.floor(Math.random() * 200000));
