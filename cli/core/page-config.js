@@ -88,10 +88,7 @@ export function inferPageTypes(_pages) {
 }
 
 export function buildDefaultPages(game) {
-  const pages = ['landing', 'tutorial'];
-  if (game && game !== 'video') pages.push('game', 'result');
-  if (game === 'video') pages.push('intro-video');
-  return pages;
+  return ['loading', 'landing', 'tutorial', 'loading-video', 'game', 'result', 'register', 'voucher', 'leaderboard', 'menu'];
 }
 
 export function landingOnboardingFirstRunOnly(wizardMeta) {

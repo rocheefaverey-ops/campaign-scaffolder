@@ -1,32 +1,60 @@
 .titleBlock {
+  display: flex;
+  flex-direction: column;
   text-align: left;
   padding: 0.25rem 0 0;
+  gap: 0;
 }
 .kicker {
-  font-size: 0.875rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.85;
-  margin-bottom: 0.5rem;
+  letter-spacing: 0.16em;
+  opacity: 0.82;
+  margin-bottom: 0.55rem;
   font-weight: 800;
 }
 .title {
+  font-family: var(--display-font-family, inherit);
   font-size: clamp(2.25rem, 10vw, 3.8rem);
   font-weight: 900;
   line-height: 0.92;
   margin: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   text-wrap: balance;
   text-shadow: 0 2px 18px rgba(14, 14, 14, 0.28);
+  letter-spacing: -0.03em;
 }
 .subtitle {
-  font-size: clamp(1rem, 4vw, 1.25rem);
-  font-weight: 650;
-  line-height: 1.25;
-  margin: 0.75rem 0 0;
-  opacity: 0.9;
+  font-size: clamp(0.95rem, 3.8vw, 1.15rem);
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0.6rem 0 0;
+  opacity: 0.88;
   text-wrap: balance;
 }
 
 :global(.campaign-block-shell--center) .titleBlock {
   text-align: center;
+  align-items: center;
+}
+
+:global(.campaign-block-page--leaderboard) .titleBlock {
+  padding-top: 0;
+}
+
+:global(.campaign-block-page--leaderboard) .kicker {
+  font-size: 0.68rem;
+  margin-bottom: 0.2rem;
+}
+
+:global(.campaign-block-page--leaderboard) .title {
+  font-size: clamp(1.65rem, 6vw, 2.2rem);
+  line-height: 0.98;
+}
+
+:global(.campaign-block-page--leaderboard) .subtitle {
+  font-size: clamp(0.85rem, 3.2vw, 1rem);
+  line-height: 1.16;
+  margin-top: 0.35rem;
 }

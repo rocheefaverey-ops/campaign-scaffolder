@@ -73,6 +73,34 @@ function routeForExit(exit, routeMap = {}) {
   return routeMap[key] ?? routeMap[hyphenKey] ?? routeMap[underscoreKey] ?? DEFAULT_BLOCK_ROUTES[key] ?? DEFAULT_BLOCK_ROUTES[hyphenKey] ?? `/${hyphenKey}`;
 }
 
+function routeForMenuTarget(target, ctx = {}) {
+  const pages = new Set(ctx.pages ?? []);
+  const routeMap = ctx.routeMap ?? {};
+  if (!target) return '#';
+  if (String(target).startsWith('/') || String(target).startsWith('#')) return target;
+  const pageId = String(target).replace(/_/g, '-');
+  if (!pages.size || pages.has(pageId)) return routeForExit(pageId, routeMap);
+  return '#';
+}
+
+function menuTargetsFor(settings = {}, ctx = {}) {
+  const fallback = {
+    home: 'landing',
+    resume: 'game',
+    howToPlay: 'tutorial',
+    leaderboard: 'leaderboard',
+    voucher: 'voucher',
+    terms: '#',
+    privacy: '#',
+    faq: '#',
+    leave: '#',
+  };
+  const merged = { ...fallback, ...(settings.targets ?? {}) };
+  return Object.fromEntries(
+    Object.entries(merged).map(([key, target]) => [key, routeForMenuTarget(target, ctx)]),
+  );
+}
+
 function nextRouteForPage(pageId, pages = [], routeMap = {}) {
   const index = pages.indexOf(pageId);
   const nextPage = index >= 0 ? pages[index + 1] : null;
@@ -104,6 +132,9 @@ function pageLayoutOf(pageId, pageType, hasCard) {
   if (hasCard || pageId === 'register') {
     return { pageClass: 'campaign-block-page--card', shellClass: 'campaign-block-shell--card' };
   }
+  if (pageId === 'leaderboard' || pageType === 'leaderboard') {
+    return { pageClass: 'campaign-screen--hero campaign-block-page--hero campaign-block-page--leaderboard', shellClass: 'campaign-block-shell--hero' };
+  }
   return { pageClass: 'campaign-screen--hero campaign-block-page--hero', shellClass: 'campaign-block-shell--hero' };
 }
 
@@ -123,6 +154,7 @@ function titleFallbackFor(pageId, options = {}) {
 function ctaFallbackFor(pageId, index = 0) {
   if (pageId === 'landing') return 'Play now';
   if (pageId === 'register') return 'Register';
+  if (pageId === 'leaderboard') return index === 1 ? 'Home' : 'Play again';
   if (pageId === 'result') return 'Continue';
   return 'Continue';
 }
@@ -233,21 +265,29 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     ? renderBlock(fullBleedVideoBlock, { ...ctx, fullBleedVideo: true }).trimStart()
     : null;
   const loadingIndicatorBlock = innerBlocks.find((b) => b.name === 'loading-indicator');
-  const isAutoLoadingPage = pageId === 'loading' && loadingIndicatorBlock;
-  const autoAdvanceMs = Number(settingsOf(loadingIndicatorBlock).minDisplayMs ?? 800);
+  const isAutoLoadingPage = pageId === 'loading';
+  const autoAdvanceMs = Number(settingsOf(loadingIndicatorBlock).minDisplayMs ?? options.pageSettings?.loading?.minDisplayMs ?? 800);
   const autoAdvanceRoute = nextRouteForPage(pageId, options.pages ?? [], options.routeMap ?? {});
   const waitForEngineVideoBlock = innerBlocks.find((b) => b.name === 'video-player' && settingsOf(b).onEnd === 'wait-for-engine');
   const isWaitForEngineVideoPage = Boolean(waitForEngineVideoBlock);
+  const usesUnityResult = type === 'result' && innerBlocks.some((b) => b.name === 'score-readout');
+  const usesRegistrationState = (pageId === 'register' || type === 'result') && (options.pages ?? []).includes('register');
+  const tracksRegistrationStatus = type === 'result' && (options.pages ?? []).includes('register');
+  const registerCtaBlock = innerBlocks.find((b) => b.name === 'cta-group');
+  const registerNextRoute = pageId === 'register'
+    ? routeForExit(settingsOf(registerCtaBlock).buttons?.[0]?.exit ?? 'result', options.routeMap ?? {})
+    : null;
   const waitForEngineSettings = settingsOf(waitForEngineVideoBlock);
   const waitForEngineFallbackMs = waitForEngineSettings.readyFallbackMs != null
     ? Number(waitForEngineSettings.readyFallbackMs)
     : Number(waitForEngineSettings.readyFallbackSec ?? 8) * 1000;
   const waitForEngineRoute = routeForExit(settingsOf(waitForEngineVideoBlock).exit ?? 'game', options.routeMap ?? {});
   const usesRouter = innerBlocks.some(blockUsesRouter) || isAutoLoadingPage || isWaitForEngineVideoPage || Boolean(stepFlow);
-  const reactImports = [
-    (isAutoLoadingPage || isWaitForEngineVideoPage) && 'useEffect',
+  const reactImports = [...new Set([
+    (isAutoLoadingPage || isWaitForEngineVideoPage || usesRegistrationState) && 'useEffect',
+    tracksRegistrationStatus && 'useState',
     stepFlow && 'useState',
-  ].filter(Boolean);
+  ].filter(Boolean))];
   const body = [
     ...headerChildren,
     contentChildren.length ? [
@@ -263,8 +303,18 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
   ].flat();
   const content = card
     ? [
+      ...headerChildren,
       `      <CardWrapper styleMode="${settingsOf(card).style ?? 'card'}" cardWidth="${settingsOf(card).cardWidth ?? 'with-margin'}">`,
-      ...body.map((line) => `  ${line}`),
+      ...(contentChildren.length ? [
+        '        <div className="campaign-stack campaign-hero-content campaign-block-content">',
+        ...contentChildren.map((line) => `    ${line}`),
+        '        </div>',
+      ] : []),
+      ...(actionChildren.length ? [
+        '        <div className="campaign-actions campaign-block-actions">',
+        ...actionChildren.map((line) => `    ${line}`),
+        '        </div>',
+      ] : []),
       '      </CardWrapper>',
     ]
     : body;
@@ -294,7 +344,12 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     `import { ${loaderName(pageId)} } from '~/loaders/${loaderBaseName(pageId)}Loader.ts';`,
     importLines,
     isWaitForEngineVideoPage ? "import { useUnity } from '~/components/game/UnityContext.tsx';" : null,
+    usesUnityResult ? "import { useUnityStore } from '~/hooks/stores/useUnityStore.ts';" : null,
     '',
+    usesRegistrationState ? `const REGISTERED_KEY = ${jsString(`lw_registered_${options.capeId ?? options.projectName ?? 'campaign'}`)};` : null,
+    usesRegistrationState ? "const isRegistered = () => typeof window !== 'undefined' && window.localStorage.getItem(REGISTERED_KEY) === '1';" : null,
+    pageId === 'register' && usesRegistrationState ? "const markRegistered = () => { try { window.localStorage.setItem(REGISTERED_KEY, '1'); } catch { /* private mode */ } };" : null,
+    usesRegistrationState ? '' : null,
     `export const Route = createFileRoute(${jsString(route)})({`,
     `  component: ${pageComponentName(pageId, pageType)},`,
     `  loader: async ({ context }) => await ${loaderName(pageId)}(context.language),`,
@@ -305,6 +360,10 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     '  const data = Route.useLoaderData();',
     '  const cape = data.cape as Record<string, any>;',
     usesRouter ? '  const router = useRouter();' : null,
+    usesUnityResult ? '  const result = useUnityStore((state) => state.result);' : null,
+    usesUnityResult ? '  const currentScore = result.score ?? cape.score ?? 0;' : null,
+    usesUnityResult ? '  const currentHighScore = result.highScore ?? cape.highScore ?? cape.score ?? 0;' : null,
+    tracksRegistrationStatus ? '  const [hasRegistered, setHasRegistered] = useState(false);' : null,
     stepFlow ? '  const [stepIndex, setStepIndex] = useState(0);' : null,
     stepFlow ? '  const rawSteps = ((data as Record<string, any>).steps as Array<{ title?: string | null; description?: string | null; image?: string | null }>) ?? [];' : null,
     stepFlow ? '  const filledSteps = rawSteps.filter((s) => (s?.title || s?.description || s?.image));' : null,
@@ -320,6 +379,15 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
       '    return () => window.clearTimeout(timeout);',
       '  }, [router]);',
     ].join('\n') : null,
+    usesRegistrationState ? [
+      '  useEffect(() => {',
+      '    const registered = isRegistered();',
+      tracksRegistrationStatus ? '    setHasRegistered(registered);' : null,
+      pageId === 'register'
+        ? `    if (registered) void router.navigate({ to: ${jsString(registerNextRoute)} as never, replace: true });`
+        : null,
+      '  }, [router]);',
+    ].filter(Boolean).join('\n') : null,
     isWaitForEngineVideoPage ? [
       '  useEffect(() => {',
       '    let cancelled = false;',
@@ -431,6 +499,24 @@ export function buildTsBlockDrivenLoader(pageId, _pageType, _blocks) {
     ].join('\n');
   }
 
+  if (pageType === 'result') {
+    return [
+      `import { loadPageCape } from '~/lib/cape.ts';`,
+      `import { leaderboardFixture } from '~/server/api/fixtures/LeaderboardFixture.ts';`,
+      '',
+      `export async function ${loaderName(pageId)}(language: string) {`,
+      `  const cape = await loadPageCape(${jsString(pageId)}, language, ${jsString(bindings)});`,
+      `  const fixture = leaderboardFixture as { entries?: Array<{ score?: number }>; personalBest?: { rank?: number; score?: number } | null };`,
+      `  const bestScore = fixture.entries?.reduce((best, entry) => Math.max(best, Number(entry.score ?? 0)), 0) ?? 0;`,
+      `  cape.score = fixture.personalBest?.score ?? cape.score ?? 0;`,
+      `  cape.highScore = bestScore || cape.highScore || cape.score;`,
+      `  cape.rank = fixture.personalBest?.rank ?? cape.rank;`,
+      '  return { cape };',
+      '}',
+      '',
+    ].join('\n');
+  }
+
   return [
     `import { loadPageCape } from '~/lib/cape.ts';`,
     '',
@@ -494,7 +580,9 @@ function renderBlock(block, ctx) {
     case 'channel-tabs':
       return `      <ChannelTabs tabs={${jsString(s.tabs ?? ['webshop', 'in-store'])}} defaultTab="${s.defaultTab ?? 'webshop'}" />`;
     case 'score-readout':
-      return `      <ScoreReadout score={cape.score ?? 0} label={cape.scoreLabel ?? 'Score'} highScore={cape.highScore ?? 0} showHighScore={${Boolean(s.showHighScore)}} />`;
+      return ctx.pageType === 'result'
+        ? `      <ScoreReadout score={currentScore} label={cape.scoreLabel ?? 'Score'} highScore={currentHighScore} showHighScore={${Boolean(s.showHighScore)}} />`
+        : `      <ScoreReadout score={cape.score ?? 0} label={cape.scoreLabel ?? 'Score'} highScore={cape.highScore ?? 0} showHighScore={${Boolean(s.showHighScore)}} />`;
     case 'score-illustration':
       return '      <ScoreIllustration image={cape.scoreImage?.url ?? cape.scoreImage} />';
     case 'stats-table':
@@ -558,9 +646,7 @@ function renderBlock(block, ctx) {
     case 'sponsor-footer-strip':
       return '      <SponsorFooterStrip text={cape.sponsorText ?? ""} logo={cape.sponsorLogo?.url ?? cape.sponsorLogo} />';
     case 'menu-item-list': {
-      const targets = s.targets && Object.keys(s.targets).length
-        ? ` targets={${JSON.stringify(s.targets)}}`
-        : '';
+      const targets = ` targets={${JSON.stringify(menuTargetsFor(s, ctx))}}`;
       return `      <MenuItemList items={cape.items ?? undefined}${targets} />`;
     }
     case 'pre-gate-modal':
@@ -607,8 +693,19 @@ function renderCtaButtons(settings, ctx = {}) {
     ? settings.buttons
     : [{ variant: 'primary', exit: 'game' }];
   const cap = Math.min(4, settings.count ? Number(settings.count) : list.length);
-  const entries = list.slice(0, Math.max(1, cap)).map((b, i) =>
-    `{ label: cape.cta?.[${i}]?.label || cape.cta?.[${i}] || cape.ctaLabel || ${jsString(ctaFallbackFor(ctx.pageId ?? '', i))}, variant: '${b.variant ?? 'primary'}', onClick: () => router.navigate({ to: '${routeForExit(b.exit ?? 'game', routeMap)}' as never }) }`,
-  );
+  const entries = list.slice(0, Math.max(1, cap)).map((b, i) => {
+    const route = routeForExit(b.exit ?? 'game', routeMap);
+    const click = ctx.pageId === 'register'
+      ? `() => { markRegistered(); router.navigate({ to: '${route}' as never }); }`
+      : `() => router.navigate({ to: '${route}' as never })`;
+    return `{ label: cape.cta?.[${i}]?.label || cape.cta?.[${i}] || cape.ctaLabel || ${jsString(ctaFallbackFor(ctx.pageId ?? '', i))}, variant: '${b.variant ?? 'primary'}', onClick: ${click} }`;
+  });
+
+  if (ctx.pageType === 'result' && (ctx.pages ?? []).includes('register')) {
+    const homeRoute = routeForExit('landing', routeMap);
+    const gameRoute = routeForExit('game', routeMap);
+    return `hasRegistered ? [{ label: 'Home', variant: 'secondary', onClick: () => router.navigate({ to: '${homeRoute}' as never }) }, { label: 'Play again', variant: 'primary', onClick: () => router.navigate({ to: '${gameRoute}' as never }) }] : [${entries.join(', ')}]`;
+  }
+
   return `[${entries.join(', ')}]`;
 }

@@ -67,4 +67,12 @@ export interface IUnityTracking {
  */
 export interface IUnityGameResult {
   playTime: number;
+  score?: number;
+  highScore?: number;
+  rank?: number;
+  collectedTokens?: number;
+  distance?: number;
+  lapsCompleted?: number;
+  voucherCode?: string;
+  payload?: string;
 }

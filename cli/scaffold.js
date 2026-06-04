@@ -279,14 +279,38 @@ const c = {
 // ─── Arg parsing ─────────────────────────────────────────────────────────────
 function parseArgs(argv) {
   const args = { modules: [], pages: [], routeOverrides: {}, market: 'NL', positionals: [] };
-  for (const raw of argv.slice(2)) {
+  const valueFlags = new Set([
+    'module',
+    'page',
+    'name',
+    'cape-id',
+    'market',
+    'game',
+    'engine',
+    'game-id',
+    'stack',
+    'reg-mode',
+    'gtm-id',
+    'output',
+    'config',
+    'blocks-config',
+    'route',
+  ]);
+  const rawArgs = argv.slice(2);
+  for (let i = 0; i < rawArgs.length; i += 1) {
+    const raw = rawArgs[i];
     if (!raw.startsWith('--')) {
       if (!args.command) args.command = raw;
       else args.positionals.push(raw);
       continue;
     }
-    const [key, ...rest] = raw.replace(/^--/, '').split('=');
-    const val = rest.join('=');
+    const eqIdx = raw.indexOf('=');
+    const key = eqIdx >= 0 ? raw.slice(2, eqIdx) : raw.slice(2);
+    let val = eqIdx >= 0 ? raw.slice(eqIdx + 1) : '';
+    if (!val && valueFlags.has(key) && rawArgs[i + 1] && !rawArgs[i + 1].startsWith('--')) {
+      val = rawArgs[i + 1];
+      i += 1;
+    }
     if      (key === 'module')   args.modules.push(val);
     else if (key === 'page')     args.pages.push(val);
     else if (key === 'name')     args.name     = val;
@@ -2164,7 +2188,7 @@ async function scaffoldTanstack({ name, capeId, market, outputDir, pages = [], m
       try {
         const blockList = effectiveBlocksConfig[page].blocks;
         const pageType = pageTypes[page] ?? pageModuleType(page);
-        const route = buildTsBlockDrivenPage(page, pageType, blockList, { routeMap, stepCount, pages: normalizedPages, projectName: name });
+        const route = buildTsBlockDrivenPage(page, pageType, blockList, { routeMap, stepCount, pages: normalizedPages, projectName: name, capeId });
         const loader = buildTsBlockDrivenLoader(page, pageType, blockList);
         writeFileSync(join(routesDir, routeFileFor(page)), route, 'utf8');
         writeFileSync(join(loadersDir, loaderFileFor(page)), loader, 'utf8');
@@ -2685,7 +2709,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
 
     copyBlockFiles(blocksToCopy, frontendDir, blockTokens);
 
-    const tsx = buildBlockDrivenLanding(blocksConfig.landing.blocks, { routeMap });
+    const tsx = buildBlockDrivenLanding(blocksConfig.landing.blocks, { routeMap, pages, capeId, flowRules });
     const landingPath = join(frontendDir, 'app', '(campaign)', 'landing', 'page.tsx');
     mkdirSync(dirname(landingPath), { recursive: true });
     writeFileSync(landingPath, tsx, 'utf8');
@@ -2728,7 +2752,7 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
       const blockList = Array.isArray(pageConfig?.blocks) ? pageConfig.blocks : [];
       if (!blockList.length) continue;
       const pageType = pageTypes[pageId] ?? pageModuleType(pageId);
-      const tsx = buildBlockDrivenPage(pageId, pageType, blockList, { routeMap });
+      const tsx = buildBlockDrivenPage(pageId, pageType, blockList, { routeMap, pages, capeId, flowRules });
       const defaultRoute = PAGE_ROUTES[pageId] ?? PAGE_ROUTES[pageType] ?? `/${pageId}`;
       const folder = defaultRoute.replace(/^\//, '') || pageId;
       const pagePath = join(frontendDir, 'app', '(campaign)', folder, 'page.tsx');
@@ -4096,7 +4120,7 @@ async function main() {
   const args = parseArgs(process.argv);
 
   if (args.command === 'doctor') {
-    const report = runDoctor();
+    const report = runDoctor({ name: args.name, output: args.output });
     printDoctorReport(report);
     if (!report.ok) process.exit(1);
     return;
@@ -4363,7 +4387,7 @@ async function main() {
     // gameplay placeholder in place because the phaser module never gets
     // copied.
     const game           = cfg.game ?? 'unity';
-    const selectedGame   = cfg.gameId ? getGame(cfg.gameId) : (cfg.stack === 'tanstack' && game === 'unity' ? (getGamesByStack('unity', 'tanstack')[0] ?? null) : null);
+    const selectedGame   = cfg.gameId ? getGame(cfg.gameId) : (game && game !== 'none' ? (getGamesByStack(game, cfg.stack)[0] ?? null) : null);
     if (cfg.gameId && !selectedGame) {
       throw new Error(`Unknown gameId "${cfg.gameId}". Expected a games/{id}/game.json manifest.`);
     }
@@ -4596,11 +4620,11 @@ async function main() {
   if (isNonInteractive) {
     const stack = args.stack || 'next';
     const effectiveGame = args.game != null ? args.game : (stack === 'tanstack' ? 'unity' : '');
-    const pages = args.pages.length > 0 ? args.pages : (stack === 'tanstack' ? ['landing', 'tutorial', 'game', 'result'] : buildDefaultPages(effectiveGame));
+    const pages = args.pages.length > 0 ? args.pages : buildDefaultPages(effectiveGame);
     const pageTypes = inferPageTypes(pages);
     const allModules = resolveModules(effectiveGame, pages, args.modules);
-    const selectedGame = effectiveGame === 'unity'
-      ? (args.gameId ? getGame(args.gameId) : (getGamesByStack('unity', stack)[0] ?? null))
+    const selectedGame = effectiveGame && effectiveGame !== 'none'
+      ? (args.gameId ? getGame(args.gameId) : (getGamesByStack(effectiveGame, stack)[0] ?? null))
       : null;
     if (args.gameId && !selectedGame) {
       throw new Error(`Unknown game id "${args.gameId}". Expected a games/{id}/game.json manifest.`);
@@ -4663,7 +4687,7 @@ async function main() {
       market:    args.market,
       game:      effectiveGame,
       pages,
-      regMode:   args.regMode || 'none',
+      regMode:   args.regMode || (pages.includes('register') && pages.indexOf('register') > pages.indexOf('result') ? 'after' : 'none'),
       modules:   allModules,
       gtmId:     args.gtmId || '',
       iframe:    args.iframe || false,
@@ -4675,23 +4699,23 @@ async function main() {
       skipGit: Boolean(args.skipGit),
       blocksConfig: nonInteractiveBlocksConfig ?? defaultBlocksConfig,
       pageTypes,
-      flowExits: pages.includes('result') && pages.includes('landing') ? { 'result.next': 'landing' } : {},
+      flowExits: {},
       flowEnabledExits: { 'landing.leaderboard': false, 'result.playAgain': true, 'result.leaderboard': false },
-      menuItemsEnabled: { home: true, resume: false, howToPlay: true, leaderboard: false, voucher: false, terms: true, privacy: true, faq: false, leave: true },
+      menuItemsEnabled: { home: true, resume: false, howToPlay: true, leaderboard: false, voucher: false, terms: true, privacy: true, faq: false, leave: false },
       _wizardMeta: {
         pageSettings: {
           landing: { onboardingFirstRunOnly: true },
-          'intro-video': { skipAfterSeconds: 3 },
-          'loading-video': {},
-          'ad-video': { skipAfterSeconds: 3 },
-          onboarding: { allowSkip: false },
-          register: { showInfix: true, requireOptIns: true },
-          game: { unityBootMode: 'entry', timerEnabled: true, timerSec: 60 },
+          'intro-video': { mode: 'loadingScreen', alwaysSkip: false, minPlaybackSec: 3, readyFallbackSec: 8 },
+          'loading-video': { mode: 'loadingScreen', readyFallbackSec: 8 },
+          'ad-video': { mode: 'loadingScreen', alwaysSkip: false, minPlaybackSec: 3, readyFallbackSec: 8 },
+          tutorial: { screenLayout: 'fullBleedHero' },
+          register: { showInfix: true },
+          game: { unityBootMode: 'entry' },
           result: { autoNavSec: 0 },
           voucher: { showQr: true, codeLength: 8 },
         },
         flowEnabledExits: { 'landing.leaderboard': false, 'result.playAgain': true, 'result.leaderboard': false },
-        menuItemsEnabled: { home: true, resume: false, howToPlay: true, leaderboard: false, voucher: false, terms: true, privacy: true, faq: false, leave: true },
+        menuItemsEnabled: { home: true, resume: false, howToPlay: true, leaderboard: false, voucher: false, terms: true, privacy: true, faq: false, leave: false },
         defaultLanguage: 'EN',
         supportedLanguages: ['EN'],
         timezone: 'Europe/Brussels',

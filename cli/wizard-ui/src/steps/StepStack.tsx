@@ -62,14 +62,14 @@ export default function StepStack({ config, setConfig }: StepProps) {
                     gameId: opt.id === 'tanstack' && opt.engine === 'unity' ? 'nhl-crush' : undefined,
                     name,
                     pages,
-                    regMode: opt.id === 'tanstack' ? 'none' : config.regMode,
+                    regMode: 'after',
                     modules: opt.id === 'tanstack' ? [] : config.modules,
                     flowExits: {},
                     flowEnabledExits: defaultEnabledExits(),
                     flowButtonVariants: defaultFlowButtonVariants(),
                     flowRules: defaultFlowRulesForPages(pages),
                     pageBlocks: defaultPageBlocksForPages(pages),
-                    menuItemsEnabled: opt.id === 'tanstack' ? { ...defaultMenuItemsEnabled(), home: false, howToPlay: false } : config.menuItemsEnabled,
+                    menuItemsEnabled: defaultMenuItemsEnabled(),
                   });
                 }}
                 style={{ position: 'relative' }}

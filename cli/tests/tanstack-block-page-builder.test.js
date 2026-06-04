@@ -49,6 +49,20 @@ describe('buildTsBlockDrivenPage - loading', () => {
     assert.match(route, /window\.setTimeout/);
     assert.match(route, /router\.navigate\(\{ to: ["']\/landing["'] as never, replace: true \}\), 800/);
   });
+
+  it('auto-advances loading pages even when the loading indicator block is disabled', () => {
+    const route = buildTsBlockDrivenPage('loading', 'loading', [
+      { name: 'background', settings: { kind: 'video' } },
+      { name: 'brand-chip', settings: { size: 'md' } },
+    ], {
+      pages: ['loading', 'landing'],
+      routeMap: { loading: '/loading', landing: '/landing' },
+    });
+
+    assert.match(route, /window\.setTimeout/);
+    assert.match(route, /router\.navigate\(\{ to: ["']\/landing["'] as never, replace: true \}\), 800/);
+    assert.doesNotMatch(route, /LoadingIndicator/);
+  });
 });
 
 describe('buildTsBlockDrivenPage - loading-video', () => {
@@ -227,6 +241,8 @@ describe('buildTsBlockDrivenPage - block coverage', () => {
       assert.match(route, new RegExp(`<${component}`), `${component} render missing`);
     }
     assert.match(route, /router\.navigate/);
+    assert.match(route, /useUnityStore/);
+    assert.match(route, /const currentScore = result\.score \?\? cape\.score \?\? 0/);
     assert.match(route, /durationSec=\{45\}/);
     assert.match(route, /defaultTab="all"/);
   });
@@ -248,6 +264,71 @@ describe('buildTsBlockDrivenPage - block coverage', () => {
     assert.match(route, /<StatsTable rows=\{cape\.stats \?\? \[\]\} count=\{2\}/);
     assert.match(route, /<TopNHighlight label=\{cape\.topNLabel \?\? ''\} count=\{5\}/);
   });
+
+  it('keeps card page header chrome outside the card wrapper', () => {
+    const route = buildTsBlockDrivenPage('register', 'register', [
+      { name: 'background', settings: { kind: 'image' } },
+      { name: 'header-chrome', settings: { leftSlot: 'back', rightSlot: 'close' } },
+      { name: 'card-wrapper', settings: { style: 'card', cardWidth: 'with-margin' } },
+      { name: 'title-block', settings: { showSubtitle: true } },
+      { name: 'cta-group', settings: { buttons: [{ variant: 'primary', exit: 'voucher' }] } },
+    ], {});
+
+    assert.match(route, /<HeaderChrome[\s\S]*<CardWrapper/);
+    assert.doesNotMatch(route, /<CardWrapper[\s\S]*<HeaderChrome/);
+  });
+
+  it('marks registration locally and skips the register page after submit', () => {
+    const route = buildTsBlockDrivenPage('register', 'register', [
+      { name: 'background', settings: { kind: 'image' } },
+      { name: 'card-wrapper', settings: { style: 'card', cardWidth: 'with-margin' } },
+      { name: 'title-block', settings: { showSubtitle: true } },
+      { name: 'cta-group', settings: { buttons: [{ variant: 'primary', exit: 'voucher' }] } },
+    ], {
+      capeId: '63633',
+      pages: ['result', 'register', 'voucher'],
+      routeMap: { voucher: '/voucher' },
+    });
+
+    assert.match(route, /const REGISTERED_KEY = "lw_registered_63633"/);
+    assert.match(route, /if \(registered\) void router\.navigate\(\{ to: "\/voucher" as never, replace: true \}\)/);
+    assert.match(route, /markRegistered\(\); router\.navigate\(\{ to: '\/voucher' as never \}\)/);
+  });
+
+  it('shows landing and play-again result actions after registration', () => {
+    const route = buildTsBlockDrivenPage('result', 'result', [
+      { name: 'background', settings: { kind: 'image' } },
+      { name: 'score-readout', settings: { showHighScore: true } },
+      { name: 'cta-group', settings: { buttons: [{ variant: 'primary', exit: 'register' }] } },
+    ], {
+      capeId: '63633',
+      pages: ['result', 'register', 'landing', 'game'],
+      routeMap: { register: '/register', landing: '/landing', game: '/game' },
+    });
+
+    assert.match(route, /const \[hasRegistered, setHasRegistered\] = useState\(false\)/);
+    assert.match(route, /hasRegistered \? \[\{ label: 'Home'/);
+    assert.match(route, /router\.navigate\(\{ to: '\/landing' as never \}\)/);
+    assert.match(route, /router\.navigate\(\{ to: '\/game' as never \}\)/);
+    assert.match(route, /: \[\{ label: cape\.cta\?\.\[0\]\?\.label/);
+  });
+
+  it('emits route-aware menu targets without sending missing legal links to landing', () => {
+    const route = buildTsBlockDrivenPage('menu', 'menu', [
+      { name: 'background', settings: { kind: 'image' } },
+      { name: 'menu-item-list', settings: { items: ['home', 'howToPlay', 'terms', 'privacy', 'leave'] } },
+    ], {
+      pages: ['loading', 'landing', 'tutorial', 'game', 'leaderboard', 'menu'],
+      routeMap: { landing: '/landing', tutorial: '/tutorial', game: '/game', leaderboard: '/leaderboard', menu: '/menu' },
+    });
+
+    assert.match(route, /"home":"\/landing"/);
+    assert.match(route, /"howToPlay":"\/tutorial"/);
+    assert.match(route, /"leaderboard":"\/leaderboard"/);
+    assert.match(route, /"terms":"#"/);
+    assert.match(route, /"privacy":"#"/);
+    assert.match(route, /"leave":"#"/);
+  });
 });
 
 describe('buildTsBlockDrivenLoader - leaderboard data', () => {
@@ -264,5 +345,17 @@ describe('buildTsBlockDrivenLoader - leaderboard data', () => {
     assert.match(loader, /you: Boolean\(entry\.you \?\? entry\.isYou \?\? entry\.isCurrentPlayer\)/);
     assert.match(loader, /cape\.personalRank = personalBest\?\.rank/);
     assert.match(loader, /cape\.personalBest = personalBest\?\.score/);
+  });
+});
+
+describe('buildTsBlockDrivenLoader - result score data', () => {
+  it('seeds result score copy from the local leaderboard fixture', () => {
+    const loader = buildTsBlockDrivenLoader('result', 'result', [
+      { name: 'score-readout', settings: { showHighScore: true } },
+    ]);
+
+    assert.match(loader, /import \{ leaderboardFixture \} from '~\/server\/api\/fixtures\/LeaderboardFixture\.ts'/);
+    assert.match(loader, /cape\.score = fixture\.personalBest\?\.score \?\? cape\.score \?\? 0/);
+    assert.match(loader, /cape\.highScore = bestScore \|\| cape\.highScore \|\| cape\.score/);
   });
 });

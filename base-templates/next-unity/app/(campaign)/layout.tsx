@@ -4,7 +4,6 @@ import { usePathname } from 'next/navigation';
 import Header from '@components/_core/Header/Header';
 import Loading from '@components/_core/Loading/Loading';
 import DevTools from '@components/_core/DevTools/DevTools';
-import UnityContainer from '@components/_modules/unity/UnityContainer';
 import { useCapeData } from '@hooks/useCapeData';
 import { useSafeNavigation } from '@hooks/useSafeNavigation';
 import { getCapeImage, getHeaderConfig, isVideoUrl } from '@utils/getCapeData';
@@ -57,7 +56,7 @@ export default function CampaignLayout({ children }: { children: React.ReactNode
 
       <main className={`flex-1 min-h-0 overflow-hidden ${showHeader ? '' : 'h-full'}`}>
         <Loading />
-        <UnityContainer>{children}</UnityContainer>
+        {children}
       </main>
 
       <DevTools />

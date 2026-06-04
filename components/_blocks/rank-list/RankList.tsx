@@ -7,13 +7,19 @@ export function RankList({ rows = [], emptyLabel = 'No scores yet.' }: Props) {
   if (!rows.length) return <p className={styles.empty}>{emptyLabel}</p>;
   return (
     <ol className={styles.list}>
-      {rows.map((row) => (
-        <li key={`${row.rank}-${row.name}`} className={row.you ? styles.you : undefined}>
-          <span>#{row.rank}</span>
-          <strong>{row.name}</strong>
-          <em>{typeof row.score === 'number' ? row.score.toLocaleString() : row.score}</em>
-        </li>
-      ))}
+      {rows.map((row) => {
+        const cls = [
+          row.you ? styles.you : '',
+          row.rank <= 3 ? styles.top3 : '',
+        ].filter(Boolean).join(' ') || undefined;
+        return (
+          <li key={`${row.rank}-${row.name}`} className={cls} data-rank={row.rank}>
+            <span className={styles.rank}>{row.rank}</span>
+            <strong>{row.name}</strong>
+            <em>{typeof row.score === 'number' ? row.score.toLocaleString() : row.score}</em>
+          </li>
+        );
+      })}
     </ol>
   );
 }

@@ -17,6 +17,14 @@ export const useUnityStore = create<IUnityStore>((set) => ({
       // Rebuild the result object, to make sure all fields are present
       const newResult: IUnityGameResult = {
         playTime: parsedResult.playTime ?? 0,
+        score: parsedResult.score ?? parsedResult.playerScore,
+        highScore: parsedResult.highScore,
+        rank: parsedResult.rank,
+        collectedTokens: parsedResult.collectedTokens,
+        distance: parsedResult.distance,
+        lapsCompleted: parsedResult.lapsCompleted,
+        voucherCode: parsedResult.voucherCode,
+        payload: parsedResult.payload,
       };
 
       // Update the store

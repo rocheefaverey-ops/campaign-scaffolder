@@ -129,4 +129,73 @@ describe('buildBlockDrivenLanding', () => {
     assert.doesNotMatch(out, /personalRank \?\? 0/);
     assert.doesNotMatch(out, /personalBest \?\? 0/);
   });
+
+  it('marks registration locally and skips the register page after submit', () => {
+    const out = buildBlockDrivenPage('register', 'register', [
+      { name: 'background', settings: { kind: 'image' } },
+      { name: 'card-wrapper', settings: { style: 'card' } },
+      { name: 'field-set', settings: { fields: ['firstName', 'email'] } },
+      { name: 'opt-in-list', settings: { optIns: ['terms'] } },
+      { name: 'cta-group', settings: { buttons: [{ variant: 'primary', exit: 'voucher' }] } },
+    ], { capeId: '63633', pages: ['register', 'voucher'], routeMap: { voucher: '/voucher' } });
+
+    assert.match(out, /const REGISTERED_KEY = "lw_registered_63633";/);
+    assert.match(out, /if \(isRegistered\(\)\) router\.replace\("\/voucher"\);/);
+    assert.match(out, /const finishRegister = \(\) => \{/);
+    assert.match(out, /markRegistered\(\);/);
+    assert.match(out, /router\.push\("\/voucher"\);/);
+    assert.match(out, /onClick: \(\) => finishRegister\(\)/);
+  });
+
+  it('does not skip register when the flow rule says always show', () => {
+    const out = buildBlockDrivenPage('register', 'register', [
+      { name: 'background', settings: { kind: 'image' } },
+      { name: 'card-wrapper', settings: { style: 'card' } },
+      { name: 'field-set', settings: { fields: ['firstName', 'email'] } },
+      { name: 'opt-in-list', settings: { optIns: ['terms'] } },
+      { name: 'cta-group', settings: { buttons: [{ variant: 'primary', exit: 'voucher' }] } },
+    ], {
+      capeId: '63633',
+      pages: ['register', 'voucher'],
+      routeMap: { voucher: '/voucher' },
+      flowRules: { register: { mode: 'always' } },
+    });
+
+    assert.doesNotMatch(out, /REGISTERED_KEY/);
+    assert.doesNotMatch(out, /finishRegister/);
+    assert.match(out, /router\.push\("\/voucher"\)/);
+  });
+
+  it('does not skip tutorial when the flow rule says always show', () => {
+    const out = buildBlockDrivenPage('landing', 'landing', [
+      { name: 'background', settings: { kind: 'image' } },
+      { name: 'title-block', settings: { showSubtitle: true } },
+      { name: 'cta-group', settings: { buttons: [{ variant: 'primary', exit: 'tutorial' }] } },
+    ], {
+      capeId: '63633',
+      pages: ['landing', 'tutorial', 'loading-video', 'game'],
+      routeMap: { tutorial: '/tutorial', 'loading-video': '/loading-video', game: '/gameplay' },
+      flowRules: { tutorial: { mode: 'always' } },
+    });
+
+    assert.doesNotMatch(out, /ONBOARDING_KEY/);
+    assert.doesNotMatch(out, /isOnboardingDone/);
+    assert.match(out, /router\.push\("\/tutorial"\)/);
+  });
+
+  it('does not rewrite a landing CTA that explicitly targets game', () => {
+    const out = buildBlockDrivenPage('landing', 'landing', [
+      { name: 'background', settings: { kind: 'image' } },
+      { name: 'title-block', settings: { showSubtitle: true } },
+      { name: 'cta-group', settings: { buttons: [{ variant: 'primary', exit: 'game' }] } },
+    ], {
+      capeId: '63633',
+      pages: ['landing', 'tutorial', 'loading-video', 'game'],
+      routeMap: { tutorial: '/tutorial', 'loading-video': '/loading-video', game: '/gameplay' },
+      flowRules: { tutorial: { mode: 'once-per-browser' } },
+    });
+
+    assert.doesNotMatch(out, /isOnboardingDone/);
+    assert.match(out, /router\.push\("\/gameplay"\)/);
+  });
 });

@@ -245,31 +245,31 @@ function page(blocks: Record<string, PageBlockConfig>, blockOrder = Object.keys(
 
 export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
   loading: page({
-    background: block(true, { kind: 'image' }),
+    background: block(true, { kind: 'video' }),
     'centered-art': block(true, { size: 'md' }),
     'brand-chip': block(true, { size: 'md' }),
     tagline: block(true),
-    'loading-indicator': block(true, { kind: 'ring', minDisplayMs: 800 }),
+    'loading-indicator': block(false, { kind: 'ring', minDisplayMs: 800 }),
   }),
   landing: page({
     background: block(true, { kind: 'image' }),
-    'header-chrome': block(true, { leftSlot: 'menu', rightSlot: 'none' }),
-    'brand-chip': block(true, { size: 'md' }),
-    'title-block': block(true, { showKicker: false, showSubtitle: false }),
-    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'game' }] }),
+    'header-chrome': block(true, { leftSlot: 'menu', rightSlot: 'help', leftSlotTarget: '', rightSlotTarget: 'tutorial' }),
+    'brand-chip': block(true, { size: 'md', slot: 'header' }),
+    'title-block': block(true, { showKicker: false, showSubtitle: true }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'tutorial' }] }),
     'footer-link-list': block(false),
     'compliance-badge': block(false, { kind: '18+' }),
     'pre-gate-modal': block(false, { kind: 'age-18', persistAcrossSession: true }),
   }),
   tutorial: page({
     background: block(true, { kind: 'image' }),
-    'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'none' }),
-    'brand-chip': block(true, { size: 'md' }),
+    'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'close', rightSlotTarget: 'landing' }),
+    'brand-chip': block(true, { size: 'md', slot: 'header' }),
     'centered-art': block(true, { size: 'md' }),
     'title-block': block(true, { showKicker: false, showSubtitle: true }),
     'body-copy': block(true, { markdown: true }),
     'step-indicator': block(true, { count: 3, style: 'dots' }),
-    'nav-controls': block(true, { showPrev: false, nextExit: 'game' }),
+    'nav-controls': block(true, { showPrev: false, nextExit: 'loading-video' }),
     'compliance-badge': block(false, { kind: '18+' }),
   }),
   'intro-video': page({
@@ -283,10 +283,10 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
   }),
   'loading-video': page({
     background: block(true, { kind: 'solid' }),
-    'header-chrome': block(true, { leftSlot: 'none', rightSlot: 'none' }),
+    'header-chrome': block(false, { leftSlot: 'none', rightSlot: 'none' }),
     'brand-chip': block(false, { size: 'sm' }),
     'video-player': block(true, { muted: true, loop: true, onEnd: 'wait-for-engine', availableAfterMs: 0 }),
-    'fallback-indicator': block(true),
+    'fallback-indicator': block(false),
   }),
   'ad-video': page({
     background: block(true, { kind: 'solid' }),
@@ -309,45 +309,45 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
   }),
   result: page({
     background: block(true, { kind: 'image' }),
-    'header-chrome': block(true, { leftSlot: 'none', rightSlot: 'close' }),
-    'brand-chip': block(true, { size: 'md' }),
+    'header-chrome': block(true, { leftSlot: 'menu', rightSlot: 'none', leftSlotTarget: 'menu' }),
+    'brand-chip': block(true, { size: 'md', slot: 'header' }),
     'title-block': block(true, { showKicker: true, showSubtitle: true }),
     'body-copy': block(true, { markdown: true }),
     'score-readout': block(true, { showHighScore: true }),
-    'score-illustration': block(false),
+    'score-illustration': block(true, { position: 'above-title' }),
     'stats-table': block(false, { count: 3, rows: [{ label: 'Score', value: 'score' }, { label: 'Rank', value: 'rank' }, { label: 'Best', value: 'highScore' }] }),
     'status-chip': block(false, { kind: 'registered' }),
-    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'game' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'register' }] }),
     'compliance-badge': block(false, { kind: '18+' }),
     'footer-link-list': block(false),
   }),
   leaderboard: page({
     background: block(true, { kind: 'image' }),
-    'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'none' }),
-    'brand-chip': block(true, { size: 'md' }),
+    'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'menu', rightSlotTarget: 'menu' }),
+    'brand-chip': block(true, { size: 'md', slot: 'header' }),
     'title-block': block(true, { showKicker: true, showSubtitle: true }),
     'leaderboard-tabs': block(true, { tabs: ['all', 'daily', 'weekly'], defaultTab: 'all' }),
     'rank-list': block(true, { rows: 10 }),
     'top-n-highlight': block(false, { count: 3 }),
     'personal-best-row': block(true),
-    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'landing' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'game' }, { variant: 'secondary', exit: 'landing' }] }),
   }),
   register: page({
     background: block(true, { kind: 'image' }),
-    'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'none' }),
+    'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'close', rightSlotTarget: 'landing' }),
     'brand-chip': block(true, { size: 'md' }),
     'card-wrapper': block(true, { style: 'card', cardWidth: 'with-margin' }),
     'title-block': block(true, { showKicker: false, showSubtitle: true }),
-    'body-copy': block(false, { markdown: true }),
+    'body-copy': block(true, { markdown: true }),
     'field-set': block(true, { fields: ['firstName', 'lastName', 'email'] }),
     'opt-in-list': block(true, { optIns: ['terms'] }),
-    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'result' }] }),
-    'footer-link-list': block(false),
-  }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'voucher' }] }),
+    'footer-link-list': block(true),
+  }, ['header-chrome', 'background', 'brand-chip', 'card-wrapper', 'title-block', 'body-copy', 'field-set', 'opt-in-list', 'cta-group', 'footer-link-list']),
   voucher: page({
     background: block(true, { kind: 'image' }),
-    'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'close' }),
-    'brand-chip': block(true, { size: 'md' }),
+    'header-chrome': block(true, { leftSlot: 'menu', rightSlot: 'none', leftSlotTarget: 'menu' }),
+    'brand-chip': block(true, { size: 'md', slot: 'header' }),
     'title-block': block(true, { showKicker: true, showSubtitle: false }),
     'body-copy': block(true, { markdown: true }),
     'channel-tabs': block(false, { tabs: ['webshop', 'in-store'], defaultTab: 'webshop' }),
@@ -372,7 +372,20 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
     background: block(true, { kind: 'image' }),
     'header-chrome': block(true, { leftSlot: 'back', rightSlot: 'none' }),
     'brand-chip': block(true, { size: 'md' }),
-    'menu-item-list': block(true, { items: ['home', 'howToPlay', 'terms', 'privacy', 'leave'] }),
+    'menu-item-list': block(true, {
+      items: ['home', 'howToPlay', 'terms', 'privacy'],
+      targets: {
+        home: '/landing',
+        resume: '/game',
+        howToPlay: '/tutorial',
+        leaderboard: '/leaderboard',
+        voucher: '/voucher',
+        terms: '#',
+        privacy: '#',
+        faq: '#',
+        leave: '#',
+      },
+    }),
   }),
 };
 
@@ -826,19 +839,18 @@ export function pageIcon(type: string): string {
 }
 
 export function defaultPagesForStack(stack: Stack): PageInstance[] {
-  if (stack === 'tanstack') {
-    return [
-      { id: 'landing',  type: 'landing',  route: '/landing'  },
-      { id: 'tutorial', type: 'tutorial', route: '/tutorial' },
-      { id: 'game',     type: 'game',     route: '/game'     },
-      { id: 'result',   type: 'result',   route: '/result'   },
-    ];
-  }
+  const gameRoute = stack === 'tanstack' ? '/game' : '/gameplay';
   return [
-    { id: 'landing',    type: 'landing',    route: '/landing'    },
-    { id: 'tutorial',   type: 'tutorial',   route: '/tutorial'   },
-    { id: 'game',       type: 'game',       route: '/gameplay'   },
-    { id: 'result',     type: 'result',     route: '/result'     },
+    { id: 'loading',       type: 'loading',       route: '/loading'       },
+    { id: 'landing',       type: 'landing',       route: '/landing'       },
+    { id: 'tutorial',      type: 'tutorial',      route: '/tutorial'      },
+    { id: 'loading-video', type: 'loading-video', route: '/loading-video' },
+    { id: 'game',          type: 'game',          route: gameRoute        },
+    { id: 'result',        type: 'result',        route: '/result'        },
+    { id: 'register',      type: 'register',      route: '/register'      },
+    { id: 'voucher',       type: 'voucher',       route: '/voucher'       },
+    { id: 'leaderboard',   type: 'leaderboard',   route: '/leaderboard'   },
+    { id: 'menu',          type: 'menu',          route: '/menu'          },
   ];
 }
 
@@ -956,7 +968,7 @@ export const MENU_ITEMS: MenuItemDef[] = [
   { id: 'terms',       label: 'Terms',          target: '/terms',       kind: 'tertiary',  defaultEnabled: true  },
   { id: 'privacy',     label: 'Privacy',        target: '/privacy',     kind: 'tertiary',  defaultEnabled: true  },
   { id: 'faq',         label: 'FAQ',             target: '/faq',         kind: 'tertiary',  defaultEnabled: false },
-  { id: 'leave',       label: 'Leave campaign', target: '/',            kind: 'danger',    defaultEnabled: true  },
+  { id: 'leave',       label: 'Leave campaign', target: '/',            kind: 'danger',    defaultEnabled: false },
 ];
 
 /** Default route per header slot type — used as placeholder text in the wizard. */
@@ -1002,7 +1014,7 @@ export const DEFAULT_CONFIG: ScaffoldConfig = {
   brand:              '',
   department:         '',
   pages:              defaultPagesForStack('next'),
-  regMode:            'none',
+  regMode:            'after',
   modules:            [],
   gtmId:              '',
   iframe:             false,

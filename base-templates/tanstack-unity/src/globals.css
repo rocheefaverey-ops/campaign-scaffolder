@@ -1209,10 +1209,18 @@ input[type='radio'] {
   gap: 1rem;
 }
 
+.campaign-block-page--leaderboard .campaign-stack {
+  gap: 0.55rem;
+}
+
 .campaign-actions {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.campaign-block-page--leaderboard .campaign-actions {
+  gap: 0.5rem;
 }
 
 .campaign-step {

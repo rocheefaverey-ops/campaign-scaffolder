@@ -9,7 +9,7 @@
  */
 
 const BLOCK_REQUIRED_BY_TYPE = {
-  loading: ['background', 'loading-indicator'],
+  loading: ['background'],
   landing: ['background', 'title-block'],
   tutorial: ['background', 'title-block', 'nav-controls'],
   onboarding: ['background', 'title-block', 'nav-controls'],
@@ -75,6 +75,40 @@ function settingsOf(block) {
   return block?.settings ?? {};
 }
 
+function defaultFlowRuleMode(type) {
+  switch (type) {
+    case 'tutorial':
+    case 'onboarding':
+      return 'once-per-browser';
+    case 'register':
+      return 'skip-if-registered';
+    default:
+      return 'always';
+  }
+}
+
+function flowRuleModeFor(pageId, pageType, flowRules = {}) {
+  const rule = flowRules?.[pageId];
+  return typeof rule?.mode === 'string' ? rule.mode : defaultFlowRuleMode(pageType);
+}
+
+function flowRuleSkipRouteFor(pageId, fallbackExit, ctx = {}) {
+  const skipTo = ctx.flowRules?.[pageId]?.skipTo;
+  if (skipTo) return routeForExit(skipTo, ctx.routeMap);
+  const pages = ctx.pages ?? [];
+  const index = pages.indexOf(pageId);
+  const next = index >= 0 ? pages[index + 1] : null;
+  return routeForExit(next || fallbackExit, ctx.routeMap);
+}
+
+function ctaFallbackFor(pageId, index = 0) {
+  if (pageId === 'landing') return 'Play now';
+  if (pageId === 'register') return 'Register';
+  if (pageId === 'leaderboard') return index === 1 ? 'Home' : 'Play again';
+  if (pageId === 'result') return 'Continue';
+  return 'Continue';
+}
+
 function titleFallbackFor(pageId, options = {}) {
   const projectName = options.projectName || 'Livewall';
   if (pageId === 'landing') return `Welcome to ${projectName}`;
@@ -119,6 +153,28 @@ function reorderBefore(blocks, target, anchor) {
   return [...without.slice(0, insertAt), blocks[targetIdx], ...without.slice(insertAt)];
 }
 
+function blockArea(block) {
+  if (['cta-group', 'nav-controls', 'reveal-cta', 'skip-control'].includes(block.name)) return 'actions';
+  if (block.name === 'header-chrome') return 'header';
+  return 'content';
+}
+
+function pageLayoutOf(pageId, pageType, hasCard) {
+  if (['video', 'intro-video', 'loading-video', 'ad-video'].includes(pageId) || pageType === 'video') {
+    return { pageClass: 'campaign-block-page--video', shellClass: 'campaign-block-shell--center' };
+  }
+  if (pageId === 'loading') {
+    return { pageClass: 'campaign-screen--hero campaign-block-page--hero', shellClass: 'campaign-block-shell--center' };
+  }
+  if (hasCard || pageId === 'register') {
+    return { pageClass: 'campaign-block-page--card', shellClass: 'campaign-block-shell--card' };
+  }
+  if (pageId === 'leaderboard' || pageType === 'leaderboard') {
+    return { pageClass: 'campaign-screen--hero campaign-block-page--hero campaign-block-page--leaderboard', shellClass: 'campaign-block-shell--hero' };
+  }
+  return { pageClass: 'campaign-screen--hero campaign-block-page--hero', shellClass: 'campaign-block-shell--hero' };
+}
+
 function slotUsesRouter(slot) {
   return ['menu', 'back', 'close', 'help'].includes(slot);
 }
@@ -151,6 +207,25 @@ function blockUsesRouter(block) {
  */
 export function buildBlockDrivenPage(pageId, pageType, blocks, options = {}) {
   const type = normaliseBlockType(pageType || pageId);
+  const selectedPages = options.pages ?? [];
+  const flowRules = options.flowRules ?? {};
+  const hasTutorialPage = selectedPages.includes('tutorial') || Object.keys(options.routeMap ?? {}).includes('tutorial');
+  const isTutorialPage = pageId === 'tutorial' || type === 'onboarding';
+  const tutorialRuleMode = flowRuleModeFor('tutorial', 'onboarding', flowRules);
+  const ctaBlock = blocks.find((b) => b.name === 'cta-group');
+  const ctaButtons = settingsOf(ctaBlock).buttons;
+  const hasTutorialCta = Array.isArray(ctaButtons)
+    && ctaButtons.some((button) => {
+      const exit = button?.exit ?? 'game';
+      const route = routeForExit(exit, options.routeMap ?? {});
+      return exit === 'tutorial' || route === routeForExit('tutorial', options.routeMap ?? {});
+    });
+  const needsOnboardingGate = tutorialRuleMode === 'once-per-browser' && hasTutorialPage && (isTutorialPage || (pageId === 'landing' && hasTutorialCta));
+  const onboardingKey = `lw_onboarding_done_${options.capeId || 'campaign'}`;
+  const isRegisterPage = pageId === 'register' || type === 'register';
+  const registerRuleMode = flowRuleModeFor(pageId, type, flowRules);
+  const needsRegisterGate = isRegisterPage && registerRuleMode === 'skip-if-registered';
+  const registeredKey = `lw_registered_${options.capeId || 'campaign'}`;
   const required = BLOCK_REQUIRED_BY_TYPE[pageType] ?? BLOCK_REQUIRED_BY_TYPE[type] ?? [];
   for (const req of required) {
     if (!blocks.find((b) => b.name === req)) {
@@ -212,29 +287,72 @@ export function buildBlockDrivenPage(pageId, pageType, blocks, options = {}) {
   const isVideoPage = type === 'video' || ['video', 'intro-video', 'loading-video', 'ad-video'].includes(pageId);
   const videoPlayerBlock = innerBlocks.find((b) => b.name === 'video-player');
   const fullBleedVideoBlock = isVideoPage ? videoPlayerBlock : null;
+  const tracksRegistrationStatus = type === 'result' && selectedPages.includes('register');
 
-  const ctx = { pageId, pageType: type, routeMap: options.routeMap ?? {}, brandInHeader, stepFlow, projectName: options.projectName };
+  const ctx = { pageId, pageType: type, routeMap: options.routeMap ?? {}, pages: selectedPages, flowRules, brandInHeader, stepFlow, projectName: options.projectName, needsOnboardingGate, needsRegisterGate };
   const visibleOrderedBlocks = fullBleedVideoBlock
     ? orderedBlocks.filter((b) => b !== fullBleedVideoBlock)
     : orderedBlocks;
-  const children = visibleOrderedBlocks.map((block) => renderBlock(block, ctx));
+  const headerChildren = visibleOrderedBlocks.filter((block) => blockArea(block) === 'header').map((block) => renderBlock(block, ctx));
+  const contentChildren = visibleOrderedBlocks.filter((block) => blockArea(block) === 'content').map((block) => renderBlock(block, ctx));
+  const actionChildren = visibleOrderedBlocks.filter((block) => blockArea(block) === 'actions').map((block) => renderBlock(block, ctx));
   const mediaSlotRender = fullBleedVideoBlock
     ? renderBlock(fullBleedVideoBlock, { ...ctx, fullBleedVideo: true }).trimStart()
     : null;
   const usesRouter = innerBlocks.some(blockUsesRouter) || Boolean(stepFlow);
+  const reactHooks = [...new Set([
+    isTutorialPage && needsOnboardingGate ? 'useEffect' : null,
+    needsRegisterGate ? 'useEffect' : null,
+    tracksRegistrationStatus ? 'useEffect' : null,
+    tracksRegistrationStatus ? 'useState' : null,
+    stepFlow ? 'useState' : null,
+  ].filter(Boolean))];
+  const tutorialFallbackExit = isTutorialPage
+    ? settingsOf(navControlsBlock).nextExit ?? 'game'
+    : 'game';
+  const tutorialSkipRoute = flowRuleSkipRouteFor('tutorial', tutorialFallbackExit, ctx);
+  const registerCtaBlock = innerBlocks.find((b) => b.name === 'cta-group');
+  const registerExit = settingsOf(registerCtaBlock).buttons?.[0]?.exit ?? 'voucher';
+  const registerSkipRoute = flowRuleSkipRouteFor(pageId, registerExit, ctx);
+
+  const body = [
+    ...headerChildren,
+    contentChildren.length ? [
+      '      <div className="campaign-stack campaign-hero-content campaign-block-content">',
+      ...contentChildren.map((line) => `  ${line}`),
+      '      </div>',
+    ] : [],
+    actionChildren.length ? [
+      '      <div className="campaign-actions campaign-block-actions">',
+      ...actionChildren.map((line) => `  ${line}`),
+      '      </div>',
+    ] : [],
+  ].flat();
   const content = card
     ? [
+      ...headerChildren,
       `      <CardWrapper styleMode="${settingsOf(card).style ?? 'card'}" cardWidth="${settingsOf(card).cardWidth ?? 'with-margin'}">`,
-      ...children.map((line) => `  ${line}`),
+      ...(contentChildren.length ? [
+        '        <div className="campaign-stack campaign-hero-content campaign-block-content">',
+        ...contentChildren.map((line) => `    ${line}`),
+        '        </div>',
+      ] : []),
+      ...(actionChildren.length ? [
+        '        <div className="campaign-actions campaign-block-actions">',
+        ...actionChildren.map((line) => `    ${line}`),
+        '        </div>',
+      ] : []),
       '      </CardWrapper>',
     ]
-    : children;
+    : body;
 
+  const layout = pageLayoutOf(pageId, type, Boolean(card));
   const mediaSlotProp = mediaSlotRender ? ` mediaSlot={${mediaSlotRender}}` : '';
   const shadeProp = fullBleedVideoBlock ? ' shade={false}' : '';
+  const sourceProp = fullBleedVideoBlock ? '' : ' source={cape.background}';
   const wrapStart = background
-    ? `    <Background source={cape.background}${shadeProp}${mediaSlotProp}>`
-    : '    <main className="campaign-block-page">';
+    ? `    <Background${sourceProp} className="${layout.pageClass}" shellClassName="${layout.shellClass}"${shadeProp}${mediaSlotProp}>`
+    : `    <main className="campaign-block-page ${layout.pageClass} ${layout.shellClass}">`;
   const wrapEnd = background ? '    </Background>' : '    </main>';
 
   return [
@@ -242,14 +360,26 @@ export function buildBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     '',
     '// Generated by campaign-scaffolder - do not edit by hand',
     usesRouter ? "import { useRouter } from 'next/navigation';" : null,
-    stepFlow ? "import { useState } from 'react';" : null,
+    reactHooks.length ? `import { ${reactHooks.join(', ')} } from 'react';` : null,
     "import { useCape } from '@/lib/cape';",
     importLines,
+    needsOnboardingGate ? `const ONBOARDING_KEY = ${jsString(onboardingKey)};` : null,
+    needsOnboardingGate ? "const isOnboardingDone = () =>\n  typeof window !== 'undefined' && window.localStorage.getItem(ONBOARDING_KEY) === '1';" : null,
+    isTutorialPage && needsOnboardingGate ? "const markOnboardingDone = () => {\n  try { window.localStorage.setItem(ONBOARDING_KEY, '1'); } catch {}\n};" : null,
+    needsRegisterGate || tracksRegistrationStatus ? `const REGISTERED_KEY = ${jsString(registeredKey)};` : null,
+    needsRegisterGate || tracksRegistrationStatus ? "const isRegistered = () =>\n  typeof window !== 'undefined' && window.localStorage.getItem(REGISTERED_KEY) === '1';" : null,
+    needsRegisterGate ? "const markRegistered = () => {\n  try { window.localStorage.setItem(REGISTERED_KEY, '1'); } catch {}\n};" : null,
     '',
     `export default function ${pageComponentName(pageId, pageType)}() {`,
     `  const cape = useCape(${jsString(pageId)});`,
     usesRouter ? '  const router = useRouter();' : null,
+    tracksRegistrationStatus ? '  const [hasRegistered, setHasRegistered] = useState(false);' : null,
+    tracksRegistrationStatus ? '  useEffect(() => {\n    setHasRegistered(isRegistered());\n  }, []);' : null,
     stepFlow ? '  const [stepIndex, setStepIndex] = useState(0);' : null,
+    isTutorialPage && needsOnboardingGate ? `  useEffect(() => {\n    if (isOnboardingDone()) router.replace(${jsString(tutorialSkipRoute)});\n  }, [router]);` : null,
+    isTutorialPage && needsOnboardingGate ? `  const finishTutorial = () => {\n    markOnboardingDone();\n    router.push(${jsString(tutorialSkipRoute)});\n  };` : null,
+    needsRegisterGate ? `  useEffect(() => {\n    if (isRegistered()) router.replace(${jsString(registerSkipRoute)});\n  }, [router]);` : null,
+    needsRegisterGate ? `  const finishRegister = () => {\n    markRegistered();\n    router.push(${jsString(registerSkipRoute)});\n  };` : null,
     '  return (',
     wrapStart,
     ...content,
@@ -319,13 +449,16 @@ function renderBlock(block, ctx) {
       const fallbackTitle = jsString(titleFallbackFor(ctx.pageId, ctx));
       const titleExpr = ctx.pageId === 'leaderboard'
         ? `(cape.title && cape.title !== 'Title' ? cape.title : ${fallbackTitle})`
-        : `cape.title ?? ${fallbackTitle}`;
-      return `      <TitleBlock${s.showKicker ? ' kicker={cape.kicker}' : ''} title={${titleExpr}}${s.showSubtitle ? ' subtitle={cape.subtitle}' : ''} />`;
+        : `cape.title || ${fallbackTitle}`;
+      const subtitleExpr = s.showSubtitle
+        ? ` subtitle={cape.subtitle || cape.description || cape.subline || ""}`
+        : '';
+      return `      <TitleBlock${s.showKicker ? ' kicker={cape.kicker}' : ''} title={${titleExpr}}${subtitleExpr} />`;
     }
     case 'body-copy':
       return '      <BodyCopy text={cape.body ?? cape.subline ?? ""} />';
     case 'cta-group':
-      return `      <CtaGroup buttons={${renderCtaButtons(s, ctx.routeMap)}} />`;
+      return `      <CtaGroup buttons={${renderCtaButtons(s, ctx)}} />`;
     case 'footer-link-list':
       return '      <FooterLinkList links={cape.footerLinks ?? []} />';
     case 'centered-art':
@@ -370,9 +503,16 @@ function renderBlock(block, ctx) {
         const lastRoute = jsString(routeForExit(ctx.stepFlow.nextExit, ctx.routeMap));
         const isLast = `stepIndex >= ${lastIndex}`;
         const showPrev = ctx.stepFlow.showPrev ? 'stepIndex > 0' : 'false';
-        return `      <NavControls showPrev={${showPrev}} nextLabel={${isLast} ? (cape.lastLabel ?? 'Start') : (cape.nextLabel ?? 'Continue')} onPrev={() => setStepIndex((i) => Math.max(0, i - 1))} onNext={() => ${isLast} ? router.push(${lastRoute}) : setStepIndex((i) => i + 1)} />`;
+        const finish = ctx.needsOnboardingGate && (ctx.pageId === 'tutorial' || ctx.pageType === 'onboarding')
+          ? 'finishTutorial()'
+          : `router.push(${lastRoute})`;
+        return `      <NavControls showPrev={${showPrev}} nextLabel={${isLast} ? (cape.lastLabel ?? 'Start') : (cape.nextLabel ?? 'Continue')} onPrev={() => setStepIndex((i) => Math.max(0, i - 1))} onNext={() => ${isLast} ? ${finish} : setStepIndex((i) => i + 1)} />`;
       }
-      return `      <NavControls showPrev={${Boolean(s.showPrev)}} nextLabel={cape.nextLabel ?? 'Continue'} onNext={() => router.push(${jsString(routeForExit(s.nextExit ?? 'game', ctx.routeMap))})} />`;
+      const route = jsString(routeForExit(s.nextExit ?? 'game', ctx.routeMap));
+      const finish = ctx.needsOnboardingGate && (ctx.pageId === 'tutorial' || ctx.pageType === 'onboarding')
+        ? 'finishTutorial()'
+        : `router.push(${route})`;
+      return `      <NavControls showPrev={${Boolean(s.showPrev)}} nextLabel={cape.nextLabel ?? 'Continue'} onNext={() => ${finish}} />`;
     }
     case 'field-set':
       return `      <FieldSet fields={${jsString(s.fields ?? ['firstName', 'lastName', 'email'])}} />`;
@@ -429,15 +569,31 @@ function slotAction(slot, customTarget, routeMap) {
   return `router.push(${jsString(route)})`;
 }
 
-function renderCtaButtons(settings, routeMap = {}) {
+function renderCtaButtons(settings, ctx = {}) {
   // The button list is the source of truth (count is derived from its length).
   // Legacy `count`, if present, only caps the list. Clamp to the manifest's 1–4.
   const list = Array.isArray(settings.buttons) && settings.buttons.length
     ? settings.buttons
     : [{ variant: 'primary', exit: 'game' }];
   const cap = Math.min(4, settings.count ? Number(settings.count) : list.length);
-  const entries = list.slice(0, Math.max(1, cap)).map((b, i) =>
-    `{ label: cape.cta?.[${i}]?.label ?? cape.ctaLabel ?? 'Continue', variant: '${b.variant ?? 'primary'}', onClick: () => router.push('${routeForExit(b.exit ?? 'game', routeMap)}') }`,
-  );
+  const entries = list.slice(0, Math.max(1, cap)).map((b, i) => {
+    const exit = b.exit ?? 'game';
+    const route = routeForExit(exit, ctx.routeMap);
+    const isTutorialTarget = exit === 'tutorial' || route === routeForExit('tutorial', ctx.routeMap);
+    const tutorialSkipRoute = flowRuleSkipRouteFor('tutorial', 'game', ctx);
+    const onClick = ctx.needsRegisterGate && ctx.pageId === 'register' && i === 0
+      ? 'finishRegister()'
+      : ctx.needsOnboardingGate && ctx.pageId === 'landing' && isTutorialTarget
+      ? `router.push(isOnboardingDone() ? ${jsString(tutorialSkipRoute)} : ${jsString(route)})`
+      : `router.push(${jsString(route)})`;
+    return `{ label: cape.cta?.[${i}]?.label || cape.ctaLabel || ${jsString(ctaFallbackFor(ctx.pageId ?? '', i))}, variant: '${b.variant ?? 'primary'}', onClick: () => ${onClick} }`;
+  });
+
+  if (ctx.pageType === 'result' && (ctx.pages ?? []).includes('register')) {
+    const homeRoute = routeForExit('landing', ctx.routeMap ?? {});
+    const gameRoute = routeForExit('game', ctx.routeMap ?? {});
+    return `hasRegistered ? [{ label: 'Home', variant: 'secondary', onClick: () => router.push(${jsString(homeRoute)}) }, { label: 'Play again', variant: 'primary', onClick: () => router.push(${jsString(gameRoute)}) }] : [${entries.join(', ')}]`;
+  }
+
   return `[${entries.join(', ')}]`;
 }

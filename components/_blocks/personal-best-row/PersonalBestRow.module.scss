@@ -1,25 +1,41 @@
-/* Personal best row — lime highlight at the bottom of the leaderboard.
-   Matches pp-lb__personal from the wizard preview. */
 .row {
   width: 100%;
-  margin: 0.35rem auto 0;
+  margin: 0.3rem auto 0;
   display: grid;
-  grid-template-columns: 1.75rem 1fr auto;
+  grid-template-columns: 2.25rem minmax(0, 1fr) max-content;
   gap: 0.6rem;
   align-items: center;
-  padding: 0.55rem 0.75rem;
-  border-radius: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.65rem;
   background: var(--color-primary, #d1ff00);
   color: var(--text-primary, #0e0e0e);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   text-shadow: none;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-primary, #d1ff00) 35%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-primary, #d1ff00) 40%, transparent);
 }
 
-.row span { font-weight: 700; }
-.row strong { font-weight: 600; }
+.row span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.45rem;
+  background: var(--surface-ink, #1a1a1a);
+  color: var(--text-inverse, #fff);
+  font-weight: 900;
+  font-size: 0.72rem;
+}
+.row strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+}
 .row em {
   font-style: normal;
-  font-weight: 700;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }

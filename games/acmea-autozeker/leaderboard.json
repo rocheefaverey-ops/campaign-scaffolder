@@ -1,0 +1,22 @@
+{
+  "entries": [
+    { "rank": 1, "name": "Sanne", "score": 184320 },
+    { "rank": 2, "name": "Milan", "score": 182480 },
+    { "rank": 3, "name": "Yara", "score": 180640 },
+    { "rank": 4, "name": "Daan", "score": 178800 },
+    { "rank": 5, "name": "Fenna", "score": 176960 },
+    { "rank": 6, "name": "Bram", "score": 175120 },
+    { "rank": 7, "name": "Noor", "score": 173280 },
+    { "rank": 8, "name": "Liam", "score": 171440 },
+    { "rank": 9, "name": "Isa", "score": 169600 },
+    { "rank": 10, "name": "Bo", "score": 167760 }
+  ],
+  "personalBest": {
+    "rank": 18,
+    "name": "You",
+    "score": 132640,
+    "isYou": true,
+    "isCurrentPlayer": true
+  },
+  "total": 48
+}

@@ -25,32 +25,25 @@
   height: 2.75rem;
   flex-shrink: 0;
   border-radius: 50%;
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   background: var(--chrome-bg, rgba(14, 14, 14, 0.42));
   color: #fff;
   cursor: pointer;
   backdrop-filter: blur(10px);
-  transition: background 0.15s ease, transform 0.12s ease;
+  transition: background 0.15s ease, transform 0.12s ease, border-color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-.slot:hover { background: var(--chrome-bg-hover, rgba(14, 14, 14, 0.58)); }
-.slot:active { transform: scale(0.92); }
+.slot:hover {
+  background: var(--chrome-bg-hover, rgba(14, 14, 14, 0.58));
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.slot:active { transform: scale(0.90); }
 
 .slot svg {
-  width: 1.35rem;
-  height: 1.35rem;
+  width: 1.25rem;
+  height: 1.25rem;
 }
-
-.textIcon {
-  font-size: 1.15rem;
-  font-weight: 850;
-  line-height: 1;
-  font-family: system-ui, sans-serif;
-}
-
-/* Close button gets a slightly distinct treatment */
-.slot--close .textIcon { font-size: 1.3rem; }
 
 .dot {
   width: 0.55rem;
@@ -64,4 +57,26 @@
   width: 2.75rem;
   height: 2.75rem;
   flex-shrink: 0;
+}
+
+:global(.campaign-block-page--card) .slot {
+  --chrome-bg: rgba(14, 14, 14, 0.06);
+  --chrome-bg-hover: rgba(14, 14, 14, 0.12);
+  color: var(--text-primary, #111);
+  border-color: var(--line-soft, rgba(26, 26, 26, 0.08));
+}
+
+:global(.campaign-block-page--leaderboard) .header {
+  margin-bottom: 0.15rem;
+}
+
+:global(.campaign-block-page--leaderboard) .slot,
+:global(.campaign-block-page--leaderboard) .slotPlaceholder {
+  width: 2.45rem;
+  height: 2.45rem;
+}
+
+:global(.campaign-block-page--leaderboard) .slot svg {
+  width: 1.1rem;
+  height: 1.1rem;
 }

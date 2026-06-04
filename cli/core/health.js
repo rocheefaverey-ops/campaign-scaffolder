@@ -143,7 +143,7 @@ export function validateAllModuleManifests() {
     .map((filePath) => validateModuleManifestFile(filePath));
 }
 
-export function runDoctor() {
+export function runDoctor(options = {}) {
   const checks = [];
   const nodeMajor = Number(process.versions.node.split('.')[0]);
   checks.push({
@@ -175,6 +175,21 @@ export function runDoctor() {
 
   const moduleResults = validateAllModuleManifests();
   checks.push(summarizeValidation('Module manifests', moduleResults));
+
+  const outputTarget = options.output
+    ? resolve(options.output)
+    : options.name
+      ? resolve(SCAFFOLDER_ROOT, '..', options.name)
+      : null;
+  if (outputTarget) {
+    const exists = existsSync(outputTarget);
+    checks.push({
+      label: `Output directory ${outputTarget}`,
+      ok: !exists,
+      warnings: [],
+      errors: exists ? [`Output directory already exists: ${outputTarget}`] : [],
+    });
+  }
 
   return {
     ok: checks.every((check) => check.ok),

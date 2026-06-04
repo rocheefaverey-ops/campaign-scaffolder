@@ -89,9 +89,14 @@ export default function VideoPage() {
 
     void (async () => {
       try {
-        await unity.initializeUnity(true);
+        await unity.initializeUnity(true, false);
         unity.sendSetScene();
-        await unity.loadScene(true);
+        await new Promise<void>((resolve) => setTimeout(resolve, 1000));
+        unity.sendMessage('WebService', 'LoadScene');
+        await Promise.race([
+          unity.waitForSceneLoad(),
+          new Promise<void>((resolve) => setTimeout(resolve, 8000)),
+        ]);
         setGameReady(true);
       } catch {
         bootStarted.current = false;

@@ -127,6 +127,12 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
     [isUnityLoading, isPreloading, isLoading]
   );
 
+  useEffect(() => {
+    if (!isGameplayRoute && isUnityVisible) {
+      setUnityVisible(false);
+    }
+  }, [isGameplayRoute, isUnityVisible]);
+
   // ── Mount: reset event map + lifecycle listeners ───────────────────────────
   useEffect(() => {
     // Only reset the map if Unity hasn't started initializing yet.
@@ -573,7 +579,7 @@ export function UnityGame({ children, buildBaseUrl, isLocal = false }: UnityGame
     <>
       <UnityContext value={ctxValue}>{children}</UnityContext>
 
-      {isGameplayRoute && showLoader && (
+      {isGameplayRoute && showLoader && !isUnityVisible && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center overflow-hidden bg-[#050505] text-white">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_36%,rgba(255,255,255,0.12),transparent_26rem),linear-gradient(180deg,#050505_0%,#101010_100%)]" />
           <div className="relative z-10 flex flex-col items-center px-8 text-center">

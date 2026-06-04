@@ -5,7 +5,7 @@ import { deriveFlowFromBlocks, mapButtonsToExits, mergeDerivedFlow, deriveMenuIt
 const ctx = {
   ids: ['landing', 'tutorial', 'game', 'result', 'leaderboard', 'voucher', 'end'],
   typeOf: (id) => id,
-  firstOfType: (type) => (type === 'game' ? 'game' : null),
+  firstOfType: (type) => ({ tutorial: 'tutorial', game: 'game' }[type] ?? null),
   entryId: 'landing',
 };
 

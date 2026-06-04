@@ -8,7 +8,7 @@ type Props = {
 
 export function TitleBlock({ kicker, title, subtitle }: Props) {
   return (
-    <div className={`${styles.titleBlock} campaign-stack`}>
+    <div className={styles.titleBlock}>
       {kicker && <div className={`${styles.kicker} campaign-kicker`}>{kicker}</div>}
       <h1 className={`${styles.title} campaign-title`}>{title}</h1>
       {subtitle && <p className={`${styles.subtitle} campaign-copy`}>{subtitle}</p>}
