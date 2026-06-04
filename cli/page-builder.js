@@ -595,39 +595,46 @@ function renderCtaButtons(settings, ctx = {}) {
   });
 
   if (ctx.pageType === 'result' && (ctx.pages ?? []).includes('register')) {
-    return `hasRegistered ? ${renderRegisteredResultButtons(list, ctx)} : [${entries.join(', ')}]`;
+    const registeredButtons = Array.isArray(settings.registeredButtons) ? settings.registeredButtons : null;
+    return `hasRegistered ? ${renderRegisteredResultButtons(registeredButtons, list, ctx)} : [${entries.join(', ')}]`;
   }
 
   return `[${entries.join(', ')}]`;
 }
 
-function renderRegisteredResultButtons(buttons, ctx = {}) {
+function renderRegisteredResultButtons(configuredButtons, fallbackButtons, ctx = {}) {
   const pages = ctx.pages ?? [];
   const routeMap = ctx.routeMap ?? {};
   const out = [];
   const seen = new Set();
-  const add = (exit, label, variant = 'secondary') => {
+  const add = (exit, labelExpr, variant = 'secondary') => {
     if (!exit || seen.has(exit)) return;
     seen.add(exit);
     const route = routeForExit(exit, routeMap);
-    out.push(`{ label: ${jsString(label)}, variant: '${variant}', onClick: () => router.push(${jsString(route)}) }`);
+    out.push(`{ label: ${labelExpr}, variant: '${variant}', onClick: () => router.push(${jsString(route)}) }`);
   };
 
-  if (pages.includes('landing')) add('landing', 'Home', 'secondary');
-
-  for (const button of buttons ?? []) {
+  const configured = Array.isArray(configuredButtons) ? configuredButtons : null;
+  const source = configured ?? fallbackButtons;
+  for (const [index, button] of (source ?? []).entries()) {
     const exit = String(button?.exit ?? '');
     if (!exit || exit === 'register') continue;
-    const label = exit === 'game' || exit === 'gameplay'
+    const fallbackLabel = exit === 'game' || exit === 'gameplay'
       ? 'Play again'
       : exit === 'leaderboard'
         ? 'Leaderboard'
-        : ctaFallbackFor(ctx.pageId ?? '', out.length);
-    add(exit, label, button?.variant ?? 'secondary');
+        : exit === 'landing'
+          ? 'Home'
+          : ctaFallbackFor(ctx.pageId ?? '', out.length);
+    const labelExpr = `cape.registeredCta?.[${index}]?.label || cape.registeredCta?.[${index}] || ${jsString(fallbackLabel)}`;
+    add(exit, labelExpr, button?.variant ?? 'secondary');
   }
 
-  if (pages.includes('leaderboard')) add('leaderboard', 'Leaderboard', 'tertiary');
-  if (pages.includes('game')) add('game', 'Play again', 'primary');
+  if (!configured) {
+    if (pages.includes('landing')) add('landing', jsString('Home'), 'secondary');
+    if (pages.includes('leaderboard')) add('leaderboard', jsString('Leaderboard'), 'tertiary');
+    if (pages.includes('game')) add('game', jsString('Play again'), 'primary');
+  }
 
   return `[${out.join(', ')}]`;
 }

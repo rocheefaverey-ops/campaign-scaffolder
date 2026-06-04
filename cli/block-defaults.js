@@ -86,7 +86,7 @@ export const DEFAULT_PAGE_BLOCKS = {
     'score-illustration': block(true, { position: 'above-title' }),
     'stats-table': block(false, { count: 3, rows: [{ label: 'Score', value: 'score' }, { label: 'Rank', value: 'rank' }, { label: 'Best', value: 'highScore' }] }),
     'status-chip': block(false, { kind: 'registered' }),
-    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'register' }] }),
+    'cta-group': block(true, { buttons: [{ variant: 'primary', exit: 'register' }], registeredButtons: [{ variant: 'secondary', exit: 'landing' }, { variant: 'tertiary', exit: 'leaderboard' }, { variant: 'primary', exit: 'game' }] }),
     'compliance-badge': block(false, { kind: '18+' }),
     'footer-link-list': block(false, {}),
   }),

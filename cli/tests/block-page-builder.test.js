@@ -166,19 +166,23 @@ describe('buildBlockDrivenLanding', () => {
       { name: 'background', settings: { kind: 'image' } },
       { name: 'title-block', settings: { showKicker: false, showSubtitle: true } },
       { name: 'score-readout', settings: { showHighScore: true } },
-      { name: 'cta-group', settings: { buttons: [
-        { variant: 'primary', exit: 'register' },
-        { variant: 'tertiary', exit: 'leaderboard' },
-      ] } },
+      { name: 'cta-group', settings: {
+        buttons: [{ variant: 'primary', exit: 'register' }],
+        registeredButtons: [
+          { variant: 'secondary', exit: 'landing' },
+          { variant: 'tertiary', exit: 'leaderboard' },
+          { variant: 'primary', exit: 'game' },
+        ],
+      } },
     ], {
       capeId: '63633',
       pages: ['landing', 'result', 'register', 'leaderboard', 'game'],
       routeMap: { landing: '/landing', register: '/register', leaderboard: '/leaderboard', game: '/gameplay' },
     });
 
-    assert.match(out, /hasRegistered \? \[\{ label: "Home"/);
-    assert.match(out, /\{ label: "Leaderboard", variant: 'tertiary', onClick: \(\) => router\.push\("\/leaderboard"\) \}/);
-    assert.match(out, /\{ label: "Play again", variant: 'primary', onClick: \(\) => router\.push\("\/gameplay"\) \}/);
+    assert.match(out, /hasRegistered \? \[\{ label: cape\.registeredCta\?\.\[0\]\?\.label \|\| cape\.registeredCta\?\.\[0\] \|\| "Home"/);
+    assert.match(out, /\{ label: cape\.registeredCta\?\.\[1\]\?\.label \|\| cape\.registeredCta\?\.\[1\] \|\| "Leaderboard", variant: 'tertiary', onClick: \(\) => router\.push\("\/leaderboard"\) \}/);
+    assert.match(out, /\{ label: cape\.registeredCta\?\.\[2\]\?\.label \|\| cape\.registeredCta\?\.\[2\] \|\| "Play again", variant: 'primary', onClick: \(\) => router\.push\("\/gameplay"\) \}/);
   });
 
   it('does not skip register when the flow rule says always show', () => {

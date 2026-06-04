@@ -318,10 +318,14 @@ describe('buildTsBlockDrivenPage - block coverage', () => {
     const route = buildTsBlockDrivenPage('result', 'result', [
       { name: 'background', settings: { kind: 'image' } },
       { name: 'score-readout', settings: { showHighScore: true } },
-      { name: 'cta-group', settings: { buttons: [
-        { variant: 'primary', exit: 'register' },
-        { variant: 'tertiary', exit: 'leaderboard' },
-      ] } },
+      { name: 'cta-group', settings: {
+        buttons: [{ variant: 'primary', exit: 'register' }],
+        registeredButtons: [
+          { variant: 'secondary', exit: 'landing' },
+          { variant: 'tertiary', exit: 'leaderboard' },
+          { variant: 'primary', exit: 'game' },
+        ],
+      } },
     ], {
       capeId: '63633',
       pages: ['result', 'register', 'landing', 'loading-video', 'game', 'leaderboard'],
@@ -329,10 +333,10 @@ describe('buildTsBlockDrivenPage - block coverage', () => {
     });
 
     assert.match(route, /const \[hasRegistered, setHasRegistered\] = useState\(false\)/);
-    assert.match(route, /hasRegistered \? \[\{ label: "Home"/);
+    assert.match(route, /hasRegistered \? \[\{ label: cape\.registeredCta\?\.\[0\]\?\.label \|\| cape\.registeredCta\?\.\[0\] \|\| "Home"/);
     assert.match(route, /router\.navigate\(\{ to: '\/landing' as never \}\)/);
-    assert.match(route, /\{ label: "Leaderboard", variant: 'tertiary', onClick: \(\) => router\.navigate\(\{ to: '\/leaderboard' as never \}\) \}/);
-    assert.match(route, /\{ label: "Play again", variant: 'primary', onClick: \(\) => router\.navigate\(\{ to: '\/loading-video' as never \}\) \}/);
+    assert.match(route, /\{ label: cape\.registeredCta\?\.\[1\]\?\.label \|\| cape\.registeredCta\?\.\[1\] \|\| "Leaderboard", variant: 'tertiary', onClick: \(\) => router\.navigate\(\{ to: '\/leaderboard' as never \}\) \}/);
+    assert.match(route, /\{ label: cape\.registeredCta\?\.\[2\]\?\.label \|\| cape\.registeredCta\?\.\[2\] \|\| "Play again", variant: 'primary', onClick: \(\) => router\.navigate\(\{ to: '\/loading-video' as never \}\) \}/);
     assert.match(route, /: \[\{ label: cape\.cta\?\.\[0\]\?\.label/);
   });
 

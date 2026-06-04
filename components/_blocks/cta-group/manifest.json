@@ -19,10 +19,21 @@
         "variant": { "kind": "enum", "of": ["primary", "secondary", "tertiary", "dark", "danger", "icon-only"], "default": "primary" },
         "exit": { "kind": "page-ref", "default": "" }
       }
+    },
+    "registeredButtons": {
+      "kind": "array-of-objects",
+      "min": 0,
+      "max": 4,
+      "default": [],
+      "item": {
+        "variant": { "kind": "enum", "of": ["primary", "secondary", "tertiary", "dark", "danger", "icon-only"], "default": "primary" },
+        "exit": { "kind": "page-ref", "default": "" }
+      }
     }
   },
   "capeBindings": {
-    "labels": "{pageType}.cta | array | per-button labels"
+    "labels": "{pageType}.cta | array | per-button labels",
+    "registeredLabels": "{pageType}.registeredCta | array | post-registration button labels"
   },
   "usableOn": ["landing", "result", "leaderboard", "voucher", "end", "menu"]
 }

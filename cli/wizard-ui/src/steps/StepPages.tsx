@@ -772,6 +772,11 @@ function pageConnections(config: ScaffoldConfig, instance: PageInstance, index: 
       const exit = objectSetting(button as BlockSetting, 'exit');
       add(i === 0 ? 'primary' : `button ${i + 1}`, typeof exit === 'string' ? exit : null);
     });
+    const registeredButtons = Array.isArray(cta.settings?.registeredButtons) ? cta.settings.registeredButtons : [];
+    registeredButtons.forEach((button, i) => {
+      const exit = objectSetting(button as BlockSetting, 'exit');
+      add(`registered ${i + 1}`, typeof exit === 'string' ? exit : null);
+    });
     return connections;
   }
 
