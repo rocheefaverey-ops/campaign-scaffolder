@@ -25,6 +25,7 @@ export default function StepPages({ config, setConfig }: StepProps) {
   // Which page (if any) is open in the full-width focus editor. Lifted to the
   // step so the editor can replace the flow list and offer Prev/Next nav.
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const focusIdx = focusId ? inFlow.findIndex((p) => p.id === focusId) : -1;
   const focusInstance = focusIdx >= 0 ? inFlow[focusIdx] : null;
   const entryId = resolveEntryId(config);
@@ -223,8 +224,10 @@ export default function StepPages({ config, setConfig }: StepProps) {
                         phase={group.phase}
                         isLast={i === inFlow.length - 1}
                         isEntry={entryId === instance.id}
+                        isPreview={previewId === instance.id || (!previewId && i === 0)}
                         inFlow={inFlow}
                         config={config}
+                        onPreview={() => setPreviewId(instance.id)}
                         onFocus={() => setFocusId(instance.id)}
                         onMove={(direction) => moveInstance(instance.id, direction)}
                         onSetEntry={() => setConfig({ ...config, flowEntry: instance.id === inFlow[0]?.id ? undefined : instance.id })}
@@ -262,8 +265,11 @@ export default function StepPages({ config, setConfig }: StepProps) {
       <div className="pages-layout__preview">
         <PreviewPane
           config={config}
-          activeId={focusId ?? undefined}
-          onSelectPage={(id) => setFocusId(id)}
+          activeId={focusId ?? previewId ?? undefined}
+          onSelectPage={(id) => {
+            setPreviewId(id);
+            if (focusId) setFocusId(id);
+          }}
         />
       </div>
       </div>
@@ -488,8 +494,10 @@ interface FlowCardProps {
   phase:            string;
   isLast:           boolean;
   isEntry:          boolean;
+  isPreview:        boolean;
   inFlow:           PageInstance[];
   config:           ScaffoldConfig;
+  onPreview:        () => void;
   onFocus:          () => void;
   onMove:           (direction: -1 | 1) => void;
   onSetEntry:       () => void;
@@ -501,8 +509,8 @@ interface FlowCardProps {
 }
 
 function FlowCard({
-  instance, index, phase, isLast, isEntry, inFlow, config,
-  onFocus, onMove, onSetEntry, flowRules, onChangeRule,
+  instance, index, phase, isLast, isEntry, isPreview, inFlow, config,
+  onPreview, onFocus, onMove, onSetEntry, flowRules, onChangeRule,
   onRemove, onChangeRoute, onBlurRoute,
 }: FlowCardProps) {
   const meta = pageMeta(instance.type);
@@ -553,7 +561,12 @@ function FlowCard({
     <li
       ref={setNodeRef}
       style={style}
-      className={`flow-card flow-card--${phase}${isDragging ? ' is-dragging' : ''}${isEntry ? ' is-entry' : ''}`}
+      className={`flow-card flow-card--${phase}${isDragging ? ' is-dragging' : ''}${isEntry ? ' is-entry' : ''}${isPreview ? ' is-preview' : ''}`}
+      onClick={(event) => {
+        const target = event.target as HTMLElement;
+        if (target.closest('button, input, select, textarea, a')) return;
+        onPreview();
+      }}
     >
       <div className="flow-card__rail">
         <div className="flow-card__handle" {...attributes} {...listeners} aria-label="Drag handle">

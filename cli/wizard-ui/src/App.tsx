@@ -205,7 +205,14 @@ function AppInner() {
   return (
     <div className="app">
       <header className="app__head">
-        <h1>Livewall Campaign Wizard <span>· scaffold a new campaign</span></h1>
+        <div className="app__brand">
+          <span className="app__brand-mark" aria-hidden>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M9 1.8v14.4M3.2 5.6l11.6 6.8M14.8 5.6 3.2 12.4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </span>
+          <h1>Livewall Campaign Wizard <span>scaffold a new campaign</span></h1>
+        </div>
         <div className="app__head-right">
           <OpenExistingButton onLoaded={(cfg) => {
             setConfig(cfg);
@@ -389,7 +396,7 @@ function OpenExistingButton({ onLoaded }: { onLoaded: (cfg: ScaffoldConfig) => v
         className="btn btn--tertiary btn--sm"
         onClick={() => setOpen(true)}
       >
-        ⇪ Open existing
+        <span aria-hidden>↥</span> Open existing
       </button>
 
       {open && createPortal(

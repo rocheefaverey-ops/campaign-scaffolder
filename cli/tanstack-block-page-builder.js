@@ -560,16 +560,16 @@ function renderBlock(block, ctx) {
         : ctx.pageId === 'leaderboard'
           ? `(cape.title && cape.title !== 'Title' ? cape.title : ${fallbackTitle})`
           : `cape.title || ${fallbackTitle}`;
-      const kickerExpr = ctx.stepFlow ? ' kicker={cape.kicker}' : (s.showKicker ? ' kicker={cape.kicker}' : '');
+      const kickerExpr = ctx.stepFlow ? ' kicker={String(cape.kicker ?? "")}' : (s.showKicker ? ' kicker={String(cape.kicker ?? "")}' : '');
       const subtitleExpr = ctx.stepFlow
-        ? ' subtitle={currentStep.description || cape.subtitle}'
-        : (s.showSubtitle ? ' subtitle={cape.subtitle}' : '');
-      return `      <TitleBlock${kickerExpr} title={${titleExpr}}${subtitleExpr} />`;
+        ? ' subtitle={String(currentStep.description || cape.subtitle || "")}'
+        : (s.showSubtitle ? ' subtitle={String(cape.subtitle ?? "")}' : '');
+      return `      <TitleBlock${kickerExpr} title={String(${titleExpr})}${subtitleExpr} />`;
     }
     case 'body-copy':
       return ctx.stepFlow
-        ? '      <BodyCopy text={currentStep.description ?? cape.body ?? cape.subline ?? ""} />'
-        : '      <BodyCopy text={cape.body ?? cape.subline ?? ""} />';
+        ? '      <BodyCopy text={String(currentStep.description ?? cape.body ?? cape.subline ?? "")} />'
+        : '      <BodyCopy text={String(cape.body ?? cape.subline ?? "")} />';
     case 'cta-group':
       return `      <CtaGroup buttons={${renderCtaButtons(s, ctx)}} />`;
     case 'footer-link-list':
@@ -579,37 +579,37 @@ function renderBlock(block, ctx) {
         ? `      <CenteredArt image={currentStep.image ?? cape.art?.url ?? cape.art} size="${s.size ?? 'md'}" />`
         : `      <CenteredArt image={cape.art?.url ?? cape.art} size="${s.size ?? 'md'}" />`;
     case 'tagline':
-      return "      <Tagline text={cape.tagline || 'Loading game...'} />";
+      return "      <Tagline text={String(cape.tagline ?? 'Loading game...')} />";
     case 'loading-indicator':
-      return `      <LoadingIndicator kind="${s.kind ?? 'ring'}" label={cape.loadingLabel || 'Loading'} />`;
+      return `      <LoadingIndicator kind="${s.kind ?? 'ring'}" label={String(cape.loadingLabel ?? 'Loading')} />`;
     case 'prize-illustration':
       return '      <PrizeIllustration image={cape.prizeImage?.url ?? cape.prizeImage} />';
     case 'code-box':
-      return "      <CodeBox code={cape.code ?? ''} label={cape.codeLabel ?? 'Code'} copiedLabel={cape.codeCopiedConfirmation ?? 'Copied'} />";
+      return "      <CodeBox code={cape.code ?? ''} label={String(cape.codeLabel ?? 'Code')} copiedLabel={String(cape.codeCopiedConfirmation ?? 'Copied')} />";
     case 'qr-display':
       return "      <QrDisplay value={cape.qrValue ?? cape.code ?? ''} instructions={cape.qrInstructions ?? ''} />";
     case 'channel-tabs':
       return `      <ChannelTabs tabs={${jsString(s.tabs ?? ['webshop', 'in-store'])}} defaultTab="${s.defaultTab ?? 'webshop'}" />`;
     case 'score-readout':
       return ctx.pageType === 'result'
-        ? `      <ScoreReadout score={currentScore} label={cape.scoreLabel ?? 'Score'} highScore={currentHighScore} showHighScore={${Boolean(s.showHighScore)}} />`
-        : `      <ScoreReadout score={cape.score ?? 0} label={cape.scoreLabel ?? 'Score'} highScore={cape.highScore ?? 0} showHighScore={${Boolean(s.showHighScore)}} />`;
+        ? `      <ScoreReadout score={currentScore} label={String(cape.scoreLabel ?? 'Score')} highScore={currentHighScore} showHighScore={${Boolean(s.showHighScore)}} />`
+        : `      <ScoreReadout score={cape.score ?? 0} label={String(cape.scoreLabel ?? 'Score')} highScore={cape.highScore ?? 0} showHighScore={${Boolean(s.showHighScore)}} />`;
     case 'score-illustration':
       return '      <ScoreIllustration image={cape.scoreImage?.url ?? cape.scoreImage} />';
     case 'stats-table':
       return `      <StatsTable rows={cape.stats ?? []} count={${Number(s.count ?? 3)}} />`;
     case 'status-chip':
-      return `      <StatusChip label={cape.statusLabel ?? ''} kind="${s.kind ?? 'registered'}" />`;
+      return `      <StatusChip label={String(cape.statusLabel ?? '')} kind="${s.kind ?? 'registered'}" />`;
     case 'compliance-badge':
-      return `      <ComplianceBadge label={cape.complianceLabel ?? ''} kind="${s.kind ?? '18+'}" />`;
+      return `      <ComplianceBadge label={String(cape.complianceLabel ?? '')} kind="${s.kind ?? '18+'}" />`;
     case 'rank-list':
-      return `      <RankList rows={(cape.rankings ?? []).slice(0, ${Number(s.rows ?? 10)})} emptyLabel={cape.emptyState ?? 'No scores yet.'} />`;
+      return `      <RankList rows={(cape.rankings ?? []).slice(0, ${Number(s.rows ?? 10)})} emptyLabel={String(cape.emptyState ?? 'No scores yet.')} />`;
     case 'leaderboard-tabs':
       return `      <LeaderboardTabs tabs={${jsString(s.tabs ?? ['all', 'daily', 'weekly'])}} defaultTab="${s.defaultTab ?? 'all'}" />`;
     case 'personal-best-row':
-      return "      <PersonalBestRow label={cape.youLabel ?? 'You'} rank={cape.personalRank} score={cape.personalBest} />";
+      return "      <PersonalBestRow label={String(cape.youLabel ?? 'You')} rank={cape.personalRank} score={cape.personalBest} />";
     case 'top-n-highlight':
-      return `      <TopNHighlight label={cape.topNLabel ?? ''} count={${Number(s.count ?? 3)}} />`;
+      return `      <TopNHighlight label={String(cape.topNLabel ?? '')} count={${Number(s.count ?? 3)}} />`;
     case 'step-indicator': {
       if (ctx.stepFlow) {
         // count comes from the actual visible-steps count so trailing empty steps don't add ghost dots
@@ -621,9 +621,9 @@ function renderBlock(block, ctx) {
       if (ctx.stepFlow) {
         const lastRoute = jsString(routeForPlayableExit(ctx.stepFlow.nextExit, ctx));
         const showPrev = ctx.stepFlow.showPrev ? 'safeStepIndex > 0' : 'false';
-        return `      <NavControls showPrev={${showPrev}} nextLabel={isLastStep ? (cape.lastLabel ?? 'Start') : (cape.nextLabel ?? 'Continue')} onPrev={() => setStepIndex((i) => Math.max(0, i - 1))} onNext={() => isLastStep ? router.navigate({ to: ${lastRoute} as never }) : setStepIndex((i) => i + 1)} />`;
+        return `      <NavControls showPrev={${showPrev}} nextLabel={String(isLastStep ? (cape.lastLabel ?? 'Start') : (cape.nextLabel ?? 'Continue'))} onPrev={() => setStepIndex((i) => Math.max(0, i - 1))} onNext={() => isLastStep ? router.navigate({ to: ${lastRoute} as never }) : setStepIndex((i) => i + 1)} />`;
       }
-      return `      <NavControls showPrev={${Boolean(s.showPrev)}} nextLabel={cape.nextLabel ?? 'Continue'} onNext={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.nextExit ?? 'game', ctx))} as never })} />`;
+      return `      <NavControls showPrev={${Boolean(s.showPrev)}} nextLabel={String(cape.nextLabel ?? 'Continue')} onNext={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.nextExit ?? 'game', ctx))} as never })} />`;
     }
     case 'field-set':
       return `      <FieldSet fields={${jsString(s.fields ?? ['firstName', 'lastName', 'email'])}} />`;
@@ -641,11 +641,11 @@ function renderBlock(block, ctx) {
         : `      <VideoPlayer src={cape.video?.url ?? cape.video ?? ${fallbackSrc}} muted={${s.muted !== false}} loop={${Boolean(s.loop)}}${bleedProp} />`;
     }
     case 'skip-control':
-      return `      <SkipControl label={cape.skipLabel ?? 'Skip'} availableAfterMs={${Number(s.availableAfterMs ?? 0)}} onSkip={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.exit ?? 'game', ctx))} as never })} />`;
+      return `      <SkipControl label={String(cape.skipLabel ?? 'Skip')} availableAfterMs={${Number(s.availableAfterMs ?? 0)}} onSkip={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.exit ?? 'game', ctx))} as never })} />`;
     case 'reveal-cta':
-      return `      <RevealCta label={cape.ctaLabel ?? 'Continue'} variant="${s.variant ?? 'primary'}" onClick={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.exit ?? 'game', ctx))} as never })} />`;
+      return `      <RevealCta label={String(cape.ctaLabel ?? 'Continue')} variant="${s.variant ?? 'primary'}" onClick={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.exit ?? 'game', ctx))} as never })} />`;
     case 'fallback-indicator':
-      return "      <FallbackIndicator label={cape.fallbackLabel ?? 'Loading'} />";
+      return "      <FallbackIndicator label={String(cape.fallbackLabel ?? 'Loading')} />";
     case 'audio-toggle':
       return '      <AudioToggle />';
     case 'pause-toggle':
@@ -661,7 +661,7 @@ function renderBlock(block, ctx) {
       return `      <MenuItemList items={cape.items ?? undefined}${targets} />`;
     }
     case 'pre-gate-modal':
-      return `      <PreGateModal kind="${s.kind ?? 'age-18'}" title={cape.preGateTitle ?? ''} confirmLabel={cape.preGateConfirm ?? 'Continue'} persistAcrossSession={${s.persistAcrossSession !== false}} />`;
+      return `      <PreGateModal kind="${s.kind ?? 'age-18'}" title={String(cape.preGateTitle ?? '')} confirmLabel={String(cape.preGateConfirm ?? 'Continue')} persistAcrossSession={${s.persistAcrossSession !== false}} />`;
     default:
       return `      <${componentNameOf(block.name)} />`;
   }

@@ -11,7 +11,7 @@ export function useCape(pageId: string): AnyRecord {
 
 function resolvePageCape(capeData: unknown, pageId: string): AnyRecord {
   const root = asRecord(capeData);
-  const copy = asRecord(asRecord(root.copy)[pageId]);
+  const copy = resolveCapeCopy(asRecord(asRecord(root.copy)[pageId]));
   const general = asRecord(asRecord(root.general)[pageId]);
   const files = asRecord(asRecord(root.files)[pageId]);
   const pageSettings = asRecord(asRecord(asRecord(root.settings).pages)[pageId]);
@@ -27,6 +27,38 @@ function resolvePageCape(capeData: unknown, pageId: string): AnyRecord {
     brandChip: { image: logo },
     background: backgroundSource(general.background ?? files.background ?? files.backgroundImage ?? files.heroImage),
   };
+}
+
+function resolveCapeCopy(value: unknown): AnyRecord {
+  const copy = asRecord(value);
+  return Object.fromEntries(
+    Object.entries(copy).map(([key, entry]) => [key, resolveCapeValue(entry)]),
+  );
+}
+
+function resolveCapeValue(value: unknown): unknown {
+  if (value == null) return value;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+  if (Array.isArray(value)) return value.map(resolveCapeValue);
+
+  const record = asRecord(value);
+  if (!Object.keys(record).length) return value;
+
+  const lang = process.env.NEXT_PUBLIC_CAPE_LANGUAGE ?? 'EN';
+  if (lang in record) return resolveCapeValue(record[lang]);
+  if ('value' in record) return resolveCapeValue(record.value);
+
+  const firstLanguageKey = Object.keys(record).find((key) => key.length === 2 && key.toUpperCase() === key);
+  if (firstLanguageKey && firstLanguageKey in record) return resolveCapeValue(record[firstLanguageKey]);
+
+  if ('multilanguage' in record) {
+    const fallback = Object.keys(record).find((key) => key !== 'multilanguage');
+    if (fallback) return resolveCapeValue(record[fallback]);
+  }
+
+  return Object.fromEntries(
+    Object.entries(record).map(([key, entry]) => [key, resolveCapeValue(entry)]),
+  );
 }
 
 function asRecord(value: unknown): AnyRecord {

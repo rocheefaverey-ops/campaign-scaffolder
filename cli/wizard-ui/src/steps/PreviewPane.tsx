@@ -12,6 +12,8 @@ import {
 import { deriveFlowFromBlocks, mergeDerivedFlow, deriveMenuItemsEnabled } from '../../../flow-bridge.js';
 import { startFrontendPreview } from '../bridge.ts';
 
+type PreviewState = 'default' | 'registered';
+
 /**
  * Build the list-form blocksConfig the flow bridge expects ({ pageId: { blocks:
  * [{name, settings}] } }) from the wizard's pageBlocks map, then derive the
@@ -74,9 +76,9 @@ const ENABLE_REAL_PREVIEW = false;
 
 interface Props {
   config: ScaffoldConfig;
-  /** When set, the preview follows this page id (used by the focus editor). */
+  /** When set, the preview follows this page id. */
   activeId?: string;
-  /** Clicking a page tab opens that page's focus editor. */
+  /** Clicking a page tab updates the selected preview page in the parent. */
   onSelectPage?: (id: string) => void;
 }
 
@@ -97,6 +99,7 @@ export default function PreviewPane({ config: rawConfig, activeId, onSelectPage 
   const config = useMemo(() => withDerivedFlow(rawConfig), [rawConfig]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [menuOpen, setMenuOpen]   = useState(false);
+  const [previewState, setPreviewState] = useState<PreviewState>('default');
   const [realUrl, setRealUrl]     = useState<string | null>(null);
   const [realBusy, setRealBusy]   = useState(false);
   const [realError, setRealError] = useState<string | null>(null);
@@ -112,6 +115,13 @@ export default function PreviewPane({ config: rawConfig, activeId, onSelectPage 
     const i = config.pages.findIndex(p => p.id === activeId);
     if (i >= 0) setActiveIdx(i);
   }, [activeId, config.pages]);
+
+  useEffect(() => {
+    if (config.pages.length === 0) return;
+    const i = Math.min(activeIdx, config.pages.length - 1);
+    const current = config.pages[i];
+    if (current && !pageHasRegisteredVariant(config, current)) setPreviewState('default');
+  }, [activeIdx, config]);
 
   if (config.pages.length === 0) {
     return (
@@ -137,6 +147,8 @@ export default function PreviewPane({ config: rawConfig, activeId, onSelectPage 
   const showCookieBanner = isEntry && hasModule(config, 'cookie-consent') && !menuOpen && !realUrl;
   const showAudio = hasModule(config, 'audio');
   const hasGtm = hasModule(config, 'gtm') || Boolean(config.gtmId?.trim());
+  const hasRegisteredVariant = pageHasRegisteredVariant(config, inst);
+  const activePreviewState: PreviewState = hasRegisteredVariant ? previewState : 'default';
   const realRoute = visualPages.some(p => p.id === inst.id)
     ? inst.route
     : visualPages[0]?.route ?? inst.route;
@@ -228,7 +240,7 @@ export default function PreviewPane({ config: rawConfig, activeId, onSelectPage 
                 setActiveIdx(i);
                 onSelectPage?.(p.id);
               }}
-              title={`${p.route}${isEntryTab ? ' · entry' : ''}${isGated ? ` · ${flowRuleLabel(rule)}` : ''}${regTag ? ` · register ${regTag}` : ''}${onSelectPage ? ' · click to edit' : ''}`}
+              title={`${p.route}${isEntryTab ? ' · entry' : ''}${isGated ? ` · ${flowRuleLabel(rule)}` : ''}${regTag ? ` · register ${regTag}` : ''}`}
             >
               <span className="preview-pane__tab-num">{isEntryTab ? '★' : i + 1}</span>
               <span className="preview-pane__tab-label">{label}</span>
@@ -238,6 +250,28 @@ export default function PreviewPane({ config: rawConfig, activeId, onSelectPage 
           );
         })}
       </div>
+
+      {hasRegisteredVariant && !realUrl && (
+        <div className="preview-pane__state" aria-label="Preview state">
+          <span>State</span>
+          <button
+            type="button"
+            className={activePreviewState === 'default' ? 'is-active' : ''}
+            aria-pressed={activePreviewState === 'default'}
+            onClick={() => setPreviewState('default')}
+          >
+            Default
+          </button>
+          <button
+            type="button"
+            className={activePreviewState === 'registered' ? 'is-active' : ''}
+            aria-pressed={activePreviewState === 'registered'}
+            onClick={() => setPreviewState('registered')}
+          >
+            Registered
+          </button>
+        </div>
+      )}
 
       <div className={`preview-pane__frame-wrap${config.iframe ? ' is-embedded' : ''}`}>
         {config.iframe && (
@@ -276,8 +310,8 @@ export default function PreviewPane({ config: rawConfig, activeId, onSelectPage 
               : (
                 // Keyed wrapper so React swaps the subtree on page change,
                 // re-triggering the CSS fade-in. Cheap polish — no JS animation.
-                <div key={inst.id} className="preview-pane__page">
-                  <PageRenderer config={config} instance={inst} navigate={navigate} navTo={navTo} onMenu={() => setMenuOpen(true)} showAudio={showAudio} />
+                <div key={`${inst.id}-${activePreviewState}`} className="preview-pane__page">
+                  <PageRenderer config={config} instance={inst} navigate={navigate} navTo={navTo} onMenu={() => setMenuOpen(true)} showAudio={showAudio} previewState={activePreviewState} />
                 </div>
               )
           )}
@@ -343,7 +377,7 @@ function CookieBanner() {
 type NavFn = (instId: string, exitKey: string, defaultRule?: 'next' | 'first') => void;
 type NavToFn = (pageId: string) => void;
 
-function PageRenderer({ config, instance, navigate, navTo, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean }) {
+function PageRenderer({ config, instance, navigate, navTo, onMenu, showAudio, previewState }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean; previewState: PreviewState }) {
   switch (instance.type) {
     case 'landing':       return <LandingPreview      config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
     case 'tutorial':      return <TutorialPreview     config={config} instance={instance} navigate={navigate} />;
@@ -355,7 +389,7 @@ function PageRenderer({ config, instance, navigate, navTo, onMenu, showAudio }: 
     case 'end':           return <EndPreview          config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
     case 'register':      return <RegisterPreview     config={config} instance={instance} navigate={navigate} />;
     case 'game':          return <GamePreview         config={config} instance={instance} navigate={navigate} showAudio={showAudio} />;
-    case 'result':        return <ResultPreview       config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
+    case 'result':        return <ResultPreview       config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} previewState={previewState} />;
     case 'leaderboard':   return <LeaderboardPreview  config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
     case 'voucher':       return <VoucherPreview      config={config} instance={instance} navigate={navigate} navTo={navTo} onMenu={onMenu} showAudio={showAudio} />;
     case 'menu':          return <MenuPagePreview     config={config} navTo={navTo} />;
@@ -515,17 +549,35 @@ function normalizeVariant(v: string): (typeof KNOWN_VARIANTS)[number] {
   return (KNOWN_VARIANTS as readonly string[]).includes(v) ? (v as (typeof KNOWN_VARIANTS)[number]) : 'secondary';
 }
 
-/** Read the cta-group block's buttons for this page instance (the source of truth). */
-function ctaGroupButtons(config: ScaffoldConfig, instance: PageInstance): PreviewButton[] {
-  const raw = blockSetting(config, instance, 'cta-group', 'buttons');
+function normalizePreviewButtons(raw: unknown): PreviewButton[] {
   const list = Array.isArray(raw) ? raw : [];
-  const mapped = list
+  return list
     .filter((b): b is Record<string, unknown> => Boolean(b) && typeof b === 'object' && !Array.isArray(b))
     .map((b) => ({ variant: String(b.variant ?? 'primary'), exit: String(b.exit ?? '') }));
+}
+
+function pageHasRegisteredVariant(config: ScaffoldConfig, instance: PageInstance): boolean {
+  return normalizePreviewButtons(blockSetting(config, instance, 'cta-group', 'registeredButtons')).length > 0;
+}
+
+/** Read the cta-group block's buttons for this page instance (the source of truth). */
+function ctaGroupButtons(config: ScaffoldConfig, instance: PageInstance, previewState: PreviewState = 'default'): PreviewButton[] {
+  const variantButtons = previewState === 'registered'
+    ? normalizePreviewButtons(blockSetting(config, instance, 'cta-group', 'registeredButtons'))
+    : [];
+  if (variantButtons.length) return variantButtons;
+  const raw = blockSetting(config, instance, 'cta-group', 'buttons');
+  const list = Array.isArray(raw) ? raw : [];
+  const mapped = normalizePreviewButtons(list);
   return mapped.length ? mapped : [{ variant: 'primary', exit: '' }];
 }
 
-function ctaButtonLabel(config: ScaffoldConfig, instance: PageInstance, button: PreviewButton, index: number): string {
+function ctaButtonLabel(config: ScaffoldConfig, instance: PageInstance, button: PreviewButton, index: number, previewState: PreviewState): string {
+  if (previewState === 'registered') {
+    const dest = config.pages.find((p) => p.id === button.exit);
+    const meta = dest ? pageMeta(dest.type) : undefined;
+    return meta?.label ?? 'Continue';
+  }
   if (index === 0) return PRIMARY_CTA_LABEL[instance.type] ?? 'Continue';
   // Secondary buttons: label by their destination page so the user can tell where
   // each one goes (the real button copy is authored in CAPE).
@@ -540,15 +592,15 @@ function ctaButtonLabel(config: ScaffoldConfig, instance: PageInstance, button: 
  * preview reflect exactly what you configured in the block editor (count,
  * variants, targets), instead of a fixed set of semantic slots.
  */
-function CtaGroupPreview({ config, instance, navTo }: { config: ScaffoldConfig; instance: PageInstance; navTo: NavToFn }) {
-  const buttons = ctaGroupButtons(config, instance);
+function CtaGroupPreview({ config, instance, navTo, previewState = 'default' }: { config: ScaffoldConfig; instance: PageInstance; navTo: NavToFn; previewState?: PreviewState }) {
+  const buttons = ctaGroupButtons(config, instance, previewState);
   return (
     <div className="pp-actions">
       {buttons.map((b, i) => (
         <CtaButton
           key={i}
           kind={normalizeVariant(b.variant)}
-          label={ctaButtonLabel(config, instance, b, i)}
+          label={ctaButtonLabel(config, instance, b, i, previewState)}
           onClick={() => { if (b.exit) navTo(b.exit); }}
         />
       ))}
@@ -1070,7 +1122,7 @@ function GamePreview({ config, instance, navigate, showAudio }: { config: Scaffo
 
 // ─────────────── Result ───────────────
 
-function ResultPreview({ config, instance, navigate, navTo, onMenu, showAudio }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean }) {
+function ResultPreview({ config, instance, navigate, navTo, onMenu, showAudio, previewState }: { config: ScaffoldConfig; instance: PageInstance; navigate: NavFn; navTo: NavToFn; onMenu: () => void; showAudio?: boolean; previewState: PreviewState }) {
   const s = instSettings(config, instance.id);
   const autoNavSec = Number(s.autoNavSec ?? 0);
   const brand = config.brand?.trim() || config.name?.trim();
@@ -1122,7 +1174,7 @@ function ResultPreview({ config, instance, navigate, navTo, onMenu, showAudio }:
               Auto-continue in {remaining}s
             </span>
           )}
-          {on('cta-group') && <CtaGroupPreview config={config} instance={instance} navTo={navTo} />}
+          {on('cta-group') && <CtaGroupPreview config={config} instance={instance} navTo={navTo} previewState={previewState} />}
           <PageFooter
             compliance={on('compliance-badge')}
             links={on('footer-link-list')}

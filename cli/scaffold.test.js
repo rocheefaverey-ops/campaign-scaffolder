@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { basePageType, normalizeUnityBootMode, routeFor, validateConfig } from './scaffold.js';
 
 let pass = 0;
@@ -96,6 +98,20 @@ t('warns when a module has no supporting page', () => {
     modules: ['leaderboard'],
   });
   assert.ok(warnings.some((w) => /Ignoring module "leaderboard"/i.test(w)));
+});
+
+console.log('next template dependencies');
+t('include sass for copied .module.scss blocks', () => {
+  for (const template of ['next-none', 'next-unity', 'next-memory', 'next-r3f', 'next-phaser']) {
+    const pkg = JSON.parse(readFileSync(join('base-templates', template, 'package.json'), 'utf8'));
+    assert.ok(pkg.devDependencies?.sass, `${template} must include sass`);
+  }
+});
+
+console.log('generic block compatibility');
+t('menu item list does not import TanStack router', () => {
+  const source = readFileSync(join('components', '_blocks', 'menu-item-list', 'MenuItemList.tsx'), 'utf8');
+  assert.equal(source.includes('@tanstack/react-router'), false);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

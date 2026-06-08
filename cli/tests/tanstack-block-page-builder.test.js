@@ -132,9 +132,9 @@ describe('buildTsBlockDrivenPage - tutorial step flow', () => {
       routeMap: { tutorial: '/tutorial', game: '/game' },
     });
     assert.match(route, /currentStep\.image \? \{ kind: 'image' as const, url: currentStep\.image \} : cape\.background/);
-    assert.match(route, /title=\{currentStep\.title \|\| cape\.title \|\| "How to play"\}/);
-    assert.match(route, /subtitle=\{currentStep\.description \|\| cape\.subtitle\}/);
-    assert.match(route, /<BodyCopy text=\{currentStep\.description \?\? cape\.body/);
+    assert.match(route, /title=\{String\(currentStep\.title \|\| cape\.title \|\| "How to play"\)\}/);
+    assert.match(route, /subtitle=\{String\(currentStep\.description \|\| cape\.subtitle \|\| ""\)\}/);
+    assert.match(route, /<BodyCopy text=\{String\(currentStep\.description \?\? cape\.body/);
     assert.match(route, /<CenteredArt image=\{currentStep\.image \?\? cape\.art/);
   });
 
@@ -142,7 +142,7 @@ describe('buildTsBlockDrivenPage - tutorial step flow', () => {
     const route = buildTsBlockDrivenPage('tutorial', 'tutorial', blocks, {
       routeMap: { tutorial: '/tutorial', game: '/game' },
     });
-    assert.match(route, /nextLabel=\{isLastStep \? \(cape\.lastLabel \?\? 'Start'\) : \(cape\.nextLabel \?\? 'Continue'\)\}/);
+    assert.match(route, /nextLabel=\{String\(isLastStep \? \(cape\.lastLabel \?\? 'Start'\) : \(cape\.nextLabel \?\? 'Continue'\)\)\}/);
     assert.match(route, /isLastStep \? router\.navigate\(\{ to: ["']\/game["'] as never \}\) : setStepIndex/);
     assert.match(route, /<StepIndicator count=\{totalSteps\} current=\{safeStepIndex\}/);
   });
@@ -281,7 +281,7 @@ describe('buildTsBlockDrivenPage - block coverage', () => {
     assert.doesNotMatch(route, /personalRank \?\? 0/);
     assert.doesNotMatch(route, /personalBest \?\? 0/);
     assert.match(route, /<StatsTable rows=\{cape\.stats \?\? \[\]\} count=\{2\}/);
-    assert.match(route, /<TopNHighlight label=\{cape\.topNLabel \?\? ''\} count=\{5\}/);
+    assert.match(route, /<TopNHighlight label=\{String\(cape\.topNLabel \?\? ''\)\} count=\{5\}/);
   });
 
   it('keeps card page header chrome outside the card wrapper', () => {

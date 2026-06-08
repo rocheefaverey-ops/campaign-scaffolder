@@ -1,4 +1,3 @@
-import { useRouter } from '@tanstack/react-router';
 import styles from './MenuItemList.module.scss';
 
 type Item = { label?: string; href?: string; id?: string };
@@ -65,7 +64,6 @@ function inferItemId(item: Item) {
 }
 
 export function MenuItemList({ items, targets }: Props) {
-  const router = useRouter();
   const valid = itemEntries(items).map(normalizeItem).filter((i): i is Item => Boolean(i));
   const list = valid.length ? valid : DEFAULT_ITEMS;
   const resolved = targets
@@ -79,18 +77,7 @@ export function MenuItemList({ items, targets }: Props) {
     <nav className={styles.nav}>
       {resolved.map((item) => {
         const href = routeHref(item.href);
-        const isInternalRoute = href.startsWith('/');
-        return isInternalRoute ? (
-          <button
-            key={`${item.label}-${href}`}
-            type="button"
-            onClick={() => router.navigate({ to: href as never })}
-          >
-            {item.label}
-          </button>
-        ) : (
-          <a key={`${item.label}-${href}`} href={href}>{item.label}</a>
-        );
+        return <a key={`${item.label}-${href}`} href={href}>{item.label}</a>;
       })}
     </nav>
   );
