@@ -95,12 +95,13 @@ describe('buildTsBlockDrivenPage - loading-video', () => {
     assert.match(route, /router\.navigate\(\{ to: ["']\/game["'] as never, replace: true \}\)/);
     assert.doesNotMatch(route, /\/howto-play/);
     assert.doesNotMatch(route, /rightSlot="close"/);
-    // Content-driven contract: advance on boot resolve (goToGame), NO hard
-    // fallback timer, a load-driven safety net (loadProgress 100), and a manual
-    // Continue button on boot failure.
+    // Single-loader contract: loading-video fully boots then advances (goToGame
+    // sets the preload flag), NO hard timer, NO early loadProgress advance (the
+    // game route must not need a second loader), manual Continue on boot error.
     assert.doesNotMatch(route, /setTimeout/);
     assert.match(route, /\.then\(\(\) => goToGame\(\)\)/);
-    assert.match(route, /loadProgress >= 100/);
+    assert.doesNotMatch(route, /loadProgress >= 100/);
+    assert.match(route, /unity-started-from-video/);
     assert.match(route, /setCanContinue\(true\)/);
     assert.match(route, /canContinue &&/);
   });

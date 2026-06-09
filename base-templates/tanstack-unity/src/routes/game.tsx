@@ -144,11 +144,19 @@ function Game() {
     addEventListener('navigation', navigationListener);
     addEventListener('tracking', trackingListener);
 
-    // Start full boot
+    // loading-video is the single loading screen — it fully boots Unity and sets
+    // 'unity-started-from-video'. If that flag is present, the scene is already
+    // loaded: skip the boot (and its loader) and start immediately. Otherwise
+    // (e.g. deep-linked straight to /game) fall back to a full boot here.
+    const preloaded = (() => { try { return sessionStorage.getItem('unity-started-from-video') === 'true'; } catch { return false; } })();
+    if (preloaded) { try { sessionStorage.removeItem('unity-started-from-video'); } catch {} }
+
     startTransition(async () => {
-      setData({ translations: sharedCopy.game });
-      setTargetScene(sceneKey);
-      await fullBoot();
+      if (!preloaded) {
+        setData({ translations: sharedCopy.game });
+        setTargetScene(sceneKey);
+        await fullBoot();
+      }
       setUnityVisible(true);
 
       // Only call start once

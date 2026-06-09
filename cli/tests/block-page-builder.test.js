@@ -115,8 +115,10 @@ describe('buildBlockDrivenLanding', () => {
     assert.doesNotMatch(out, /setTimeout/);
     assert.match(out, /setCanContinue\(true\)/);
     assert.match(out, /canContinue &&/);
-    // Load-driven safety net (not a timer): advance once the build is loaded.
-    assert.match(out, /loadProgress >= 100/);
+    // loading-video is the single loader: it fully boots (sets the preload flag
+    // on resolve) and does NOT advance early on loadProgress — so the game page
+    // never has to show a second loader.
+    assert.doesNotMatch(out, /loadProgress >= 100/);
   });
 
   it('uses the current loading video fallback asset', () => {
