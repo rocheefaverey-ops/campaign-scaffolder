@@ -91,7 +91,16 @@ function routeForPlayableExit(exit, ctx = {}) {
   const shouldUseLoadingVideo = pageId !== 'loading-video'
     && pages.includes('loading-video')
     && (normalizedExit === 'game' || normalizedExit === 'gameplay');
-  return routeForExit(shouldUseLoadingVideo ? 'loading-video' : normalizedExit, routeMap);
+  if (shouldUseLoadingVideo) return routeForExit('loading-video', routeMap);
+  // Gate on whether the target page was generated. A block default may point at
+  // an optional page this campaign didn't select (e.g. result → register) —
+  // without gating that CTA 404s. Fall back to the next page in sequence.
+  const isPlayable = normalizedExit === 'game' || normalizedExit === 'gameplay';
+  // Only gate when a real flow is known. With no page list (unit calls) assume valid.
+  if (pages.length && !isPlayable && !pages.includes(normalizedExit)) {
+    return nextRouteForPage(pageId, pages, routeMap);
+  }
+  return routeForExit(normalizedExit, routeMap);
 }
 
 function menuTargetsFor(settings = {}, ctx = {}) {
@@ -400,7 +409,7 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     stepFlow ? '  const safeStepIndex = Math.min(stepIndex, totalSteps - 1);' : null,
     stepFlow ? '  const currentStep = visibleSteps[safeStepIndex] ?? {};' : null,
     stepFlow ? '  const isLastStep = safeStepIndex >= totalSteps - 1;' : null,
-    isWaitForEngineVideoPage ? '  const { setData, setTargetScene, fullBoot } = useUnity();' : null,
+    isWaitForEngineVideoPage ? '  const { setData, setTargetScene, fullBoot, loadProgress } = useUnity();' : null,
     isWaitForEngineVideoPage ? '  const booted = useRef(false);' : null,
     isWaitForEngineVideoPage ? '  const navigated = useRef(false);' : null,
     isWaitForEngineVideoPage ? '  const [canContinue, setCanContinue] = useState(false);' : null,
@@ -446,6 +455,15 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
       '        setCanContinue(true);',
       '      });',
       '  }, [fullBoot, router, sceneKey, setData, setTargetScene, sharedCopy.game]);',
+    ].join('\n') : null,
+    isWaitForEngineVideoPage ? [
+      '  useEffect(() => {',
+      '    // Readiness fallback (NOT a timer): some Unity builds load fully but never',
+      '    // fire the scene-ready event fullBoot awaits. Once the build is 100%',
+      '    // downloaded, advance anyway (goToGame sets the preload flag, so the game',
+      '    // route still skips its own boot — never a second loader).',
+      '    if (loadProgress >= 100) goToGame();',
+      '  }, [loadProgress]);',
     ].join('\n') : null,
     isIntroVideoPage ? '  const { loadProgress } = useUnity();' : null,
     isIntroVideoPage ? '  const navigated = useRef(false);' : null,

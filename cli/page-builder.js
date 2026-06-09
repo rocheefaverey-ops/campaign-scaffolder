@@ -73,6 +73,20 @@ function routeForExit(exit, routeMap = {}) {
   return routeMap[key] ?? routeMap[hyphenKey] ?? routeMap[underscoreKey] ?? DEFAULT_BLOCK_ROUTES[key] ?? DEFAULT_BLOCK_ROUTES[hyphenKey] ?? `/${hyphenKey}`;
 }
 
+// Resolve a CTA exit to a route, but GATE it on whether that page was actually
+// generated. A block default may point at an optional page (e.g. result → register)
+// that this campaign didn't select — without gating that button 404s. If the
+// target isn't in the flow, fall back to the next page in sequence.
+function gatedExitRoute(exit, ctx) {
+  const pages = ctx.pages ?? [];
+  const key = String(exit ?? '').replace(/^\//, '');
+  // Only gate when a real flow is known. With no page list (unit calls) assume valid.
+  if (!pages.length) return routeForExit(exit, ctx.routeMap);
+  const inFlow = !key || String(exit).startsWith('/') || pages.includes(key) || pages.includes(key.replace(/_/g, '-'));
+  if (inFlow) return routeForExit(exit, ctx.routeMap);
+  return nextRouteForPage(ctx.pageId, pages, ctx.routeMap);
+}
+
 function jsString(value) {
   return JSON.stringify(value);
 }
@@ -354,7 +368,7 @@ export function buildBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     ? [
       '      {canContinue && (',
       '        <div className="campaign-actions campaign-block-actions">',
-      '          <button type="button" className="campaign-video-skip" onClick={() => goToGame(false)}>{cape.skipLabel ?? cape.ctaLabel ?? \'Continue\'}</button>',
+      '          <button type="button" className="campaign-video-skip" onClick={() => goToGame()}>{cape.skipLabel ?? cape.ctaLabel ?? \'Continue\'}</button>',
       '        </div>',
       '      )}',
     ]
@@ -438,23 +452,23 @@ export function buildBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     isWaitForEngineVideoPage ? '  const navigated = useRef(false);' : null,
     isWaitForEngineVideoPage ? '  const [canContinue, setCanContinue] = useState(false);' : null,
     isWaitForEngineVideoPage ? [
-      '  // Advance to the game exactly once. `preloaded` = the scene finished',
-      '  // preloading (fullBoot resolved), so gameplay can start instantly via the',
-      "  // 'unity-started-from-video' flag; otherwise gameplay re-boots itself.",
-      '  const goToGame = (preloaded: boolean) => {',
+      '  // Advance to the game exactly once, ALWAYS setting the',
+      "  // 'unity-started-from-video' flag so the game page skips its own boot",
+      '  // (no second loader, no re-boot crash) — loading-video is the single loader.',
+      '  const goToGame = () => {',
       '    if (navigated.current) return;',
       '    navigated.current = true;',
-      "    if (preloaded) { try { sessionStorage.setItem('unity-started-from-video', 'true'); } catch {} }",
+      "    try { sessionStorage.setItem('unity-started-from-video', 'true'); } catch {}",
       `    router.replace(${jsString(waitForEngineRoute)});`,
       '  };',
     ].join('\n') : null,
     isWaitForEngineVideoPage ? [
       '  useEffect(() => {',
-      '    // loading-video is the SINGLE loading screen: fully boot Unity here',
-      '    // (init + preload + load scene) so the game page can start instantly',
-      "    // without a second loader. On success set the 'unity-started-from-video'",
-      '    // flag so gameplay skips its own boot. No timer — on a hard boot error,',
-      '    // surface a manual Continue button (the only escape).',
+      '    // loading-video is the SINGLE loading screen: boot Unity here so the game',
+      '    // page can start instantly without a second loader. Advance when the scene',
+      '    // preloads (fullBoot resolves). On a hard boot error, surface a manual',
+      '    // Continue button. (A loadProgress-100 fallback below covers builds that',
+      '    // load fully but never fire the scene-ready event.)',
       '    if (!unity || booted.current) return;',
       '    booted.current = true;',
       "    const targetScene = getCapeText(capeData, 'settings.game.sceneKey', '');",
@@ -462,12 +476,21 @@ export function buildBlockDrivenPage(pageId, pageType, blocks, options = {}) {
       '    unity.setData({ translations });',
       '    if (targetScene) unity.setTargetScene(targetScene);',
       '    void unity.fullBoot()',
-      '      .then(() => goToGame(true))',
+      '      .then(() => goToGame())',
       '      .catch((error) => {',
       "        console.warn('Unity did not finish booting from loading-video:', error);",
       '        setCanContinue(true);',
       '      });',
       '  }, [unity, capeData, router]);',
+    ].join('\n') : null,
+    isWaitForEngineVideoPage ? [
+      '  useEffect(() => {',
+      '    // Readiness fallback (NOT a timer): some Unity builds load fully but',
+      '    // never fire the scene-ready event fullBoot awaits. Once the build is',
+      '    // 100% downloaded, advance anyway — gameplay starts the already-loaded',
+      '    // game. Still sets the preload flag, so there is never a second loader.',
+      '    if (unity && unity.loadProgress >= 100) goToGame();',
+      '  }, [unity, unity?.loadProgress]);',
     ].join('\n') : null,
     '  return (',
     wrapStart,
@@ -688,7 +711,7 @@ function renderCtaButtons(settings, ctx = {}) {
   const cap = Math.min(4, settings.count ? Number(settings.count) : list.length);
   const entries = list.slice(0, Math.max(1, cap)).map((b, i) => {
     const exit = b.exit ?? 'game';
-    const route = routeForExit(exit, ctx.routeMap);
+    const route = gatedExitRoute(exit, ctx);
     const isTutorialTarget = exit === 'tutorial' || route === routeForExit('tutorial', ctx.routeMap);
     const tutorialSkipRoute = flowRuleSkipRouteFor('tutorial', 'game', ctx);
     const onClick = ctx.needsRegisterGate && ctx.pageId === 'register' && i === 0
