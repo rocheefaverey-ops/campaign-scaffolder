@@ -56,10 +56,14 @@ describe('game page — hard-refresh recovery', () => {
   // handshake → frozen canvas. Both stacks must detect the reload and restart
   // the flow from the entry ('/').
   for (const [name, src] of [['Next gameplay', nextGameplay], ['TanStack game', tsGame]]) {
-    it(`${name} detects a hard reload and redirects to the entry`, () => {
-      assert.match(src, /getEntriesByType\(['"]navigation['"]\)/);
-      assert.match(src, /reload/);
+    it(`${name} detects a hard reload (mount marker) and redirects to the entry`, () => {
+      // SPA-safe detection: a sessionStorage mount marker cleared on clean
+      // unmount; only a hard reload leaves it set. (Document navigation-type is
+      // shared across all client routes, so it can't be used here.)
+      assert.match(src, /lw-game-page-mounted/);
+      assert.match(src, /sessionStorage/);
       assert.match(src, /(navigate\(\s*['"]\/['"]|to:\s*['"]\/['"])/);
+      assert.doesNotMatch(src, /getEntriesByType\(['"]navigation['"]\)/);
     });
   }
 });

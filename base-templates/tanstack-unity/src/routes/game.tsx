@@ -31,15 +31,7 @@ export const Route = createFileRoute('/game')({
   loader: async ({ context }) => await loadGameData(context.language),
 });
 
-// A hard refresh on the game route destroys the in-memory Unity instance and the
-// 'unity-started-from-video' preload handshake, leaving a frozen canvas. Detect
-// the reload and restart the flow from the entry ('/'), which re-runs
-// loading-video and boots Unity cleanly.
-function isHardReload(): boolean {
-  if (typeof performance === 'undefined') return false;
-  const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
-  return nav?.type === 'reload';
-}
+const GAME_MOUNT_MARKER = 'lw-game-page-mounted';
 
 function Game() {
   const { copy: sharedCopy, sceneKey } = useLoaderData({ from: '__root__' });
@@ -50,7 +42,9 @@ function Game() {
   const [_, startTransition] = useTransition();
   const callAPI = useApi(customRequest);
   const started = useRef<boolean>(false);
-  const reloaded = useRef<boolean>(isHardReload());
+  // Set true when this mount is a hard refresh of the game page (mount-marker
+  // effect below). Used to skip booting and recover the flow instead.
+  const reloaded = useRef<boolean>(false);
   const router = useRouter();
 
   // Define listeners
@@ -147,10 +141,21 @@ function Game() {
     }
   }, []);
 
-  // Hard-refresh recovery: restart the flow from the entry instead of showing a
-  // frozen, state-less game canvas.
+  // Hard-refresh recovery via a mount marker (reliable in an SPA, unlike the
+  // document navigation-type which is shared across all client routes). Cleared
+  // on a clean unmount; only a hard reload leaves it set. If still set on mount,
+  // this is a refresh of the game route — restart the flow from the entry.
   useEffect(() => {
-    if (reloaded.current) void router.navigate({ to: '/' as never, replace: true });
+    try {
+      if (sessionStorage.getItem(GAME_MOUNT_MARKER) === '1') {
+        reloaded.current = true;
+        sessionStorage.removeItem(GAME_MOUNT_MARKER);
+        void router.navigate({ to: '/' as never, replace: true });
+        return;
+      }
+      sessionStorage.setItem(GAME_MOUNT_MARKER, '1');
+    } catch {}
+    return () => { try { sessionStorage.removeItem(GAME_MOUNT_MARKER); } catch {} };
   }, []);
 
   // Setup Unity game on mount

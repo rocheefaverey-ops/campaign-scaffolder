@@ -33,16 +33,7 @@ function readStats(payload: IGameResult): Record<string, number | string> {
   return out;
 }
 
-// A hard refresh on the game page destroys the in-memory Unity instance and the
-// 'unity-started-from-video' preload handshake, leaving a frozen canvas. Detect
-// the reload and restart the flow from the entry ('/'), which re-runs
-// loading-video and boots Unity cleanly. (This also covers an accidental
-// deep-refresh into a half-state.)
-function isHardReload(): boolean {
-  if (typeof performance === 'undefined') return false;
-  const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
-  return nav?.type === 'reload';
-}
+const GAME_MOUNT_MARKER = 'lw-game-page-mounted';
 
 export default function GameplayPage() {
   const ctx = useContext(UnityContext);
@@ -52,16 +43,30 @@ export default function GameplayPage() {
   const [, startTransition] = useTransition();
   const [showFallback, setShowFallback] = useState(false);
   const targetScene = getCapeText(capeData, 'settings.game.sceneKey', 'Racing');
-  const reloaded = useRef(isHardReload());
+  // Set true when this mount is a hard refresh of the game page (see the mount-
+  // marker effect). Used to skip booting and recover the flow instead.
+  const reloaded = useRef(false);
 
   const booted = useRef(false);
   const started = useRef(false);
   const ended = useRef(false);
 
-  // Hard-refresh recovery: restart the flow from the entry instead of showing a
-  // frozen, state-less game canvas.
+  // Hard-refresh recovery via a mount marker (reliable in an SPA, unlike the
+  // document navigation-type which is shared across all client routes). On a
+  // clean client navigation the marker is cleared on unmount; only a hard reload
+  // leaves it set. If it's still set when we mount, this is a refresh of the game
+  // page — restart the flow from the entry instead of showing a frozen canvas.
   useEffect(() => {
-    if (reloaded.current) navigate('/', 'replace');
+    try {
+      if (sessionStorage.getItem(GAME_MOUNT_MARKER) === '1') {
+        reloaded.current = true;
+        sessionStorage.removeItem(GAME_MOUNT_MARKER);
+        navigate('/', 'replace');
+        return;
+      }
+      sessionStorage.setItem(GAME_MOUNT_MARKER, '1');
+    } catch {}
+    return () => { try { sessionStorage.removeItem(GAME_MOUNT_MARKER); } catch {} };
   }, [navigate]);
 
   const endHandlerRef = useRef<((data: unknown) => void) | undefined>(undefined);
