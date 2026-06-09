@@ -24,6 +24,10 @@ describe('Next Unity apiRequest bridge (base template)', () => {
     assert.match(action, /'use server'/);
     assert.match(action, /export async function unityApiRequest/);
     assert.match(action, /fetchData/);
+    // A 'use server' module may ONLY export async functions. A `export default`
+    // (even aliasing the function) breaks Next's server-action transform —
+    // the named export silently disappears and gameplay fails to build.
+    assert.doesNotMatch(action, /export default/);
   });
 
   it('gameplay registers and tears down the apiRequest listener', () => {

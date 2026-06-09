@@ -37,5 +37,3 @@ export async function unityApiRequest(
 
   return { success: result.success, data: result.data };
 }
-
-export default unityApiRequest;
