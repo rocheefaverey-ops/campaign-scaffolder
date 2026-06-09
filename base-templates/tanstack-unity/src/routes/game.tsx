@@ -45,7 +45,7 @@ function Game() {
   const { copy: sharedCopy, sceneKey } = useLoaderData({ from: '__root__' });
   const { copy } = Route.useLoaderData();
   const { setResult } = useUnityStore();
-  const { sendMessage, setData, setTargetScene, fullBoot, startGame, addEventListener, removeEventListener, setUnityVisible, showLoader } = useUnity();
+  const { sendMessage, setData, setTargetScene, fullBoot, startGame, addEventListener, removeEventListener, setUnityVisible, showLoader, isUnityVisible } = useUnity();
   const { trackEvent, trackPageView } = useTracking();
   const [_, startTransition] = useTransition();
   const callAPI = useApi(customRequest);
@@ -176,12 +176,10 @@ function Game() {
         await fullBoot();
       }
       setUnityVisible(true);
-
-      // Only call start once
-      if (!started.current) {
-        started.current = true;
-        startGame();
-      }
+      // Start is fired by the "start when ready" effect below (gated on
+      // !showLoader) — never here, because when preloaded the scene may still be
+      // finishing (loading-video advanced on loadProgress) and an early
+      // StartGame would be missed, leaving the game paused.
     });
 
     // Prefetch score route
@@ -196,6 +194,17 @@ function Game() {
       removeEventListener('tracking', trackingListener);
     };
   }, []);
+
+  // Start when ready: fire StartGame once Unity is visible AND the scene has
+  // finished loading (showLoader cleared) — never before. Fixes the "game sits
+  // paused waiting to start" race when loading-video advanced on loadProgress
+  // before the scene was actually ready. Idempotent via started.
+  useEffect(() => {
+    if (started.current || reloaded.current) return;
+    if (!isUnityVisible || showLoader) return;
+    started.current = true;
+    startGame();
+  }, [isUnityVisible, showLoader]);
 
   return (
     <PageContainer className={styles.game} disableTransition>

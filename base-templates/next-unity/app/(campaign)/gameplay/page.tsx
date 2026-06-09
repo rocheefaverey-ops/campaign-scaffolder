@@ -196,7 +196,10 @@ export default function GameplayPage() {
       sessionStorage.removeItem('unity-started-from-video');
       setShowFallback(false);
       ctx.setUnityVisible(true);
-      maybeStartGame();
+      // Do NOT start immediately — loading-video may have advanced on
+      // loadProgress before the scene was actually ready. The "start when ready"
+      // effect below fires StartGame once showLoader clears, so the game never
+      // sits paused waiting for a start signal it received too early.
       return;
     }
 
@@ -249,6 +252,20 @@ export default function GameplayPage() {
       }
     });
   }, [capeData, ctx, isMuted, onboardingCompleted, startTransition, targetScene]);
+
+  // Start when ready: fire StartGame once the engine is visible AND the scene
+  // has finished loading (showLoader cleared) — never before. This fixes the
+  // "game sits paused waiting to start" race when loading-video advanced on
+  // loadProgress before the scene was actually ready. Idempotent via started.
+  useEffect(() => {
+    if (!ctx || started.current || reloaded.current) return;
+    if (!ctx.isUnityVisible || ctx.showLoader) return;
+    const startObject = process.env.NEXT_PUBLIC_UNITY_START_OBJECT ?? 'GameService';
+    const startMethod = process.env.NEXT_PUBLIC_UNITY_START_METHOD ?? 'StartGame';
+    if (!startObject) return;
+    started.current = true;
+    ctx.sendMessage(startObject, startMethod);
+  }, [ctx, ctx?.isUnityVisible, ctx?.showLoader]);
 
   useEffect(() => {
     if (ctx?.isUnityVisible) return;
