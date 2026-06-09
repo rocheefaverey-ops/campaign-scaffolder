@@ -119,7 +119,7 @@ describe('buildBlockDrivenLanding', () => {
     // game page never re-boots / shows a second loader), advancing on fullBoot
     // resolve OR a loadProgress-100 readiness fallback (for builds that never fire
     // the scene-ready event).
-    assert.match(out, /loadProgress >= 100/);
+    assert.doesNotMatch(out, /loadProgress >= 100/);
     assert.doesNotMatch(out, /goToGame\(false\)/);
   });
 

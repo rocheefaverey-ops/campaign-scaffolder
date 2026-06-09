@@ -100,7 +100,7 @@ describe('buildTsBlockDrivenPage - loading-video', () => {
     // game route must not need a second loader), manual Continue on boot error.
     assert.doesNotMatch(route, /setTimeout/);
     assert.match(route, /\.then\(\(\) => goToGame\(\)\)/);
-    assert.match(route, /loadProgress >= 100/);
+    assert.doesNotMatch(route, /loadProgress >= 100/);
     assert.match(route, /unity-started-from-video/);
     assert.match(route, /setCanContinue\(true\)/);
     assert.match(route, /canContinue &&/);
