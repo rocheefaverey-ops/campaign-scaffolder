@@ -264,8 +264,12 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
   const isVideoPage = type === 'video' || ['video', 'intro-video', 'loading-video', 'ad-video'].includes(pageId);
   const videoPlayerBlock = innerBlocks.find((b) => b.name === 'video-player');
   const fullBleedVideoBlock = isVideoPage ? videoPlayerBlock : null;
+  // Video interludes are LINEAR — they play into the next page in the flow
+  // sequence (matching the module routes' {{NEXT_AFTER_*}}). auto-advance / skip
+  // / reveal target the next page by ORDER, not the block's `exit` hint.
+  const videoSequenceRoute = isVideoPage ? nextRouteForPage(pageId, options.pages ?? [], options.routeMap ?? {}) : null;
 
-  const ctx = { pageId, pageType: type, routeMap: options.routeMap ?? {}, pages: options.pages ?? [], brandInHeader, projectName: options.projectName, stepFlow };
+  const ctx = { pageId, pageType: type, routeMap: options.routeMap ?? {}, pages: options.pages ?? [], brandInHeader, projectName: options.projectName, stepFlow, videoSequenceRoute, introVideo: pageId === 'intro-video' };
   const visibleOrderedBlocks = fullBleedVideoBlock
     ? orderedBlocks.filter((b) => b !== fullBleedVideoBlock)
     : orderedBlocks;
@@ -281,7 +285,12 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
   const autoAdvanceRoute = nextRouteForPage(pageId, options.pages ?? [], options.routeMap ?? {});
   const waitForEngineVideoBlock = innerBlocks.find((b) => b.name === 'video-player' && settingsOf(b).onEnd === 'wait-for-engine');
   const isWaitForEngineVideoPage = Boolean(waitForEngineVideoBlock);
-  const usesUnityResult = type === 'result' && innerBlocks.some((b) => b.name === 'score-readout');
+  // Entry loading video: TanStack downloads all Unity assets at page start
+  // (index.tsx preloads), so the intro waits for that download — advance to
+  // landing when loadProgress hits 100. Content-driven, no timer; the clip loops.
+  const isIntroVideoPage = pageId === 'intro-video' && Boolean(innerBlocks.find((b) => b.name === 'video-player'));
+  const introVideoRoute = videoSequenceRoute ?? routeForExit('landing', options.routeMap ?? {});
+  const usesUnityResult = type === 'result' && innerBlocks.some((b) => b.name === 'score-readout' || b.name === 'stats-table');
   const usesRegistrationState = (pageId === 'register' || type === 'result') && (options.pages ?? []).includes('register');
   const tracksRegistrationStatus = type === 'result' && (options.pages ?? []).includes('register');
   const registerCtaBlock = innerBlocks.find((b) => b.name === 'cta-group');
@@ -289,13 +298,12 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     ? routeForExit(settingsOf(registerCtaBlock).buttons?.[0]?.exit ?? 'result', options.routeMap ?? {})
     : null;
   const waitForEngineSettings = settingsOf(waitForEngineVideoBlock);
-  const waitForEngineFallbackMs = waitForEngineSettings.readyFallbackMs != null
-    ? Number(waitForEngineSettings.readyFallbackMs)
-    : Number(waitForEngineSettings.readyFallbackSec ?? 8) * 1000;
-  const waitForEngineRoute = routeForExit(settingsOf(waitForEngineVideoBlock).exit ?? 'game', options.routeMap ?? {});
-  const usesRouter = innerBlocks.some(blockUsesRouter) || isAutoLoadingPage || isWaitForEngineVideoPage || Boolean(stepFlow);
+  const waitForEngineRoute = videoSequenceRoute ?? routeForExit(settingsOf(waitForEngineVideoBlock).exit ?? 'game', options.routeMap ?? {});
+  const usesRouter = innerBlocks.some(blockUsesRouter) || isAutoLoadingPage || isWaitForEngineVideoPage || isIntroVideoPage || Boolean(stepFlow);
   const reactImports = [...new Set([
-    (isAutoLoadingPage || isWaitForEngineVideoPage || usesRegistrationState) && 'useEffect',
+    (isAutoLoadingPage || isWaitForEngineVideoPage || isIntroVideoPage || usesRegistrationState) && 'useEffect',
+    isWaitForEngineVideoPage && 'useState',
+    (isWaitForEngineVideoPage || isIntroVideoPage) && 'useRef',
     tracksRegistrationStatus && 'useState',
     stepFlow && 'useState',
   ].filter(Boolean))];
@@ -311,6 +319,15 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
       ...actionChildren.map((line) => `  ${line}`),
       '      </div>',
     ] : [],
+    // Manual "Continue" affordance for a wait-for-engine page whose boot failed —
+    // the only escape (there is no timer). Rendered as an overlay over the clip.
+    ...(isWaitForEngineVideoPage ? [
+      '      {canContinue && (',
+      '        <div className="campaign-actions campaign-block-actions">',
+      '          <button type="button" className="campaign-video-skip" onClick={() => goToGame()}>{cape.skipLabel ?? cape.ctaLabel ?? \'Continue\'}</button>',
+      '        </div>',
+      '      )}',
+    ] : []),
   ].flat();
   const content = card
     ? [
@@ -354,7 +371,7 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     reactImports.length ? `import { ${reactImports.join(', ')} } from 'react';` : null,
     `import { ${loaderName(pageId)} } from '~/loaders/${loaderBaseName(pageId)}Loader.ts';`,
     importLines,
-    isWaitForEngineVideoPage ? "import { useUnity } from '~/components/game/UnityContext.tsx';" : null,
+    (isWaitForEngineVideoPage || isIntroVideoPage) ? "import { useUnity } from '~/components/game/UnityContext.tsx';" : null,
     usesUnityResult ? "import { useUnityStore } from '~/hooks/stores/useUnityStore.ts';" : null,
     '',
     usesRegistrationState ? `const REGISTERED_KEY = ${jsString(`lw_registered_${options.capeId ?? options.projectName ?? 'campaign'}`)};` : null,
@@ -383,7 +400,20 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     stepFlow ? '  const safeStepIndex = Math.min(stepIndex, totalSteps - 1);' : null,
     stepFlow ? '  const currentStep = visibleSteps[safeStepIndex] ?? {};' : null,
     stepFlow ? '  const isLastStep = safeStepIndex >= totalSteps - 1;' : null,
-    isWaitForEngineVideoPage ? '  const { setData, setTargetScene, fullBoot } = useUnity();' : null,
+    isWaitForEngineVideoPage ? '  const { setData, setTargetScene, fullBoot, loadProgress } = useUnity();' : null,
+    isWaitForEngineVideoPage ? '  const booted = useRef(false);' : null,
+    isWaitForEngineVideoPage ? '  const navigated = useRef(false);' : null,
+    isWaitForEngineVideoPage ? '  const [canContinue, setCanContinue] = useState(false);' : null,
+    isWaitForEngineVideoPage ? [
+      '  // Advance to the game exactly once. fullBoot resolving means the scene',
+      '  // finished preloading; the loadProgress-100 path is a load-driven safety',
+      '  // net so the flow never deadlocks if the scene-ready signal never fires.',
+      '  const goToGame = () => {',
+      '    if (navigated.current) return;',
+      '    navigated.current = true;',
+      `    void router.navigate({ to: ${jsString(waitForEngineRoute)} as never, replace: true });`,
+      '  };',
+    ].join('\n') : null,
     isAutoLoadingPage ? [
       '  useEffect(() => {',
       `    const timeout = window.setTimeout(() => void router.navigate({ to: ${jsString(autoAdvanceRoute)} as never, replace: true }), ${autoAdvanceMs});`,
@@ -401,20 +431,39 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     ].filter(Boolean).join('\n') : null,
     isWaitForEngineVideoPage ? [
       '  useEffect(() => {',
-      '    let cancelled = false;',
-      `    const fallback = window.setTimeout(() => {`,
-      `      if (!cancelled) void router.navigate({ to: ${jsString(waitForEngineRoute)} as never, replace: true });`,
-      `    }, ${waitForEngineFallbackMs});`,
+      '    // Content-driven boot: advance the instant the scene is preloaded. No',
+      '    // timer. On a hard boot error, surface a manual Continue button.',
+      '    if (booted.current) return;',
+      '    booted.current = true;',
       '    setData({ translations: sharedCopy.game });',
       '    setTargetScene(sceneKey);',
       '    void fullBoot()',
-      "      .catch((error) => console.warn('Unity did not finish booting from loading-video:', error))",
-      `      .finally(() => { if (!cancelled) void router.navigate({ to: ${jsString(waitForEngineRoute)} as never, replace: true }); });`,
-      '    return () => {',
-      '      cancelled = true;',
-      '      window.clearTimeout(fallback);',
-      '    };',
+      '      .then(() => goToGame())',
+      '      .catch((error) => {',
+      "        console.warn('Unity did not finish booting from loading-video:', error);",
+      '        setCanContinue(true);',
+      '      });',
       '  }, [fullBoot, router, sceneKey, setData, setTargetScene, sharedCopy.game]);',
+    ].join('\n') : null,
+    isWaitForEngineVideoPage ? [
+      '  useEffect(() => {',
+      '    // Content-driven safety net (NOT a timer): once the Unity build is fully',
+      '    // downloaded (loadProgress 100), advance even if the scene-ready signal',
+      '    // never fires — the game route finishes the scene boot itself.',
+      '    if (loadProgress >= 100) goToGame();',
+      '  }, [loadProgress]);',
+    ].join('\n') : null,
+    isIntroVideoPage ? '  const { loadProgress } = useUnity();' : null,
+    isIntroVideoPage ? '  const navigated = useRef(false);' : null,
+    isIntroVideoPage ? [
+      '  useEffect(() => {',
+      '    // Entry loading video: TanStack preloads all Unity assets at page start,',
+      '    // so wait — as long as it takes, NO timer — for that download to finish',
+      '    // (loadProgress 100), then play into landing. The clip loops meanwhile.',
+      '    if (navigated.current || loadProgress < 100) return;',
+      '    navigated.current = true;',
+      `    void router.navigate({ to: ${jsString(introVideoRoute)} as never, replace: true });`,
+      '  }, [loadProgress, router]);',
     ].join('\n') : null,
     '  return (',
     wrapStart,
@@ -596,8 +645,23 @@ function renderBlock(block, ctx) {
         : `      <ScoreReadout score={cape.score ?? 0} label={String(cape.scoreLabel ?? 'Score')} highScore={cape.highScore ?? 0} showHighScore={${Boolean(s.showHighScore)}} />`;
     case 'score-illustration':
       return '      <ScoreIllustration image={cape.scoreImage?.url ?? cape.scoreImage} />';
-    case 'stats-table':
-      return `      <StatsTable rows={cape.stats ?? []} count={${Number(s.count ?? 3)}} />`;
+    case 'stats-table': {
+      // Build rows from the block config, resolving each `value` key against the
+      // Unity result store: score/highScore are the computed currents; other
+      // keys (rank, distance, tokens, time, …) come from the result object,
+      // falling back to a CAPE value. Labels are CAPE-overridable via `<value>Label`.
+      const rowsLiteral = (Array.isArray(s.rows) ? s.rows : [])
+        .map((r) => {
+          const key = String(r.value ?? '');
+          const valueExpr = key === 'score' ? 'currentScore'
+            : (key === 'highScore' || key === 'highscore') ? 'currentHighScore'
+            : `result?.[${jsString(key)}] ?? cape[${jsString(key)}] ?? '—'`;
+          const labelExpr = `String(cape[${jsString(`${key}Label`)}] ?? ${jsString(String(r.label ?? key))})`;
+          return `{ label: ${labelExpr}, value: ${valueExpr} }`;
+        })
+        .join(', ');
+      return `      <StatsTable rows={[${rowsLiteral}]} count={${Number(s.count ?? 3)}} />`;
+    }
     case 'status-chip':
       return `      <StatusChip label={String(cape.statusLabel ?? '')} kind="${s.kind ?? 'registered'}" />`;
     case 'compliance-badge':
@@ -630,20 +694,26 @@ function renderBlock(block, ctx) {
     case 'opt-in-list':
       return `      <OptInList optIns={${jsString(s.optIns ?? ['terms'])}} required={${s.required !== false}} />`;
     case 'video-player': {
-      // wait-for-engine = loading-video. CAPE seldom has a campaign-specific clip,
-      // so fall back to the bundled Livewall intro loop instead of a blank frame.
-      const fallbackSrc = (s.onEnd ?? 'auto-advance') === 'wait-for-engine'
-        ? "'/assets/livewall-loading.mp4'"
-        : "''";
+      // All video interludes fall back to the SAME bundled Livewall clip when
+      // CAPE has no campaign-specific video — so the intro video and the
+      // pre-game loading video are the same clip by default, and no video page
+      // ever shows a blank frame.
+      const fallbackSrc = "'/assets/livewall-loading.mp4'";
       const bleedProp = ctx.fullBleedVideo ? ' fullBleed={true}' : '';
+      const videoTarget = ctx.videoSequenceRoute ?? routeForPlayableExit(s.exit ?? 'game', ctx);
+      // Entry loading video: loop the clip and let the loadProgress effect drive
+      // the advance (wait for the start-of-page asset download). No onEnded.
+      if (ctx.introVideo) {
+        return `      <VideoPlayer src={cape.video?.url ?? cape.video ?? ${fallbackSrc}} muted={${s.muted !== false}} loop={true}${bleedProp} />`;
+      }
       return (s.onEnd ?? 'auto-advance') === 'auto-advance'
-        ? `      <VideoPlayer src={cape.video?.url ?? cape.video ?? ${fallbackSrc}} muted={${s.muted !== false}} loop={${Boolean(s.loop)}}${bleedProp} onEnded={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.exit ?? 'game', ctx))} as never })} />`
+        ? `      <VideoPlayer src={cape.video?.url ?? cape.video ?? ${fallbackSrc}} muted={${s.muted !== false}} loop={${Boolean(s.loop)}}${bleedProp} onEnded={() => router.navigate({ to: ${jsString(videoTarget)} as never })} />`
         : `      <VideoPlayer src={cape.video?.url ?? cape.video ?? ${fallbackSrc}} muted={${s.muted !== false}} loop={${Boolean(s.loop)}}${bleedProp} />`;
     }
     case 'skip-control':
-      return `      <SkipControl label={String(cape.skipLabel ?? 'Skip')} availableAfterMs={${Number(s.availableAfterMs ?? 0)}} onSkip={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.exit ?? 'game', ctx))} as never })} />`;
+      return `      <SkipControl label={String(cape.skipLabel ?? 'Skip')} availableAfterMs={${Number(s.availableAfterMs ?? 0)}} onSkip={() => router.navigate({ to: ${jsString(ctx.videoSequenceRoute ?? routeForPlayableExit(s.exit ?? 'game', ctx))} as never })} />`;
     case 'reveal-cta':
-      return `      <RevealCta label={String(cape.ctaLabel ?? 'Continue')} variant="${s.variant ?? 'primary'}" onClick={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.exit ?? 'game', ctx))} as never })} />`;
+      return `      <RevealCta label={String(cape.ctaLabel ?? 'Continue')} variant="${s.variant ?? 'primary'}" onClick={() => router.navigate({ to: ${jsString(ctx.videoSequenceRoute ?? routeForPlayableExit(s.exit ?? 'game', ctx))} as never })} />`;
     case 'fallback-indicator':
       return "      <FallbackIndicator label={String(cape.fallbackLabel ?? 'Loading')} />";
     case 'audio-toggle':

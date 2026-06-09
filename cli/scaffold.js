@@ -1539,7 +1539,11 @@ async function scaffold(options) {
     //    _skipGitInit defers git init to step 4b so no git file handles are
     //    open during the rename — the main cause of EBUSY on Windows.
     //    _displayDir ensures post-scaffold messages show the final path.
-    const tempOptions = { ...options, outputDir: tempDir, _displayDir: outputDir, _skipGitInit: true };
+    // Stage CODE only in the temp dir — skip the install there. pnpm writes
+    // node_modules junctions with absolute targets, so a temp-dir install would
+    // dangle after the rename and have to be redone anyway (the old behavior =
+    // two full installs). Instead we install ONCE in the final dir below.
+    const tempOptions = { ...options, outputDir: tempDir, _displayDir: outputDir, _skipGitInit: true, skipInstall: true };
     if (options.stack === 'tanstack') {
       await scaffoldTanstack(tempOptions);
     } else {
@@ -1571,10 +1575,17 @@ async function scaffold(options) {
     // removed temp path after rename, so refresh the install in the final dir.
     if (!options.skipInstall) {
       const frontendDir = join(outputDir, 'frontend');
-      console.log(`\n  ${c.cyan('[deps]')} ${c.bold('Refreshing dependencies in final directory…')}`);
+      console.log(`\n  ${c.cyan('[deps]')} ${c.bold('Installing dependencies…')}`);
       try {
         rmSync(join(frontendDir, 'node_modules'), { recursive: true, force: true });
         execSync('pnpm install', { cwd: frontendDir, stdio: 'inherit' });
+        // Module-declared packages — added once here in the final dir (the temp
+        // pass ran with skipInstall). Same injection-safe argv-form spawnSync as
+        // the inner scaffold used, so a malicious manifest entry can't reach a shell.
+        const { prod, dev } = collectPackages(options.modules ?? []);
+        const pnpmCmd = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+        if (prod.length > 0) spawnSync(pnpmCmd, ['add', ...prod], { cwd: frontendDir, stdio: 'inherit' });
+        if (dev.length > 0) spawnSync(pnpmCmd, ['add', '-D', ...dev], { cwd: frontendDir, stdio: 'inherit' });
         console.log(`      ${c.green('✔')} dependencies ready`);
       } catch {
         console.log(`      ${c.yellow('⚠')} pnpm install failed — run manually in ${frontendDir}`);
@@ -2568,9 +2579,18 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
     }
   }
 
-  // 2c. Explicit video route copies. loading-video, intro-video, and ad-video
-  // all use the same module template, with page-specific routing tokens.
-  const selectedVideoPages = EXPLICIT_VIDEO_PAGES.filter((id) => pages.includes(id));
+  // 2c. Explicit video route copies (legacy module template). The block-driven
+  // page builder now OWNS intro-video / loading-video / ad-video — it generates
+  // them with the content-driven, sequence-routed behavior. So this copy only
+  // runs for a selected video page that has NO block config (would otherwise
+  // have no page at all); block-generated video pages are skipped here and
+  // written solely by the block builder (step 3b).
+  const blockGeneratedPages = new Set(
+    Object.entries(blocksConfig ?? {})
+      .filter(([, cfg]) => Array.isArray(cfg?.blocks) && cfg.blocks.length > 0)
+      .map(([id]) => id),
+  );
+  const selectedVideoPages = EXPLICIT_VIDEO_PAGES.filter((id) => pages.includes(id) && !blockGeneratedPages.has(id));
   if (selectedVideoPages.length > 0) {
     step('2c', `Copying ${selectedVideoPages.length} explicit video route(s)...`);
     const srcPagePath = join(MODULES_DIR, 'video', 'app', '(campaign)', 'video', 'page.tsx');
@@ -2746,12 +2766,19 @@ async function scaffoldNext({ name, capeId, market, game, stack = 'next', pages,
       MARKET: market,
     });
 
+    // Pages whose hand-written base-template route owns the Unity boot/event
+    // wiring (engine bridge, end→result, scene load). Block-driven generation
+    // would clobber that rich page with a thin overlay-only shell, so we
+    // preserve the base template — mirrors TanStack's BUILDABLE_TS excluding
+    // 'game'.
+    const NEXT_PRESERVED_PAGES = new Set(['game', 'gameplay']);
     let generatedBlockPages = 0;
     for (const [pageId, pageConfig] of Object.entries(blocksConfig)) {
       if (pageId === 'landing') continue;
       const blockList = Array.isArray(pageConfig?.blocks) ? pageConfig.blocks : [];
       if (!blockList.length) continue;
       const pageType = pageTypes[pageId] ?? pageModuleType(pageId);
+      if (NEXT_PRESERVED_PAGES.has(pageId) || NEXT_PRESERVED_PAGES.has(pageType)) continue;
       const tsx = buildBlockDrivenPage(pageId, pageType, blockList, { routeMap, pages, capeId, flowRules });
       const defaultRoute = PAGE_ROUTES[pageId] ?? PAGE_ROUTES[pageType] ?? `/${pageId}`;
       const folder = defaultRoute.replace(/^\//, '') || pageId;

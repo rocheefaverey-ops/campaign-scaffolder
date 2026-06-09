@@ -207,6 +207,45 @@ The wizard's **block editor** is the primary editing surface. CTA buttons (`cta-
 
 Both **Next** and **TanStack** are block-driven. Next uses `buildBlockDrivenPage`; TanStack uses `buildTsBlockDrivenPage` / `buildTsBlockDrivenLoader` in `cli/tanstack-block-page-builder.js`. The wizard block list, CTA/menu derivation, and page types should stay aligned across both stacks. The only shipped TanStack template is `tanstack-unity`; adding TanStack R3F/Phaser/Memory/None requires new base templates, not just generator changes.
 
+## Two-stack architecture — READ FIRST before any cross-stack change
+
+The company ships **two distinct campaign products**: "Next-style" and "TanStack-style". They must **look identical** but **run on their own framework idioms**. The two page builders (`cli/page-builder.js`, `cli/tanstack-block-page-builder.js`) are **separate ON PURPOSE — do NOT merge them.** Reason for any duplication is judged by one rule:
+
+> **Does this code encode a style/UX choice?** Yes → keep per-stack. No (pure plumbing) → share.
+
+Three layers, three policies:
+
+| Layer | Policy | Lives in |
+|---|---|---|
+| **Look** (what the player sees) | **Shared, identical** | `components/_blocks/*` + CSS/SCSS + CAPE content |
+| **Contract** (Unity events, ProcessResponse, flow, CAPE fields) | **Shared + enforced** | [`docs/GAME_BRIDGE_CONTRACT.md`](docs/GAME_BRIDGE_CONTRACT.md) + `cli/tests/game-bridge-contract.test.js` |
+| **Mechanism** (backend transport, Unity boot timing) | **Per-stack, intentionally incompatible** | each base template |
+
+**The game bridge is the sharpest divergence and it is irreducible** (Next = Server Actions + on-demand Unity boot in `gameplay`; TanStack = server fns + start-of-page preload, `loading-video` waits on `loadProgress`). You cannot share that code — the runtimes differ. Both honor the same **contract** (events `start/end/navigation/tracking/apiRequest`, reply via `sendMessage('APIService','ProcessResponse', {success,uuid,data})`, flow `loading-video→game→result`). See the contract doc.
+
+### Canonical campaign flow (current)
+
+`intro-video → landing → tutorial (first-timer) → loading-video → game → result → leaderboard`. There is **no separate `/loading` splash** — the entry IS `intro-video` (a content-driven loading video that plays into landing). **Video pages are content-driven, never hard-timed:**
+- `intro-video`: no close button, no skip timer. TanStack loops + advances on `loadProgress` 100 (it preloads assets at page start); Next plays the clip → landing on video end (it preloads later).
+- `loading-video` (`onEnd: 'wait-for-engine'`): boots Unity, advances when `fullBoot()` resolves OR `loadProgress` hits 100 (no timer); manual "Continue" button only if boot errors.
+- Video nav (auto-advance/skip/reveal/wait-for-engine) routes by **flow sequence** (`nextRouteForPage`), not the block's `exit` hint — a video plays *into the next page in order*.
+
+### CAPE field aliasing (Next)
+
+`base-templates/next-*/lib/cape.ts` `useCape()` unwraps multilanguage AND aliases CAPE field names → semantic names the blocks read: `headline→title`, `subline→subtitle`, `cta→ctaLabel`. Without this the Next title renders the fallback. TanStack does the equivalent in its loaders' binding candidates. All 5 Next templates carry the alias.
+
+### Result stats are configurable + game-driven
+
+`stats-table` block renders rows from its `rows: [{label, value}]` config: `value` is a key resolved at runtime — `score/highScore/rank` from game state, game-specific keys (distance/tokens/…) from the stored full game result (`GameContext.gameResult` Next / `useUnityStore` result TanStack), CAPE-overridable labels via `<value>Label`. Disabled by default (keys vary per game); functional when enabled.
+
+### Known architecture debt (see memory `architecture-assessment.md`)
+
+Validated as sound in concept; remaining debt to extend the registry pattern into: single-sourcing default block compositions (`block-defaults.js` ↔ `config.ts` duplication), collapsing the dual CAPE-format codepath, import-based (not text-scraping) drift tests, unifying the 3 page-type vocabularies. **Quick wins already done:** single `pnpm install` (was double — temp + final), behavioral parity test (prop-presence, not just case-presence). Safe cleanup still open: extract the ~14 byte-identical style-neutral helpers shared by both builders into a `block-render-core` module (keep the style emitters separate).
+
+### Feature-gap roadmap (toward matching real projects in `D:/Dev/Scaffolder-insperation`, see memory `inspiration-projects.md`)
+
+Done: Unity `apiRequest` bridge (Next), configurable result stats. Open, priority order: confetti score celebration, `replayBoot` + hard-refresh recovery, campaign-state home (pre/live/post + countdown), teams/club picker page type, DynamicForm+Zod register, prizes/info pages, OAuth/anon auth + score create→update→submit lifecycle (backend-coupled — do last).
+
 ## CAPE CLI (`tools/lwg-cli-cape/`)
 
 Standalone CLI for managing campaigns on the CAPE platform. Replaces manual clicking in the CAPE editor. Can be used as a terminal tool, an MCP server, or via the `/cape` slash command in Claude Code.

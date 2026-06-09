@@ -95,6 +95,14 @@ describe('buildTsBlockDrivenPage - loading-video', () => {
     assert.match(route, /router\.navigate\(\{ to: ["']\/game["'] as never, replace: true \}\)/);
     assert.doesNotMatch(route, /\/howto-play/);
     assert.doesNotMatch(route, /rightSlot="close"/);
+    // Content-driven contract: advance on boot resolve (goToGame), NO hard
+    // fallback timer, a load-driven safety net (loadProgress 100), and a manual
+    // Continue button on boot failure.
+    assert.doesNotMatch(route, /setTimeout/);
+    assert.match(route, /\.then\(\(\) => goToGame\(\)\)/);
+    assert.match(route, /loadProgress >= 100/);
+    assert.match(route, /setCanContinue\(true\)/);
+    assert.match(route, /canContinue &&/);
   });
 
   it('falls back to the bundled livewall loading video when CAPE has none', () => {
@@ -280,7 +288,7 @@ describe('buildTsBlockDrivenPage - block coverage', () => {
     assert.match(route, /rank=\{cape\.personalRank\} score=\{cape\.personalBest\}/);
     assert.doesNotMatch(route, /personalRank \?\? 0/);
     assert.doesNotMatch(route, /personalBest \?\? 0/);
-    assert.match(route, /<StatsTable rows=\{cape\.stats \?\? \[\]\} count=\{2\}/);
+    assert.match(route, /<StatsTable rows=\{\[\]\} count=\{2\}/);
     assert.match(route, /<TopNHighlight label=\{String\(cape\.topNLabel \?\? ''\)\} count=\{5\}/);
   });
 

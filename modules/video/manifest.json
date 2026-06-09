@@ -21,28 +21,13 @@
       "src": "tanstack/routes/video.tsx",
       "dest": "src/routes/video.tsx",
       "stacks": ["tanstack"]
-    },
-    {
-      "src": "tanstack/routes/intro-video.tsx",
-      "dest": "src/routes/intro-video.tsx",
-      "stacks": ["tanstack"]
-    },
-    {
-      "src": "tanstack/routes/loading-video.tsx",
-      "dest": "src/routes/loading-video.tsx",
-      "stacks": ["tanstack"]
-    },
-    {
-      "src": "tanstack/routes/ad-video.tsx",
-      "dest": "src/routes/ad-video.tsx",
-      "stacks": ["tanstack"]
     }
   ],
   "envVars": [],
   "packages": [],
   "notes": [
     "Video src is read from CAPE: general.video.introVideo.",
-    "loading-video loops until Unity fires the game-ready signal via fullBoot(); readyFallbackSec controls the auto-skip fallback.",
-    "video / intro-video / ad-video navigate on end or skip after minPlaybackSec."
+    "intro-video / loading-video / ad-video routes are now owned by the block-driven page builders (cli/page-builder.js, cli/tanstack-block-page-builder.js) — they are generated from blocks, not copied here. This module only provides the generic /video route plus shared infra (VideoLoader, VideoIntro).",
+    "loading-video is content-driven: it boots Unity via fullBoot() and advances the instant the engine is ready (no hard timer); a manual Continue button appears only if boot fails."
   ]
 }

@@ -81,26 +81,42 @@ describe('buildBlockDrivenLanding', () => {
     assert.match(out, /const router = useRouter\(\);/);
   });
 
-  it('omits useRouter when no enabled block navigates', () => {
+  it('auto-advances loading pages to the next configured page', () => {
     const out = buildBlockDrivenLoading([
       { name: 'background', settings: { kind: 'image' } },
       { name: 'centered-art', settings: { size: 'md' } },
       { name: 'brand-chip', settings: { size: 'md' } },
       { name: 'tagline', settings: {} },
-      { name: 'loading-indicator', settings: { kind: 'ring' } },
-    ]);
-    assert.doesNotMatch(out, /useRouter/);
+      { name: 'loading-indicator', settings: { kind: 'ring', minDisplayMs: 800 } },
+    ], { pages: ['loading', 'landing', 'game'], routeMap: { loading: '/loading', landing: '/landing', game: '/game' } });
+    assert.match(out, /useRouter/);
+    assert.match(out, /useEffect/);
+    assert.match(out, /setTimeout.*router\.replace.*\/landing.*800/);
   });
 
-  it('does not auto-advance wait-for-engine video blocks', () => {
+  it('boots the engine and advances on ready for wait-for-engine video blocks', () => {
     const out = buildBlockDrivenVideo([
       { name: 'background', settings: { kind: 'solid' } },
       { name: 'header-chrome', settings: { leftSlot: 'none', rightSlot: 'none' } },
-      { name: 'video-player', settings: { muted: true, loop: true, onEnd: 'wait-for-engine' } },
+      { name: 'video-player', settings: { muted: true, loop: true, onEnd: 'wait-for-engine', exit: 'game' } },
       { name: 'fallback-indicator', settings: {} },
-    ]);
+    ], { pageId: 'loading-video', pages: ['loading-video', 'game'], routeMap: { 'loading-video': '/loading-video', game: '/gameplay' } });
+    // The video itself does NOT drive the advance (no onEnded → router).
     assert.doesNotMatch(out, /onEnded=\{\(\) => router\.push/);
-    assert.doesNotMatch(out, /useRouter/);
+    // Engine readiness drives the advance instead: boot Unity, set the
+    // preload flag, then navigate to the game route on fullBoot resolution.
+    assert.match(out, /useRouter/);
+    assert.match(out, /useContext\(UnityContext\)/);
+    assert.match(out, /unity\.fullBoot\(\)/);
+    assert.match(out, /unity-started-from-video/);
+    assert.match(out, /router\.replace\("\/gameplay"\)/);
+    // Content-driven contract: advance on boot resolve (.then), NO hard fallback
+    // timer, manual Continue button on boot failure (.catch → setCanContinue).
+    assert.doesNotMatch(out, /setTimeout/);
+    assert.match(out, /setCanContinue\(true\)/);
+    assert.match(out, /canContinue &&/);
+    // Load-driven safety net (not a timer): advance once the build is loaded.
+    assert.match(out, /loadProgress >= 100/);
   });
 
   it('uses the current loading video fallback asset', () => {
@@ -139,7 +155,7 @@ describe('buildBlockDrivenLanding', () => {
     ]);
 
     assert.match(out, /import \{ useGameContext \} from '@hooks\/useGameContext';/);
-    assert.match(out, /const \{ score, highscore \} = useGameContext\(\);/);
+    assert.match(out, /const \{ score, highscore, rank, gameResult \} = useGameContext\(\);/);
     assert.match(out, /<ScoreReadout score=\{score \?\? cape\.score \?\? 0\}/);
     assert.match(out, /highScore=\{highscore \|\| cape\.highScore\}/);
   });

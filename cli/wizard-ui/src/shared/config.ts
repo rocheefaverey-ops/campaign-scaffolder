@@ -272,13 +272,12 @@ export const DEFAULT_BLOCKS_BY_PAGE: Record<string, PageBlocksConfig> = {
     'nav-controls': block(true, { showPrev: false, nextExit: 'loading-video' }),
     'compliance-badge': block(false, { kind: '18+' }),
   }),
+  // Entry loading video — content-driven, NOT a skippable ad interlude (no
+  // close button, no skip timer). Advance is load-driven and per-stack (see
+  // builders). Kept in sync with block-defaults.js DEFAULT_PAGE_BLOCKS.
   'intro-video': page({
     background: block(true, { kind: 'solid' }),
-    'header-chrome': block(true, { leftSlot: 'none', rightSlot: 'close' }),
-    'brand-chip': block(false, { size: 'sm' }),
-    'video-player': block(true, { muted: true, loop: false, onEnd: 'auto-advance', availableAfterMs: 3000 }),
-    'skip-control': block(true, { availableAfterMs: 3000, exit: 'game' }),
-    'reveal-cta': block(false, { exit: 'game', variant: 'primary' }),
+    'video-player': block(true, { muted: true, loop: false, onEnd: 'auto-advance' }),
     'fallback-indicator': block(false),
   }),
   'loading-video': page({

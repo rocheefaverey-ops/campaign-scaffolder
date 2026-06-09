@@ -18,7 +18,7 @@ function resolvePageCape(capeData: unknown, pageId: string): AnyRecord {
   const logo = firstAsset(general.logo)
     || firstAsset(asRecord(asRecord(root.general).header).logo)
     || firstAsset(asRecord(asRecord(root.settings).branding).logo);
-  return {
+  return applyFieldAliases({
     ...copy,
     ...general,
     ...files,
@@ -26,7 +26,30 @@ function resolvePageCape(capeData: unknown, pageId: string): AnyRecord {
     logo,
     brandChip: { image: logo },
     background: backgroundSource(general.background ?? files.background ?? files.backgroundImage ?? files.heroImage),
-  };
+  });
+}
+
+/**
+ * Map CAPE field names onto the semantic names the generated page components
+ * read. CAPE copy is authored as `headline` / `subline` / `cta`, but the block
+ * components read `title` / `subtitle` / `ctaLabel`. The TanStack loader does
+ * the same aliasing via its binding candidates — this keeps the Next data layer
+ * in parity so `cape.title` is populated identically on both stacks.
+ */
+function applyFieldAliases(record: AnyRecord): AnyRecord {
+  const aliases: Array<[string, string[]]> = [
+    ['title', ['headline', 'title']],
+    ['subtitle', ['subline', 'subtitle', 'description']],
+    ['ctaLabel', ['cta', 'ctaLabel', 'buttonStart', 'buttonNext', 'ctaContinue', 'ctaNext']],
+  ];
+  for (const [target, sources] of aliases) {
+    if (record[target] !== undefined && record[target] !== '') continue;
+    for (const src of sources) {
+      const v = record[src];
+      if (typeof v === 'string' && v !== '') { record[target] = v; break; }
+    }
+  }
+  return record;
 }
 
 function resolveCapeCopy(value: unknown): AnyRecord {

@@ -1,5 +1,11 @@
 'use client';
 
+// Unity↔frontend bridge — Next implementation. The CONTRACT this must honor
+// (event vocabulary, ProcessResponse channel, flow) is shared with TanStack and
+// documented at docs/GAME_BRIDGE_CONTRACT.md (enforced by
+// cli/tests/game-bridge-contract.test.js). The MECHANISM here (Server Actions,
+// on-demand boot) is intentionally different from TanStack — do not unify.
+
 import { useCallback, useContext, useEffect, useRef, useState, useTransition } from 'react';
 import { UnityContext } from '@components/_modules/unity/UnityGame';
 import { useCapeData } from '@hooks/useCapeData';
@@ -8,7 +14,8 @@ import { useSafeNavigation } from '@hooks/useSafeNavigation';
 import { buildUnityTranslations } from '@lib/game-bridge/cape-translations';
 import { UnityNavigationType, UnityTrackingType } from '@lib/game-bridge/game-bridge.types';
 import { getCapeText } from '@utils/getCapeData';
-import type { IGameResult, IUnityNavigation, IUnityTracking } from '@lib/game-bridge/game-bridge.types';
+import { unityApiRequest } from '@/app/actions/unity-api-request/action';
+import type { IGameResult, IUnityApiRequest, IUnityApiResponse, IUnityNavigation, IUnityTracking } from '@lib/game-bridge/game-bridge.types';
 
 function readScore(payload: IGameResult): number {
   const record = payload as Record<string, unknown>;
@@ -17,11 +24,20 @@ function readScore(payload: IGameResult): number {
   return Number.isFinite(score) ? score : 0;
 }
 
+/** Flatten the game-end payload to primitive stat values for the result table. */
+function readStats(payload: IGameResult): Record<string, number | string> {
+  const out: Record<string, number | string> = {};
+  for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
+    if (typeof value === 'number' || typeof value === 'string') out[key] = value;
+  }
+  return out;
+}
+
 export default function GameplayPage() {
   const ctx = useContext(UnityContext);
   const navigate = useSafeNavigation();
   const { capeData } = useCapeData();
-  const { isMuted, onboardingCompleted, setScore, setOnboardingCompleted } = useGameContext();
+  const { isMuted, onboardingCompleted, setScore, setGameResult, setOnboardingCompleted } = useGameContext();
   const [, startTransition] = useTransition();
   const [showFallback, setShowFallback] = useState(false);
   const targetScene = getCapeText(capeData, 'settings.game.sceneKey', 'Racing');
@@ -37,8 +53,10 @@ export default function GameplayPage() {
     try {
       const result = JSON.parse(String(data ?? '')) as IGameResult;
       setScore(readScore(result));
+      setGameResult(readStats(result));
     } catch {
       setScore(0);
+      setGameResult(null);
     }
     ctx?.setUnityVisible(false);
     navigate('/result', 'replace');
@@ -96,6 +114,29 @@ export default function GameplayPage() {
     setOnboardingCompleted(true);
   }, [setOnboardingCompleted]);
 
+  // Unity proxies an HTTP request through the frontend (the `apiRequest` bridge):
+  // forward {method, path, data} to the campaign backend, then echo the result
+  // back to the game on APIService.ProcessResponse, keyed by the request uuid.
+  const apiListener = useCallback((data: unknown) => {
+    let uuid = '';
+    try {
+      const { uuid: id, ...requestData } = JSON.parse(String(data)) as IUnityApiRequest;
+      uuid = id;
+      void unityApiRequest(requestData)
+        .then((result) => {
+          const response: IUnityApiResponse<unknown> = { success: result.success, uuid, data: result.data };
+          ctx?.sendMessage('APIService', 'ProcessResponse', JSON.stringify(response));
+        })
+        .catch((error) => {
+          console.error('[gameplay] Unity apiRequest failed:', error);
+          const response: IUnityApiResponse<unknown> = { success: false, uuid, data: { message: String(error) } };
+          ctx?.sendMessage('APIService', 'ProcessResponse', JSON.stringify(response));
+        });
+    } catch {
+      // ignore invalid payload (cannot respond without a uuid)
+    }
+  }, [ctx]);
+
   useEffect(() => {
     if (!ctx) return;
     const { addEventListener, removeEventListener } = ctx;
@@ -107,6 +148,7 @@ export default function GameplayPage() {
     addEventListener('tracking', trackingListener);
     addEventListener('start', startListener);
     addEventListener('onTutorialPlayed', tutorialPlayedListener);
+    addEventListener('apiRequest', apiListener);
 
     return () => {
       removeEventListener('end', endListener);
@@ -114,8 +156,9 @@ export default function GameplayPage() {
       removeEventListener('tracking', trackingListener);
       removeEventListener('start', startListener);
       removeEventListener('onTutorialPlayed', tutorialPlayedListener);
+      removeEventListener('apiRequest', apiListener);
     };
-  }, [ctx, trackingListener, startListener, tutorialPlayedListener]);
+  }, [ctx, trackingListener, startListener, tutorialPlayedListener, apiListener]);
 
   useEffect(() => {
     if (!ctx || booted.current) return;

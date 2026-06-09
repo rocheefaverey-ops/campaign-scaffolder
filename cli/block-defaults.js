@@ -164,8 +164,27 @@ export const DEFAULT_PAGE_BLOCKS = {
 };
 
 DEFAULT_PAGE_BLOCKS.tutorial = DEFAULT_PAGE_BLOCKS.onboarding;
-DEFAULT_PAGE_BLOCKS['intro-video'] = DEFAULT_PAGE_BLOCKS.video;
-DEFAULT_PAGE_BLOCKS['ad-video'] = DEFAULT_PAGE_BLOCKS.video;
+// intro-video is the ENTRY loading video — a content-driven loading screen that
+// plays into the landing page. It is NOT a skippable ad interlude: no close (×)
+// button, no skip timer. Advancement is load-driven, and differs per stack
+// (handled in the builders): TanStack loops the clip and waits for the initial
+// Unity asset download (loadProgress) since it preloads at page start; Next
+// plays the clip into landing on video end since it preloads later (in the
+// post-tutorial loading-video). ad-video below stays a skippable interlude.
+DEFAULT_PAGE_BLOCKS['intro-video'] = page({
+  background: block(true, { kind: 'solid' }),
+  'video-player': block(true, { muted: true, loop: false, onEnd: 'auto-advance' }),
+  'fallback-indicator': block(false, {}),
+});
+DEFAULT_PAGE_BLOCKS['ad-video'] = page({
+  background: block(true, { kind: 'solid' }),
+  'header-chrome': block(true, { leftSlot: 'none', rightSlot: 'close' }),
+  'brand-chip': block(false, { size: 'sm' }),
+  'video-player': block(true, { muted: true, loop: false, onEnd: 'auto-advance', availableAfterMs: 3000 }),
+  'skip-control': block(true, { availableAfterMs: 3000, exit: 'voucher' }),
+  'reveal-cta': block(false, { exit: 'voucher', variant: 'primary' }),
+  'fallback-indicator': block(false, {}),
+});
 
 export function clone(value) {
   return JSON.parse(JSON.stringify(value));

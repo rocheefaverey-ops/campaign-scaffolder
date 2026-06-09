@@ -1,3 +1,9 @@
+// Unity↔frontend bridge — TanStack implementation. The CONTRACT this must honor
+// (event vocabulary, ProcessResponse channel, flow) is shared with Next and
+// documented at docs/GAME_BRIDGE_CONTRACT.md (enforced by
+// cli/tests/game-bridge-contract.test.js). The MECHANISM here (server fns,
+// start-of-page preload) is intentionally different from Next — do not unify.
+
 import { createFileRoute, useLoaderData, useRouter } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useTransition } from 'react';
 import { AnimatePresence, motion } from 'motion/react';

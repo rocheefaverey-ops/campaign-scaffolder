@@ -18,6 +18,8 @@ export interface GameState {
   score: number;
   highscore: number;
   rank: number | null;
+  /** Full parsed game-end payload (score + game-specific stats: distance, tokens, time, …). Drives the configurable result stats table. */
+  gameResult: Record<string, number | string> | null;
 
   // Flow
   loading: boolean;
@@ -40,6 +42,7 @@ export interface GameActions {
   setScore: (score: number) => void;
   setHighscore: (score: number) => void;
   setRank: (rank: number) => void;
+  setGameResult: (result: Record<string, number | string> | null) => void;
   setLoading: (v: boolean) => void;
   setGameIsReady: (v: boolean) => void;
   setOnboardingCompleted: (v: boolean) => void;
