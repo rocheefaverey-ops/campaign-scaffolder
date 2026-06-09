@@ -129,7 +129,7 @@ describe('buildTsBlockDrivenPage - tutorial step flow', () => {
     const route = buildTsBlockDrivenPage('tutorial', 'tutorial', blocks, {
       routeMap: { tutorial: '/tutorial', game: '/game' },
     });
-    assert.match(route, /import \{ useState \} from 'react'/);
+    assert.match(route, /import \{[^}]*\buseState\b[^}]*\} from 'react'/);
     assert.match(route, /const \[stepIndex, setStepIndex\] = useState\(0\)/);
     assert.match(route, /\(data as Record<string, any>\)\.steps as Array/);
     assert.match(route, /const visibleSteps = filledSteps\.length \? filledSteps : rawSteps/);
@@ -152,7 +152,8 @@ describe('buildTsBlockDrivenPage - tutorial step flow', () => {
       routeMap: { tutorial: '/tutorial', game: '/game' },
     });
     assert.match(route, /nextLabel=\{String\(isLastStep \? \(cape\.lastLabel \?\? 'Start'\) : \(cape\.nextLabel \?\? 'Continue'\)\)\}/);
-    assert.match(route, /isLastStep \? router\.navigate\(\{ to: ["']\/game["'] as never \}\) : setStepIndex/);
+    // onboarding gate: the final step marks onboarding done, then navigates.
+    assert.match(route, /isLastStep \? \(\(\) => \{ markOnboardingDone\(\); void router\.navigate\(\{ to: ["']\/game["'] as never \}\); \}\)\(\) : setStepIndex/);
     assert.match(route, /<StepIndicator count=\{totalSteps\} current=\{safeStepIndex\}/);
   });
 
@@ -162,7 +163,7 @@ describe('buildTsBlockDrivenPage - tutorial step flow', () => {
       routeMap: { tutorial: '/tutorial', 'loading-video': '/loading-video', game: '/game' },
     });
 
-    assert.match(route, /isLastStep \? router\.navigate\(\{ to: ["']\/loading-video["'] as never \}\) : setStepIndex/);
+    assert.match(route, /isLastStep \? \(\(\) => \{ markOnboardingDone\(\); void router\.navigate\(\{ to: ["']\/loading-video["'] as never \}\); \}\)\(\) : setStepIndex/);
   });
 
   it('does not wire step state when nav-controls is absent', () => {

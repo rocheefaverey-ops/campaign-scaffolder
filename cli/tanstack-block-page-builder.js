@@ -73,6 +73,25 @@ function routeForExit(exit, routeMap = {}) {
   return routeMap[key] ?? routeMap[hyphenKey] ?? routeMap[underscoreKey] ?? DEFAULT_BLOCK_ROUTES[key] ?? DEFAULT_BLOCK_ROUTES[hyphenKey] ?? `/${hyphenKey}`;
 }
 
+// Onboarding "once-per-browser" gate (parity with the Next builder): the tutorial
+// marks completion in localStorage; landing skips it on return visits.
+function defaultFlowRuleMode(type) {
+  if (type === 'tutorial' || type === 'onboarding') return 'once-per-browser';
+  return 'always';
+}
+function flowRuleModeFor(pageId, pageType, flowRules = {}) {
+  const rule = flowRules?.[pageId];
+  return typeof rule?.mode === 'string' ? rule.mode : defaultFlowRuleMode(pageType);
+}
+function flowRuleSkipRouteFor(pageId, fallbackExit, ctx = {}) {
+  const skipTo = ctx.flowRules?.[pageId]?.skipTo;
+  if (skipTo) return routeForExit(skipTo, ctx.routeMap);
+  const pages = ctx.pages ?? [];
+  const index = pages.indexOf(pageId);
+  const next = index >= 0 ? pages[index + 1] : null;
+  return routeForExit(next || fallbackExit, ctx.routeMap);
+}
+
 function routeForMenuTarget(target, ctx = {}) {
   const pages = new Set(ctx.pages ?? []);
   const routeMap = ctx.routeMap ?? {};
@@ -278,7 +297,23 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
   // / reveal target the next page by ORDER, not the block's `exit` hint.
   const videoSequenceRoute = isVideoPage ? nextRouteForPage(pageId, options.pages ?? [], options.routeMap ?? {}) : null;
 
-  const ctx = { pageId, pageType: type, routeMap: options.routeMap ?? {}, pages: options.pages ?? [], brandInHeader, projectName: options.projectName, stepFlow, videoSequenceRoute, introVideo: pageId === 'intro-video' };
+  // Onboarding gate (once-per-browser): landing skips the tutorial on return
+  // visits; the tutorial marks completion. Mirrors the Next builder.
+  const flowRules = options.flowRules ?? {};
+  const selectedPagesTs = options.pages ?? [];
+  const hasTutorialPage = selectedPagesTs.includes('tutorial') || Object.keys(options.routeMap ?? {}).includes('tutorial');
+  const isTutorialPage = pageId === 'tutorial' || type === 'onboarding';
+  const tutorialRuleMode = flowRuleModeFor('tutorial', 'onboarding', flowRules);
+  const tsCtaButtons = settingsOf(innerBlocks.find((b) => b.name === 'cta-group')).buttons;
+  const hasTutorialCta = Array.isArray(tsCtaButtons) && tsCtaButtons.some((b) => {
+    const exit = b?.exit ?? 'game';
+    return exit === 'tutorial' || routeForExit(exit, options.routeMap ?? {}) === routeForExit('tutorial', options.routeMap ?? {});
+  });
+  const needsOnboardingGate = tutorialRuleMode === 'once-per-browser' && hasTutorialPage && (isTutorialPage || (pageId === 'landing' && hasTutorialCta));
+  const onboardingKey = `lw_onboarding_done_${options.capeId ?? options.projectName ?? 'campaign'}`;
+
+  const ctx = { pageId, pageType: type, routeMap: options.routeMap ?? {}, pages: options.pages ?? [], brandInHeader, projectName: options.projectName, stepFlow, videoSequenceRoute, introVideo: pageId === 'intro-video', needsOnboardingGate, flowRules };
+  const tutorialSkipRoute = flowRuleSkipRouteFor('tutorial', stepFlow?.nextExit ?? 'game', ctx);
   const visibleOrderedBlocks = fullBleedVideoBlock
     ? orderedBlocks.filter((b) => b !== fullBleedVideoBlock)
     : orderedBlocks;
@@ -309,8 +344,9 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
   const waitForEngineSettings = settingsOf(waitForEngineVideoBlock);
   const waitForEngineRoute = videoSequenceRoute ?? routeForExit(settingsOf(waitForEngineVideoBlock).exit ?? 'game', options.routeMap ?? {});
   const usesRouter = innerBlocks.some(blockUsesRouter) || isAutoLoadingPage || isWaitForEngineVideoPage || isIntroVideoPage || Boolean(stepFlow);
+  const usesOnboardingSkip = isTutorialPage && needsOnboardingGate;
   const reactImports = [...new Set([
-    (isAutoLoadingPage || isWaitForEngineVideoPage || isIntroVideoPage || usesRegistrationState) && 'useEffect',
+    (isAutoLoadingPage || isWaitForEngineVideoPage || isIntroVideoPage || usesRegistrationState || usesOnboardingSkip) && 'useEffect',
     isWaitForEngineVideoPage && 'useState',
     (isWaitForEngineVideoPage || isIntroVideoPage) && 'useRef',
     tracksRegistrationStatus && 'useState',
@@ -387,6 +423,10 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     usesRegistrationState ? "const isRegistered = () => typeof window !== 'undefined' && window.localStorage.getItem(REGISTERED_KEY) === '1';" : null,
     pageId === 'register' && usesRegistrationState ? "const markRegistered = () => { try { window.localStorage.setItem(REGISTERED_KEY, '1'); } catch { /* private mode */ } };" : null,
     usesRegistrationState ? '' : null,
+    needsOnboardingGate ? `const ONBOARDING_KEY = ${jsString(onboardingKey)};` : null,
+    needsOnboardingGate ? "const isOnboardingDone = () => typeof window !== 'undefined' && window.localStorage.getItem(ONBOARDING_KEY) === '1';" : null,
+    isTutorialPage && needsOnboardingGate ? "const markOnboardingDone = () => { try { window.localStorage.setItem(ONBOARDING_KEY, '1'); } catch { /* private mode */ } };" : null,
+    needsOnboardingGate ? '' : null,
     `export const Route = createFileRoute(${jsString(route)})({`,
     `  component: ${pageComponentName(pageId, pageType)},`,
     `  loader: async ({ context }) => await ${loaderName(pageId)}(context.language),`,
@@ -401,6 +441,12 @@ export function buildTsBlockDrivenPage(pageId, pageType, blocks, options = {}) {
     usesUnityResult ? '  const currentScore = result.score ?? cape.score ?? 0;' : null,
     usesUnityResult ? '  const currentHighScore = result.highScore ?? cape.highScore ?? cape.score ?? 0;' : null,
     tracksRegistrationStatus ? '  const [hasRegistered, setHasRegistered] = useState(false);' : null,
+    usesOnboardingSkip ? [
+      '  // Returning visitors who already completed onboarding skip straight past.',
+      '  useEffect(() => {',
+      `    if (isOnboardingDone()) void router.navigate({ to: ${jsString(tutorialSkipRoute)} as never, replace: true });`,
+      '  }, [router]);',
+    ].join('\n') : null,
     stepFlow ? '  const [stepIndex, setStepIndex] = useState(0);' : null,
     stepFlow ? '  const rawSteps = ((data as Record<string, any>).steps as Array<{ title?: string | null; description?: string | null; image?: string | null }>) ?? [];' : null,
     stepFlow ? '  const filledSteps = rawSteps.filter((s) => (s?.title || s?.description || s?.image));' : null,
@@ -688,7 +734,12 @@ function renderBlock(block, ctx) {
       if (ctx.stepFlow) {
         const lastRoute = jsString(routeForPlayableExit(ctx.stepFlow.nextExit, ctx));
         const showPrev = ctx.stepFlow.showPrev ? 'safeStepIndex > 0' : 'false';
-        return `      <NavControls showPrev={${showPrev}} nextLabel={String(isLastStep ? (cape.lastLabel ?? 'Start') : (cape.nextLabel ?? 'Continue'))} onPrev={() => setStepIndex((i) => Math.max(0, i - 1))} onNext={() => isLastStep ? router.navigate({ to: ${lastRoute} as never }) : setStepIndex((i) => i + 1)} />`;
+        // On the final step, mark onboarding done (so return visits skip the
+        // tutorial) before navigating on.
+        const finishAction = ctx.needsOnboardingGate
+          ? `(() => { markOnboardingDone(); void router.navigate({ to: ${lastRoute} as never }); })()`
+          : `router.navigate({ to: ${lastRoute} as never })`;
+        return `      <NavControls showPrev={${showPrev}} nextLabel={String(isLastStep ? (cape.lastLabel ?? 'Start') : (cape.nextLabel ?? 'Continue'))} onPrev={() => setStepIndex((i) => Math.max(0, i - 1))} onNext={() => isLastStep ? ${finishAction} : setStepIndex((i) => i + 1)} />`;
       }
       return `      <NavControls showPrev={${Boolean(s.showPrev)}} nextLabel={String(cape.nextLabel ?? 'Continue')} onNext={() => router.navigate({ to: ${jsString(routeForPlayableExit(s.nextExit ?? 'game', ctx))} as never })} />`;
     }
@@ -778,10 +829,19 @@ function renderCtaButtons(settings, ctx = {}) {
     : [{ variant: 'primary', exit: 'game' }];
   const cap = Math.min(4, settings.count ? Number(settings.count) : list.length);
   const entries = list.slice(0, Math.max(1, cap)).map((b, i) => {
-    const route = routeForPlayableExit(b.exit ?? 'game', ctx);
-    const click = ctx.pageId === 'register'
-      ? `() => { markRegistered(); router.navigate({ to: '${route}' as never }); }`
-      : `() => router.navigate({ to: '${route}' as never })`;
+    const exit = b.exit ?? 'game';
+    const route = routeForPlayableExit(exit, ctx);
+    const isTutorialTarget = exit === 'tutorial' || route === routeForPlayableExit('tutorial', ctx);
+    let click;
+    if (ctx.pageId === 'register') {
+      click = `() => { markRegistered(); router.navigate({ to: '${route}' as never }); }`;
+    } else if (ctx.needsOnboardingGate && ctx.pageId === 'landing' && isTutorialTarget) {
+      // Returning visitors skip the tutorial.
+      const skip = routeForPlayableExit('game', ctx);
+      click = `() => router.navigate({ to: (isOnboardingDone() ? '${skip}' : '${route}') as never })`;
+    } else {
+      click = `() => router.navigate({ to: '${route}' as never })`;
+    }
     return `{ label: cape.cta?.[${i}]?.label || cape.cta?.[${i}] || cape.ctaLabel || ${jsString(ctaFallbackFor(ctx.pageId ?? '', i))}, variant: '${b.variant ?? 'primary'}', onClick: ${click} }`;
   });
 
