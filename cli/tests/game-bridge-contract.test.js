@@ -51,6 +51,19 @@ describe('game bridge contract — JS→Unity response channel', () => {
   });
 });
 
+describe('game page — hard-refresh recovery', () => {
+  // Refreshing the game page destroys the in-memory Unity instance + preload
+  // handshake → frozen canvas. Both stacks must detect the reload and restart
+  // the flow from the entry ('/').
+  for (const [name, src] of [['Next gameplay', nextGameplay], ['TanStack game', tsGame]]) {
+    it(`${name} detects a hard reload and redirects to the entry`, () => {
+      assert.match(src, /getEntriesByType\(['"]navigation['"]\)/);
+      assert.match(src, /reload/);
+      assert.match(src, /(navigate\(\s*['"]\/['"]|to:\s*['"]\/['"])/);
+    });
+  }
+});
+
 describe('game bridge contract — flow (end → result)', () => {
   // Same contract, stack-specific expression: Next navigates to a literal
   // /result; TanStack navigates via the {{NEXT_AFTER_GAME}} flow token, which the

@@ -31,6 +31,16 @@ export const Route = createFileRoute('/game')({
   loader: async ({ context }) => await loadGameData(context.language),
 });
 
+// A hard refresh on the game route destroys the in-memory Unity instance and the
+// 'unity-started-from-video' preload handshake, leaving a frozen canvas. Detect
+// the reload and restart the flow from the entry ('/'), which re-runs
+// loading-video and boots Unity cleanly.
+function isHardReload(): boolean {
+  if (typeof performance === 'undefined') return false;
+  const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+  return nav?.type === 'reload';
+}
+
 function Game() {
   const { copy: sharedCopy, sceneKey } = useLoaderData({ from: '__root__' });
   const { copy } = Route.useLoaderData();
@@ -40,6 +50,7 @@ function Game() {
   const [_, startTransition] = useTransition();
   const callAPI = useApi(customRequest);
   const started = useRef<boolean>(false);
+  const reloaded = useRef<boolean>(isHardReload());
   const router = useRouter();
 
   // Define listeners
@@ -136,8 +147,15 @@ function Game() {
     }
   }, []);
 
+  // Hard-refresh recovery: restart the flow from the entry instead of showing a
+  // frozen, state-less game canvas.
+  useEffect(() => {
+    if (reloaded.current) void router.navigate({ to: '/' as never, replace: true });
+  }, []);
+
   // Setup Unity game on mount
   useEffect(() => {
+    if (reloaded.current) return;
     addEventListener('start', startListener);
     addEventListener('end', endListener);
     addEventListener('apiRequest', apiListener);

@@ -33,6 +33,17 @@ function readStats(payload: IGameResult): Record<string, number | string> {
   return out;
 }
 
+// A hard refresh on the game page destroys the in-memory Unity instance and the
+// 'unity-started-from-video' preload handshake, leaving a frozen canvas. Detect
+// the reload and restart the flow from the entry ('/'), which re-runs
+// loading-video and boots Unity cleanly. (This also covers an accidental
+// deep-refresh into a half-state.)
+function isHardReload(): boolean {
+  if (typeof performance === 'undefined') return false;
+  const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+  return nav?.type === 'reload';
+}
+
 export default function GameplayPage() {
   const ctx = useContext(UnityContext);
   const navigate = useSafeNavigation();
@@ -41,10 +52,17 @@ export default function GameplayPage() {
   const [, startTransition] = useTransition();
   const [showFallback, setShowFallback] = useState(false);
   const targetScene = getCapeText(capeData, 'settings.game.sceneKey', 'Racing');
+  const reloaded = useRef(isHardReload());
 
   const booted = useRef(false);
   const started = useRef(false);
   const ended = useRef(false);
+
+  // Hard-refresh recovery: restart the flow from the entry instead of showing a
+  // frozen, state-less game canvas.
+  useEffect(() => {
+    if (reloaded.current) navigate('/', 'replace');
+  }, [navigate]);
 
   const endHandlerRef = useRef<((data: unknown) => void) | undefined>(undefined);
   endHandlerRef.current = (data: unknown) => {
@@ -161,7 +179,7 @@ export default function GameplayPage() {
   }, [ctx, trackingListener, startListener, tutorialPlayedListener, apiListener]);
 
   useEffect(() => {
-    if (!ctx || booted.current) return;
+    if (reloaded.current || !ctx || booted.current) return;
     booted.current = true;
 
     const maybeStartGame = () => {
