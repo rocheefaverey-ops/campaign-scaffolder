@@ -6,7 +6,6 @@ import pluginJs from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import pluginReact from 'eslint-plugin-react';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
-import nextPlugin from '@next/eslint-plugin-next';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [...next, ...nextCoreWebVitals, ...nextTypescript, {
@@ -14,14 +13,6 @@ export default [...next, ...nextCoreWebVitals, ...nextTypescript, {
 }, {
   languageOptions: { globals: globals.browser }
 }, pluginJs.configs.recommended, ...tseslint.configs.recommended, pluginReact.configs.flat.recommended, {
-  plugins: {
-    '@next/next': nextPlugin
-  },
-  rules: {
-    ...nextPlugin.configs.recommended.rules,
-    ...nextPlugin.configs['core-web-vitals'].rules
-  }
-}, {
   plugins: {
     'jsx-a11y': jsxA11y
   },

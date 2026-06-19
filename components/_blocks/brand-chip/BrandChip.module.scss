@@ -3,6 +3,10 @@
 .chip {
   display: flex;
   padding: 0.25rem 0;
+  /* Stay within the header's center slot so the logo never overruns the
+     menu/help buttons on narrow viewports. */
+  max-width: 100%;
+  min-width: 0;
   animation: fadeIn 0.35s ease both;
 }
 
@@ -10,6 +14,7 @@
   display: block;
   height: 100%;
   width: auto;
+  max-width: 100%;
   filter: drop-shadow(0 2px 6px rgba(14, 14, 14, 0.35));
 }
 
@@ -18,7 +23,7 @@
 .chip--right  { justify-content: flex-end; }
 
 .chip--sm img { height: 1.8rem; }
-.chip--md img { height: 2.75rem; max-width: min(62vw, 220px); object-fit: contain; }
+.chip--md img { height: 2.75rem; max-width: min(100%, 220px); object-fit: contain; }
 
 /* On card/form pages the dark drop-shadow is too heavy — lighten it. */
 :global(.campaign-block-page--card) .chip img {

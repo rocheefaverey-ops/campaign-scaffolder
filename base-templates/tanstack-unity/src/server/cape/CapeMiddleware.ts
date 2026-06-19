@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createMiddleware } from '@tanstack/react-start';
 import type { ICapeData } from '~/interfaces/cape/ICapeData.ts';
 import { isLocal } from '~/utils/Helper.ts';
@@ -25,6 +27,23 @@ export const fetchCapeData = createMiddleware()
   });
 
 function requestCapeData(useShortTTL: boolean) {
+  // Mock mode: serve public/mock-cape.json from disk (no CDN, no creds). Mirrors
+  // the Next templates' CAPE_MOCK behaviour so a scaffolded TanStack project can
+  // run fully offline with real seed branding/copy.
+  if (process.env.CAPE_MOCK === 'true') {
+    if (!cacheTime) {
+      try {
+        const raw = readFileSync(join(process.cwd(), 'public', 'mock-cape.json'), 'utf-8');
+        cachedData = JSON.parse(raw) || {};
+        if (isLocal()) console.log('CAPE_MOCK=true — serving public/mock-cape.json');
+      } catch (e) {
+        console.error('CAPE_MOCK: failed to read public/mock-cape.json', e);
+      }
+      cacheTime = Date.now();
+    }
+    return Promise.resolve();
+  }
+
   const maxAge = useShortTTL ? shortTTL : defaultTTL;
   const isExpired = !cacheTime || Date.now() > cacheTime + maxAge;
 

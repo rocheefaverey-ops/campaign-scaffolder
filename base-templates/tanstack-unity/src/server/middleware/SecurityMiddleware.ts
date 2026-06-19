@@ -16,7 +16,7 @@ export const securityMiddleware = createMiddleware().server(({ next }) => {
     media-src 'self' blob: ${extractBaseUrl(process.env.CAPE_BASE_URL ?? '')};
     img-src 'self' data: blob: ${extractBaseUrl(process.env.CAPE_BASE_URL ?? '')};
     font-src 'self' data: https://fonts.gstatic.com ${extractBaseUrl(process.env.CAPE_BASE_URL ?? '')};
-    frame-ancestors 'none';
+    ${isLocal() ? '' : "frame-ancestors 'none';"}
     ${!isLocal() ? 'upgrade-insecure-requests' : ''}
   `;
 

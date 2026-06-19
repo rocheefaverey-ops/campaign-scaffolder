@@ -45,7 +45,12 @@ describe('campaign-flow regression — Next', () => {
     assert.match(out, /unity-started-from-video/);
     assert.doesNotMatch(out, /loadProgress >= 100/);
     assert.match(out, /canContinue/);
-    assert.doesNotMatch(out, /setTimeout/);
+    // Timed advance is MOCK-ONLY (GAME_MOCK fast-path, no engine to wait for).
+    // Real builds still advance on fullBoot; the real-path timer only reveals
+    // the manual Continue (setCanContinue), it never auto-navigates.
+    assert.match(out, /NEXT_PUBLIC_GAME_MOCK === 'true'/);
+    assert.match(out, /setTimeout\(\(\) => goToGame\(\)/);
+    assert.match(out, /unity\.fullBoot\(\)\s*\.then\(\(\) => goToGame\(\)\)/);
   });
   it('intro-video has no close button, no skip timer, advances on video end', () => {
     const out = nextPage('intro-video', 'video');

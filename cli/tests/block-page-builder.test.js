@@ -110,9 +110,13 @@ describe('buildBlockDrivenLanding', () => {
     assert.match(out, /unity\.fullBoot\(\)/);
     assert.match(out, /unity-started-from-video/);
     assert.match(out, /router\.replace\("\/gameplay"\)/);
-    // Content-driven contract: advance on boot resolve (.then), NO hard fallback
-    // timer, manual Continue button on boot failure (.catch → setCanContinue).
-    assert.doesNotMatch(out, /setTimeout/);
+    // Content-driven contract: real-build advance is engine-gated (.then on
+    // fullBoot), NO loadProgress auto-advance. The ONLY timed advance is the
+    // GAME_MOCK fast-path (no engine to wait for); the real-path timer reveals
+    // the manual Continue button, it never auto-navigates.
+    assert.doesNotMatch(out, /loadProgress >= 100/);
+    assert.match(out, /NEXT_PUBLIC_GAME_MOCK === 'true'/);
+    assert.match(out, /setTimeout\(\(\) => goToGame\(\), \d+\)/);
     assert.match(out, /setCanContinue\(true\)/);
     assert.match(out, /canContinue &&/);
     // Single-loader: loading-video boots and ALWAYS sets the preload flag (so the

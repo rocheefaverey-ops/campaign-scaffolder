@@ -16,7 +16,9 @@ export function VideoPlayer({ src, muted = true, loop = false, fullBleed = false
   const videoClass = fullBleed ? `${styles.video} ${styles.fullBleed}` : styles.video;
   const placeholderClass = fullBleed ? `${styles.placeholder} ${styles.fullBleed}` : styles.placeholder;
   if (!src) return <div className={placeholderClass}>Video</div>;
+  // Advance on error too: a missing/unplayable source must never trap a
+  // content-driven video page (intro-video has no skip/timer by design).
   return (
-    <video className={videoClass} src={src} muted={muted} loop={loop} playsInline autoPlay onEnded={onEnded} />
+    <video className={videoClass} src={src} muted={muted} loop={loop} playsInline autoPlay onEnded={onEnded} onError={onEnded} />
   );
 }

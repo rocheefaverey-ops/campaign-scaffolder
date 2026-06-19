@@ -28,7 +28,7 @@ export default async function RootLayout({
 
   return (
     <html lang={process.env.NEXT_PUBLIC_CAPE_LANGUAGE ?? 'en'}>
-      <body className="antialiased bg-[var(--surface-base)] text-[var(--text-primary)]">
+      <body className="antialiased bg-[var(--surface-base)] text-[var(--text-primary)]" suppressHydrationWarning>
         <Providers capeData={capeData} platform={platform} nonce={nonce}>
           <DesktopWrapper>
             <div className="desktop-wrapper__app-shell">

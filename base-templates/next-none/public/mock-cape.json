@@ -248,12 +248,12 @@
     "video": {
       "introVideo": [
         {
-          "url": "/assets/intro-livewall.mp4"
+          "url": "/assets/livewall-loading.mp4"
         }
       ],
       "loadingVideo": [
         {
-          "url": "/assets/intro-livewall.mp4"
+          "url": "/assets/livewall-loading.mp4"
         }
       ]
     },
@@ -265,7 +265,7 @@
       ],
       "heroVideo": [
         {
-          "url": "/assets/intro-livewall.mp4"
+          "url": "/assets/livewall-loading.mp4"
         }
       ],
       "backgroundImage": [

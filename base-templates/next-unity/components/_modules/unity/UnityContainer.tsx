@@ -93,6 +93,14 @@ export default function UnityContainer({ children }: UnityContainerProps) {
 
   // Step 1: resolve version.json → build URL + platform
   useEffect(() => {
+    // In mock mode the MockGameBridgeProvider drives the game; skip the real
+    // Unity loader so we don't request a non-existent /mock-unity build (404 →
+    // logged error → Next dev "issue" badge).
+    if (process.env.NEXT_PUBLIC_GAME_MOCK === 'true') {
+      uLog.lifecycle('UnityContainer: NEXT_PUBLIC_GAME_MOCK=true — skipping real Unity boot');
+      return;
+    }
+
     const baseUrl = process.env.NEXT_PUBLIC_UNITY_BASE_URL;
     const gameName = process.env.NEXT_PUBLIC_UNITY_GAME_NAME;
 
