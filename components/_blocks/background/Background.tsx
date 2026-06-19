@@ -19,11 +19,16 @@ type Props = {
   shade?: boolean;
 };
 
-const DEFAULT_BG = '/assets/livewall-background-mobile.mp4';
+// Fallback when no source is configured: a brand-colour gradient built from the
+// DesignTokenInjector CSS vars. Deliberately NOT a video file — bundled media is
+// gitignored (*.mp4) so a file default would 404 in a fresh clone. The gradient
+// always renders and adapts to the campaign's branding.
+const DEFAULT_BG_GRADIENT =
+  'radial-gradient(120% 120% at 30% 0%, var(--color-primary, #d1ff00) 0%, var(--color-secondary, #1a1a1a) 58%, #0e0e0e 100%)';
 
 export function Background({ source, children, mediaSlot, className = '', shellClassName = '', shade = true }: Props) {
   const hasMediaSlot = Boolean(mediaSlot);
-  const resolved = source ?? (hasMediaSlot ? { kind: 'solid' as const, color: '#000' } : { kind: 'video' as const, url: DEFAULT_BG });
+  const resolved = source ?? (hasMediaSlot ? { kind: 'solid' as const, color: '#000' } : { kind: 'gradient' as const, gradient: DEFAULT_BG_GRADIENT });
   const style: Record<string, string> = {};
   if (resolved.kind === 'solid') style.backgroundColor = resolved.color;
   if (resolved.kind === 'gradient') style.backgroundImage = resolved.gradient;
